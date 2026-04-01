@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-export const commandNameSchema = z.enum(['session.getStatus', 'exchange.getCapabilities']);
+export const commandNameSchema = z.enum([
+  'session.getStatus',
+  'exchange.getCapabilities',
+  'exchange.connect',
+  'exchange.getConnectionStatus',
+  'exchange.disconnect',
+]);
 
 export const commandRequestSchema = z.object({
   requestId: z.string().min(1),

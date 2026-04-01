@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from 'electron';
 import started from 'electron-squirrel-startup';
 
+import { exchangeSessionManager } from '@/main/exchange/exchange-session-manager';
+
 import { createMainWindow } from './app/create-main-window';
 import { registerIpcHandlers } from './ipc/register-ipc-handlers';
 
@@ -27,4 +29,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  void exchangeSessionManager.shutdown();
 });
