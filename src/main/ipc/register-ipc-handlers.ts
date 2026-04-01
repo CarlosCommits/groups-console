@@ -9,10 +9,17 @@ import {
 } from '@/shared/contracts/command';
 import {
   exchangeCapabilitiesSchema,
+  exchangeConnectPayloadSchema,
+  exchangeConnectionStatusSchema,
+  exchangeDisconnectPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
+  exchangeGetConnectionStatusPayloadSchema,
 } from '@/shared/contracts/exchange';
+import { connectExchange } from '@/main/exchange/connect-exchange';
+import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
+import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
@@ -50,6 +57,41 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
         success: true,
         completedAt: new Date().toISOString(),
         data: capabilities,
+      }) as CommandResponse;
+    }
+    case 'exchange.connect': {
+      const payload = exchangeConnectPayloadSchema.parse(request.payload);
+      const connection = exchangeConnectionStatusSchema.parse(await connectExchange(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: connection,
+      }) as CommandResponse;
+    }
+    case 'exchange.getConnectionStatus': {
+      exchangeGetConnectionStatusPayloadSchema.parse(request.payload);
+      const connection = exchangeConnectionStatusSchema.parse(
+        await getExchangeConnectionStatus(),
+      );
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: connection,
+      }) as CommandResponse;
+    }
+    case 'exchange.disconnect': {
+      exchangeDisconnectPayloadSchema.parse(request.payload);
+      const connection = exchangeConnectionStatusSchema.parse(await disconnectExchange());
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: connection,
       }) as CommandResponse;
     }
   }
