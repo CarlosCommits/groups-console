@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "types": ["node", "electron"],
+    "outDir": "dist/main"
+  },
+  "include": ["src/main/**/*.ts", "src/shared/**/*.ts"]
+}
