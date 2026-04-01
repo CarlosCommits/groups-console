@@ -36,7 +36,11 @@ This is an internal admin tool. The preferred deployment path is enterprise-frie
 
 ## Execution policy rule
 
-The app must not call `Set-ExecutionPolicy`. If the packaged worker requires a bypass, it should use process-scoped invocation flags only.
+The app must not require permanent execution-policy changes as a normal setup step. Preferred behavior:
+
+1. launch app-owned PowerShell sessions with process-scoped execution policy handling
+2. avoid calling persistent `Set-ExecutionPolicy` during normal startup
+3. if MachinePolicy or UserPolicy prevents execution, surface a clear prerequisite error to the admin
 
 ## Code signing
 
@@ -56,6 +60,7 @@ The app must not call `Set-ExecutionPolicy`. If the packaged worker requires a b
 2. Exchange module presence and version
 3. write access for log directory
 4. tenant configuration presence
+5. whether effective execution policy permits the worker strategy in this environment
 
 ## Rollback support
 
@@ -66,5 +71,6 @@ The app must not call `Set-ExecutionPolicy`. If the packaged worker requires a b
 ## Acceptance criteria
 
 - Packaging does not depend on changing machine-wide execution policy.
+- Packaging does not depend on permanent execution-policy mutation as a normal setup path.
 - The deployment path is compatible with managed Windows admin environments.
 - The runtime dependency story is explicit and supportable.

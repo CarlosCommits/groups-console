@@ -16,8 +16,8 @@ Describe the v2 system structure and the boundaries between UI, orchestration, E
 
 ### Renderer
 
-- React-based UI
-- no Node integration
+- React-based UI with shadcn/ui components
+- no Node integration; renderer behaves like a browser surface, not a privileged desktop process
 - no direct PowerShell access
 - receives typed DTOs and progress events only
 
@@ -26,6 +26,7 @@ Describe the v2 system structure and the boundaries between UI, orchestration, E
 - minimal `contextBridge` API
 - zod or equivalent schema validation for all outgoing requests
 - no raw `ipcRenderer` exposure
+- exposes only narrow app-owned methods such as group membership actions, guest search, and export commands
 
 ### Main process
 
@@ -33,6 +34,7 @@ Describe the v2 system structure and the boundaries between UI, orchestration, E
 - owns app state relevant to sessions and jobs
 - routes commands to either Exchange worker or Graph adapter
 - manages file dialogs, log writing, update checks, and diagnostics bundle creation
+- holds privileged integrations: Graph auth/calls, PowerShell worker launches, and export file writing
 
 ### Exchange worker
 
@@ -46,6 +48,7 @@ Describe the v2 system structure and the boundaries between UI, orchestration, E
 - TypeScript/Node integration path for guest-user operations
 - uses delegated interactive auth via system browser flow
 - normalizes Graph objects into app DTOs
+- is invoked by the trusted Electron main/backend layer, never directly by the renderer
 
 ## Proposed repo structure for implementation
 
@@ -107,6 +110,7 @@ docs/
 - batch selection where appropriate
 - explicit dry-run or preflight messaging before writes
 - clear distinction between success, partial success, and blocked operations
+- first-class bulk membership workflow: select one subject, select many groups, review changes, then execute with per-group results
 
 ## Job model
 
@@ -133,6 +137,8 @@ type RecipientRef = {
   recipientType: 'distributionList' | 'mailEnabledSecurityGroup' | 'mailContact' | 'guestUser' | 'mailbox'
   primaryEmail: string | null
   displayName: string
+  companyName?: string | null
+  companySource?: 'exchangeCompany' | 'graphUserCompany' | 'none'
   externalDirectoryObjectId?: string | null
 }
 ```
@@ -142,6 +148,7 @@ type RecipientRef = {
 - use JavaScript Excel generation to remove `ImportExcel` from the runtime path
 - keep Exchange commands coarse-grained and use app-owned command names rather than raw cmdlet names in IPC
 - serialize writes per target object to avoid conflicting concurrent mutations
+- keep Graph and token-handling logic in main/backend rather than in the renderer
 
 ## Deferred architectural features
 

@@ -35,14 +35,17 @@ Define the exact v2 scope and the system of authority for every supported entity
 | Mail-Enabled Security Group | Create/update/delete | Deferred | Exchange Online PowerShell | Architecture must support later |
 | Mail Contact | List/search | Yes | Exchange Online PowerShell | Primary admin object in v1 |
 | Mail Contact | Create | Yes | Exchange Online PowerShell | Includes SMTP/proxy preflight |
+| Mail Contact | Display/export company | Yes | Exchange Online PowerShell | Source field is Exchange `Company` |
 | Mail Contact | Update company | Yes | Exchange Online PowerShell | Preserves existing flow |
 | Mail Contact | Update broader fields | Deferred | Exchange Online PowerShell | Future expansion |
 | Guest User | List/search | Yes | Microsoft Graph | Core v2 expansion |
 | Guest User | Get details | Yes | Microsoft Graph | Normalize into app DTOs |
+| Guest User | Display/export company | Yes, when present | Microsoft Graph | Source field is Graph `user.companyName`; may be blank |
 | Guest User | Create/invite | Yes | Microsoft Graph | Exchange visibility handled separately |
 | Guest User | Update selected metadata | Yes | Microsoft Graph | Within documented Graph support |
 | Guest User | Disable/delete | Deferred | Microsoft Graph | Out of first-release core scope |
 | Mailbox/Internal User | Lookup for membership | Yes | Exchange Online PowerShell | Lookup target only |
+| Mailbox/Internal User | Display/export company | Yes, when present | Microsoft Graph | Source field is Graph `user.companyName`; may be blank |
 
 ## Explicit non-goals for initial release
 
@@ -66,9 +69,17 @@ Define the exact v2 scope and the system of authority for every supported entity
 
 - Search and export mail-enabled security groups
 - Add/remove members on mail-enabled security groups
+- Add or remove one recipient across many distribution lists or mail-enabled security groups
 - Search guest users
 - Create/invite guest users
 - Handle guest/contact overlap safely
+
+## Company-name source rules
+
+- Mail contacts use Exchange Online `Company`.
+- Guest users use Microsoft Graph `user.companyName`.
+- Internal users use Microsoft Graph `user.companyName`.
+- Blank company values remain blank in the UI and exports; the app does not infer company from email domain.
 
 ## Ownership rules
 

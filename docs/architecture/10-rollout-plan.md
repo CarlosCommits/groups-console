@@ -37,6 +37,8 @@ Sequence the move from the current PowerShell script to a supported desktop appl
 ## Pilot plan
 
 - small set of trusted Exchange admins
+- dedicated non-production tenant is the primary validation environment
+- developer sandbox tenant is optional for early smoke testing only
 - real tenant, non-destructive flows first
 - then controlled write workflows
 - collect failure logs and operator feedback weekly
