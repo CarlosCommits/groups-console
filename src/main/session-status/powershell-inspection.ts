@@ -1,8 +1,6 @@
-import { execFile } from 'node:child_process';
-
 import { z } from 'zod';
 
-import { getRadAppWorkerScriptPath } from '@/main/app/paths';
+import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
 
 const executionPolicyEntrySchema = z.object({
   scope: z.string().min(1),
@@ -74,103 +72,43 @@ export type PowerShellInspection =
       };
     };
 
-const WINDOWS_CANDIDATES: Array<{
-  command: 'powershell.exe' | 'pwsh.exe';
-  label: 'Windows PowerShell' | 'PowerShell';
-}> = [
-  { command: 'powershell.exe', label: 'Windows PowerShell' },
-  { command: 'pwsh.exe', label: 'PowerShell' },
-];
-
 export async function inspectLocalPowerShellEnvironment(): Promise<PowerShellInspection> {
-  if (process.platform !== 'win32') {
+  const execution = await executeRadAppWorkerCommand('bootstrap.inspectEnvironment');
+
+  if (execution.kind === 'unsupported-host') {
     return {
       kind: 'unsupported-host',
-      detail: `Current host platform is ${process.platform}. RAD App bootstrap checks target Windows admin workstations.`,
+      detail: execution.detail,
     };
   }
 
-  const workerScriptPath = getRadAppWorkerScriptPath();
-
-  for (const candidate of WINDOWS_CANDIDATES) {
-    try {
-      const { stdout } = await execPowerShellWorker(candidate.command, workerScriptPath);
-
-      const rawProbeResult: unknown = JSON.parse(stdout);
-      const parsed = powershellProbeSchema.parse(rawProbeResult);
-
-      return {
-        kind: 'detected',
-        runtime: {
-          command: candidate.command,
-          label: candidate.label,
-          version: parsed.psVersion,
-          edition: parsed.psEdition,
-          executionPolicy: parsed.executionPolicy,
-          executionPolicies: parsed.executionPolicies,
-          exchangeModule: parsed.exchangeOnlineManagement,
-        },
-      };
-    } catch (error) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 'ENOENT'
-      ) {
-        continue;
-      }
-
-      const message = error instanceof Error ? error.message : 'Unknown PowerShell probe failure.';
-
-      return {
-        kind: 'probe-error',
-        detail: `${candidate.label} readiness probe failed: ${message}`,
-      };
-    }
+  if (execution.kind === 'missing-runtime') {
+    return {
+      kind: 'missing-runtime',
+      detail: execution.detail,
+    };
   }
 
+  if (execution.kind === 'worker-error') {
+    return {
+      kind: 'probe-error',
+      detail: execution.detail,
+    };
+  }
+
+  const rawProbeResult: unknown = JSON.parse(execution.stdout);
+  const parsed = powershellProbeSchema.parse(rawProbeResult);
+
   return {
-    kind: 'missing-runtime',
-    detail: 'No supported PowerShell runtime executable was found on this Windows host.',
+    kind: 'detected',
+    runtime: {
+      command: execution.runtime.command,
+      label: execution.runtime.label,
+      version: parsed.psVersion,
+      edition: parsed.psEdition,
+      executionPolicy: parsed.executionPolicy,
+      executionPolicies: parsed.executionPolicies,
+      exchangeModule: parsed.exchangeOnlineManagement,
+    },
   };
-}
-
-function execPowerShellWorker(
-  command: 'powershell.exe' | 'pwsh.exe',
-  workerScriptPath: string,
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      command,
-      [
-        '-NoLogo',
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        workerScriptPath,
-        '-CommandName',
-        'bootstrap.inspectEnvironment',
-      ],
-      {
-        windowsHide: true,
-        timeout: 10_000,
-        maxBuffer: 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(
-            error instanceof Error
-              ? error
-              : new Error('Unknown PowerShell worker execution failure.'),
-          );
-          return;
-        }
-
-        resolve({ stdout, stderr });
-      },
-    );
-  });
 }

@@ -7,7 +7,12 @@ import {
   type CommandRequest,
   type CommandResponse,
 } from '@/shared/contracts/command';
+import {
+  exchangeCapabilitiesSchema,
+  exchangeGetCapabilitiesPayloadSchema,
+} from '@/shared/contracts/exchange';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
+import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
@@ -34,6 +39,17 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
         success: true,
         completedAt: new Date().toISOString(),
         data: status,
+      }) as CommandResponse;
+    }
+    case 'exchange.getCapabilities': {
+      exchangeGetCapabilitiesPayloadSchema.parse(request.payload);
+      const capabilities = exchangeCapabilitiesSchema.parse(await getExchangeCapabilities());
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: capabilities,
       }) as CommandResponse;
     }
   }
