@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { bootstrapCheckStatusSchema } from './session';
 
 export const exchangeGetCapabilitiesPayloadSchema = z.object({}).strict();
+export const exchangeConnectPayloadSchema = z
+  .object({
+    userPrincipalName: z.string().min(3),
+  })
+  .strict();
+export const exchangeGetConnectionStatusPayloadSchema = z.object({}).strict();
+export const exchangeDisconnectPayloadSchema = z.object({}).strict();
 
 export const exchangeRuntimeSchema = z.object({
   command: z.enum(['powershell.exe', 'pwsh.exe']),
@@ -31,5 +38,21 @@ export const exchangeCapabilitiesSchema = z.object({
   exchangeModule: exchangeModuleCapabilitiesSchema,
 });
 
+export const exchangeConnectionStateSchema = z.enum(['connected', 'disconnected', 'error']);
+
+export const exchangeConnectionStatusSchema = z.object({
+  state: exchangeConnectionStateSchema,
+  detail: z.string().min(1),
+  runtime: exchangeRuntimeSchema.nullable(),
+  userPrincipalName: z.string().nullable(),
+  connectionId: z.string().nullable(),
+  tenantId: z.string().nullable(),
+  tokenStatus: z.string().nullable(),
+  tokenExpiryTimeUtc: z.string().nullable(),
+  connectedAtUtc: z.string().nullable(),
+});
+
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
+export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
+export type ExchangeConnectionStatus = z.infer<typeof exchangeConnectionStatusSchema>;

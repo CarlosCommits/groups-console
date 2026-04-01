@@ -1,4 +1,5 @@
 import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
+import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
@@ -9,6 +10,9 @@ declare global {
       };
       exchange: {
         getCapabilities: () => Promise<ExchangeCapabilities>;
+        connect: (userPrincipalName: string) => Promise<ExchangeConnectionStatus>;
+        getConnectionStatus: () => Promise<ExchangeConnectionStatus>;
+        disconnect: () => Promise<ExchangeConnectionStatus>;
       };
     };
   }

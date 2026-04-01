@@ -1,0 +1,48 @@
+function Get-RadAppExchangeConnectionStatus {
+    if (-not $script:RadAppExchangeConnectionContext) {
+        return @{
+            state = 'disconnected'
+            detail = 'No active Exchange session.'
+            psVersion = $PSVersionTable.PSVersion.ToString()
+            psEdition = $PSVersionTable.PSEdition
+            userPrincipalName = $null
+            connectionId = $null
+            tenantId = $null
+            tokenStatus = $null
+            tokenExpiryTimeUtc = $null
+            connectedAtUtc = $null
+        }
+    }
+
+    $connection = Get-ConnectionInformation -ErrorAction SilentlyContinue | Select-Object -First 1
+
+    if ($null -eq $connection) {
+        $script:RadAppExchangeConnectionContext = $null
+
+        return @{
+            state = 'disconnected'
+            detail = 'The Exchange session is no longer available.'
+            psVersion = $PSVersionTable.PSVersion.ToString()
+            psEdition = $PSVersionTable.PSEdition
+            userPrincipalName = $null
+            connectionId = $null
+            tenantId = $null
+            tokenStatus = $null
+            tokenExpiryTimeUtc = $null
+            connectedAtUtc = $null
+        }
+    }
+
+    return @{
+        state = 'connected'
+        detail = $script:RadAppExchangeConnectionContext.Detail
+        psVersion = $PSVersionTable.PSVersion.ToString()
+        psEdition = $PSVersionTable.PSEdition
+        userPrincipalName = if ($connection.PSObject.Properties.Name -contains 'UserPrincipalName') { [string]$connection.UserPrincipalName } else { $script:RadAppExchangeConnectionContext.UserPrincipalName }
+        connectionId = if ($connection.PSObject.Properties.Name -contains 'ConnectionId') { [string]$connection.ConnectionId } else { $script:RadAppExchangeConnectionContext.ConnectionId }
+        tenantId = if ($connection.PSObject.Properties.Name -contains 'TenantId') { [string]$connection.TenantId } elseif ($connection.PSObject.Properties.Name -contains 'TenantID') { [string]$connection.TenantID } else { $script:RadAppExchangeConnectionContext.TenantId }
+        tokenStatus = if ($connection.PSObject.Properties.Name -contains 'TokenStatus') { [string]$connection.TokenStatus } else { $script:RadAppExchangeConnectionContext.TokenStatus }
+        tokenExpiryTimeUtc = if ($connection.PSObject.Properties.Name -contains 'TokenExpiryTimeUTC') { [string]$connection.TokenExpiryTimeUTC } else { $script:RadAppExchangeConnectionContext.TokenExpiryTimeUtc }
+        connectedAtUtc = $script:RadAppExchangeConnectionContext.ConnectedAtUtc
+    }
+}
