@@ -1,0 +1,157 @@
+# 03. Target Architecture
+
+## Purpose
+
+Describe the v2 system structure and the boundaries between UI, orchestration, Exchange execution, and Graph integration.
+
+## Architecture principles
+
+- thin desktop shell, not a server product
+- keep privileged operations outside the renderer
+- normalize data before it crosses IPC
+- prefer explicit commands over generic scripting
+- optimize for admin clarity, auditability, and low deployment friction
+
+## Topology
+
+### Renderer
+
+- React-based UI
+- no Node integration
+- no direct PowerShell access
+- receives typed DTOs and progress events only
+
+### Preload
+
+- minimal `contextBridge` API
+- zod or equivalent schema validation for all outgoing requests
+- no raw `ipcRenderer` exposure
+
+### Main process
+
+- trusted orchestrator
+- owns app state relevant to sessions and jobs
+- routes commands to either Exchange worker or Graph adapter
+- manages file dialogs, log writing, update checks, and diagnostics bundle creation
+
+### Exchange worker
+
+- PowerShell execution layer launched by the main process
+- uses named scripts/functions only
+- accepts structured input and emits structured JSON
+- owns Exchange Online connection lifecycle and Exchange-specific operations
+
+### Graph adapter
+
+- TypeScript/Node integration path for guest-user operations
+- uses delegated interactive auth via system browser flow
+- normalizes Graph objects into app DTOs
+
+## Proposed repo structure for implementation
+
+```text
+src/
+  main/
+    app/
+    auth/
+    commands/
+    exchange/
+    graph/
+    ipc/
+    jobs/
+    logging/
+  preload/
+  renderer/
+    app/
+    components/
+    features/
+    hooks/
+    routes/
+    state/
+  shared/
+    contracts/
+    dto/
+    validation/
+powershell/
+  bootstrap/
+  modules/
+    RadApp.Exchange.psm1
+    RadApp.Validation.psm1
+  commands/
+    connect-exchange.ps1
+    get-groups.ps1
+    get-group-members.ps1
+    add-group-member.ps1
+    remove-group-member.ps1
+    create-contact.ps1
+    update-contact-company.ps1
+    export-report-data.ps1
+docs/
+```
+
+## UI surface
+
+### Primary screens
+
+1. Dashboard / connection status
+2. Groups explorer
+3. Group membership editor
+4. Contacts workspace
+5. Guest users workspace
+6. Reports / exports
+7. Settings / diagnostics
+
+### UX expectations
+
+- searchable lists
+- batch selection where appropriate
+- explicit dry-run or preflight messaging before writes
+- clear distinction between success, partial success, and blocked operations
+
+## Job model
+
+Every operation is treated as a job with:
+
+- correlation ID
+- operation type
+- started/updated/completed timestamps
+- progress events
+- final success or error envelope
+
+Long-running reads and exports must stream progress to the renderer. Cancellation is best-effort: the UI can request cancel, the main process can terminate worker execution if safe.
+
+## Data normalization
+
+Backend-specific payloads are converted into app-owned DTOs before IPC.
+
+Example normalized recipient shape:
+
+```ts
+type RecipientRef = {
+  source: 'exchange' | 'graph'
+  objectId: string
+  recipientType: 'distributionList' | 'mailEnabledSecurityGroup' | 'mailContact' | 'guestUser' | 'mailbox'
+  primaryEmail: string | null
+  displayName: string
+  externalDirectoryObjectId?: string | null
+}
+```
+
+## Recommended design choices
+
+- use JavaScript Excel generation to remove `ImportExcel` from the runtime path
+- keep Exchange commands coarse-grained and use app-owned command names rather than raw cmdlet names in IPC
+- serialize writes per target object to avoid conflicting concurrent mutations
+
+## Deferred architectural features
+
+- background scheduled jobs
+- shared team queue or approval flows
+- central service/orchestrator
+- multi-tenant profile switching
+
+## Acceptance criteria
+
+- The role of each process is explicit.
+- The architecture prevents renderer-side privileged execution.
+- The plan supports current v1 parity plus guest and mail-enabled security group expansion.
