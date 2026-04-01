@@ -10,6 +10,7 @@ Define how RAD-app v2 will be verified before and during rollout.
 - keep Exchange and Graph ownership boundaries testable
 - make conflict rules executable via fixtures
 - separate unit, contract, integration, and E2E responsibilities
+- use a dedicated non-production tenant as the primary real-environment validation target
 
 ## Test layers
 
@@ -62,6 +63,11 @@ Use Playwright for Electron or equivalent to cover:
 - overlapping guest/contact email scenario
 - tenant mismatch scenario
 
+## Test environment guidance
+
+- Preferred real-environment validation target: dedicated non-production tenant with representative Exchange and Entra configuration.
+- Microsoft developer sandbox tenant is optional for smoke testing if available, but should not be the sole sign-off environment for Exchange-admin workflows.
+
 ## Minimum release test matrix
 
 | Area | Required before pilot |
@@ -109,7 +115,7 @@ Use Playwright for Electron or equivalent to cover:
 - Expected result:
   - progress is shown
   - workbook is created successfully
-  - exported rows include normalized recipient data and expected membership columns
+  - exported rows include normalized recipient data, expected membership columns, and company name when present by object type
 
 ### QA-03: Add recipient to distribution list
 
