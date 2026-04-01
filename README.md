@@ -1,5 +1,7 @@
 # RAD APP - Office 365 Exchange Distribution List Manager
 
+> Note: this repository now includes the RAD-app v2 Electron scaffold alongside the legacy PowerShell script. On Linux development hosts, Electron may fail to start if the local `chrome-sandbox` helper is not configured correctly. Treat that as an environment issue; do not disable the app's sandbox or renderer security settings to work around it.
+
 ```
 ______  ___ ______    ___  ____________ 
 | ___ \/ _ \|  _  \  / _ \ | ___ \ ___ \
