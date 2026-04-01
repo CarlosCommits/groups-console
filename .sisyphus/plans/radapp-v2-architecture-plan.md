@@ -16,7 +16,8 @@ Define the target architecture and rollout plan for RAD-app v2: a Windows-first 
 - Microsoft Graph is used only for supported guest-user and directory operations.
 - Mail-enabled security groups and distribution lists are not to be modeled as Graph-write targets.
 - The renderer never executes PowerShell directly.
-- The app must not change machine-wide execution policy.
+- The app must not require permanent machine-wide execution policy changes.
+- The app should prefer process-scoped execution policy handling when launching its PowerShell worker.
 
 ## Recommended document set
 
@@ -35,9 +36,9 @@ Define the target architecture and rollout plan for RAD-app v2: a Windows-first 
 
 ## Architecture summary
 
-- Renderer: Electron UI only.
+- Renderer: Electron UI only, built with React and shadcn/ui.
 - Preload: minimal, typed, schema-validated bridge.
-- Main process: orchestration, security boundary, job lifecycle, local logging, file dialogs.
+- Main process: orchestration, security boundary, job lifecycle, local logging, file dialogs, Graph integration, and export generation.
 - PowerShell worker: Exchange Online session handling and Exchange-specific commands.
 - Graph adapter: guest-user and selected directory reads/writes, normalized into app DTOs.
 - Excel/report generation: JavaScript side in v2 to remove `ImportExcel` dependency.
@@ -51,6 +52,8 @@ Define the target architecture and rollout plan for RAD-app v2: a Windows-first 
 3. Normalize all backend responses into app-owned DTOs before they cross IPC.
 4. Canonical identity is never SMTP alone; use stable object identifiers plus source system and recipient type.
 5. Version one ships with signed installer, no in-app auto-update requirement, and enterprise deployment friendliness.
+6. Bulk membership UX centers on one selected subject and many selected groups, with per-group result reporting.
+7. Company name is sourced by object type, not treated as a universal field.
 
 ## Highest-risk areas to address in the docs
 
@@ -65,6 +68,12 @@ Define the target architecture and rollout plan for RAD-app v2: a Windows-first 
 - Default runtime for v1 backend execution: Windows PowerShell 5.1.
 - Rationale: already present on target admin machines, matches current app assumptions, avoids making PowerShell 7 a hard prerequisite.
 - Optional future enhancement: detect and support PowerShell 7 where validated, but do not make architecture depend on it for the first release.
+- Exchange worker launches should use process-scoped execution policy handling where required rather than persisting `Set-ExecutionPolicy` changes.
+
+## Test environment choice
+
+- Preferred validation target: dedicated non-production tenant that reflects the real Exchange and Entra topology.
+- Developer sandbox tenant is useful for early smoke testing if available, but it is not the primary sign-off environment for Exchange-admin behavior.
 
 ## Acceptance criteria for the planning package
 

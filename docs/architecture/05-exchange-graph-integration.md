@@ -24,6 +24,7 @@ If the change is fundamentally Exchange-recipient state, use Exchange Online Pow
 - search groups and recipients
 - get group members
 - add/remove group members
+- add/remove one subject across many selected groups with per-group result reporting
 - create contacts
 - update contact company
 - produce normalized report data for exports
@@ -60,6 +61,15 @@ If the change is fundamentally Exchange-recipient state, use Exchange Online Pow
 - delegated interactive sign-in through Exchange Online module
 - no credential collection by the app
 - tenant/account details retrieved after connection for verification
+- use process-scoped execution policy handling for app-launched PowerShell sessions where required
+
+## Execution policy stance
+
+Exchange Online PowerShell may require script execution support, but the app should not rely on persistent `Set-ExecutionPolicy` as a normal setup step. Preferred order:
+
+1. launch the worker with process-scoped execution policy handling
+2. detect when environment or GPO policy still blocks execution
+3. surface a clear prerequisite/setup message rather than silently mutating user or machine policy
 
 ## Session coordination
 
@@ -90,6 +100,13 @@ Two-system workflows must explicitly define failure modes. Example: create guest
 - normalize every returned object into app DTOs
 - preserve backend-native IDs in metadata fields
 - never use SMTP address alone as the canonical object identity
+
+## Company-name retrieval rules
+
+- Mail contacts use Exchange `Company`.
+- Guest users use Graph `user.companyName` when returned.
+- Internal users use Graph `user.companyName` when returned.
+- Company is optional and may be blank across guest and internal user flows.
 
 ## Acceptance criteria
 
