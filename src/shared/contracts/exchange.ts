@@ -19,6 +19,26 @@ export const exchangeListGroupsPayloadSchema = z
     kind: z.enum(['all', 'distributionList', 'mailEnabledSecurityGroup']).optional(),
   })
   .strict();
+export const exchangeGroupRefSchema = z
+  .object({
+    exchangeIdentity: z.string().min(1),
+    objectId: z.string().nullable(),
+    groupKind: exchangeGroupKindSchema,
+  })
+  .strict();
+export const groupMemberRecipientTypeSchema = z.enum([
+  'mailbox',
+  'mailContact',
+  'mailUser',
+  'distributionList',
+  'mailEnabledSecurityGroup',
+  'unknown',
+]);
+export const groupsGetMembersPayloadSchema = z
+  .object({
+    group: exchangeGroupRefSchema,
+  })
+  .strict();
 
 export const exchangeRuntimeSchema = z.object({
   command: z.enum(['powershell.exe', 'pwsh.exe']),
@@ -77,10 +97,29 @@ export const exchangeListGroupsResultSchema = z.object({
   items: z.array(exchangeGroupListItemSchema),
 });
 
+export const groupMemberListItemSchema = z.object({
+  objectId: z.string().nullable(),
+  exchangeIdentity: z.string().min(1),
+  displayName: z.string().min(1),
+  primaryEmail: z.string().nullable(),
+  alias: z.string().nullable(),
+  recipientType: groupMemberRecipientTypeSchema,
+  recipientTypeDetails: z.string().min(1),
+});
+
+export const groupsGetMembersResultSchema = z.object({
+  group: exchangeGroupRefSchema,
+  items: z.array(groupMemberListItemSchema),
+});
+
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
 export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
 export type ExchangeConnectionStatus = z.infer<typeof exchangeConnectionStatusSchema>;
 export type ExchangeListGroupsPayload = z.infer<typeof exchangeListGroupsPayloadSchema>;
+export type ExchangeGroupRef = z.infer<typeof exchangeGroupRefSchema>;
 export type ExchangeGroupListItem = z.infer<typeof exchangeGroupListItemSchema>;
 export type ExchangeListGroupsResult = z.infer<typeof exchangeListGroupsResultSchema>;
+export type GroupsGetMembersPayload = z.infer<typeof groupsGetMembersPayloadSchema>;
+export type GroupMemberListItem = z.infer<typeof groupMemberListItemSchema>;
+export type GroupsGetMembersResult = z.infer<typeof groupsGetMembersResultSchema>;

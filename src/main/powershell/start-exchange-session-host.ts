@@ -9,6 +9,7 @@ export type ExchangeSessionHostCommand =
   | 'getStatus'
   | 'disconnect'
   | 'listGroups'
+  | 'getGroupMembers'
   | 'shutdown';
 
 export type ExchangeSessionHost = {

@@ -16,12 +16,15 @@ import {
   exchangeGetConnectionStatusPayloadSchema,
   exchangeListGroupsPayloadSchema,
   exchangeListGroupsResultSchema,
+  groupsGetMembersPayloadSchema,
+  groupsGetMembersResultSchema,
 } from '@/shared/contracts/exchange';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import { getGroupMembers } from '@/main/exchange/get-group-members';
 import { listExchangeGroups } from '@/main/exchange/list-exchange-groups';
 
 import { getSessionStatus } from './handlers/get-session-status';
@@ -100,6 +103,17 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'exchange.listGroups': {
       const payload = exchangeListGroupsPayloadSchema.parse(request.payload);
       const result = exchangeListGroupsResultSchema.parse(await listExchangeGroups(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'groups.getMembers': {
+      const payload = groupsGetMembersPayloadSchema.parse(request.payload);
+      const result = groupsGetMembersResultSchema.parse(await getGroupMembers(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
