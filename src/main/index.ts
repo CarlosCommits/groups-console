@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import started from 'electron-squirrel-startup';
 
 import { exchangeSessionManager } from '@/main/exchange/exchange-session-manager';
+import { graphSessionManager } from '@/main/graph/graph-session-manager';
 
 import { createMainWindow } from './app/create-main-window';
 import { registerIpcHandlers } from './ipc/register-ipc-handlers';
@@ -33,4 +34,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   void exchangeSessionManager.shutdown();
+  void graphSessionManager.shutdown();
 });
