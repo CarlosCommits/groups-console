@@ -2,6 +2,7 @@
 . "$PSScriptRoot\..\commands\connect-exchange.ps1"
 . "$PSScriptRoot\..\commands\disconnect-exchange.ps1"
 . "$PSScriptRoot\..\commands\add-group-member.ps1"
+. "$PSScriptRoot\..\commands\remove-group-member.ps1"
 . "$PSScriptRoot\..\commands\get-groups.ps1"
 . "$PSScriptRoot\..\commands\get-group-members.ps1"
 
@@ -33,6 +34,9 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             }
             'addGroupMembers' {
                 $data = Invoke-RadAppAddGroupMembers -Payload $payload
+            }
+            'removeGroupMembers' {
+                $data = Invoke-RadAppRemoveGroupMembers -Payload $payload
             }
             'listGroups' {
                 $data = Invoke-RadAppListGroups -Payload $payload

@@ -9,6 +9,7 @@ export const commandNameSchema = z.enum([
   'exchange.listGroups',
   'groups.getMembers',
   'groups.addMembers',
+  'groups.removeMembers',
 ]);
 
 export const commandRequestSchema = z.object({

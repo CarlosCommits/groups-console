@@ -266,4 +266,55 @@ describe('startExchangeSessionHost', () => {
       },
     });
   });
+
+  it('writes removeGroupMembers requests through the host protocol', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('removeGroupMembers');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { group: { exchangeIdentity: 'finance-group', objectId: null, groupKind: 'distributionList' }, summary: { requested: 1, removed: 1, notMember: 0, invalid: 0, verificationFailed: 0, failed: 0 }, items: [], verification: { attempted: true, verifiedRemoved: 1, detail: 'Verified removed members.' } } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('removeGroupMembers', {
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      members: [
+        {
+          exchangeIdentity: 'jane@example.com',
+          objectId: null,
+          primaryEmail: 'jane@example.com',
+        },
+      ],
+      verify: true,
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toMatchObject({
+      summary: {
+        removed: 1,
+      },
+    });
+  });
 });

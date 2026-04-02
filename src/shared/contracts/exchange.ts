@@ -71,6 +71,31 @@ export const groupsAddMembersPayloadSchema = z
       seen.add(key);
     });
   });
+export const groupsRemoveMembersPayloadSchema = z
+  .object({
+    group: exchangeGroupRefSchema,
+    members: z.array(groupMemberWriteRefSchema).min(1),
+    verify: z.literal(true),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const seen = new Set<string>();
+
+    value.members.forEach((member, index) => {
+      const key = member.exchangeIdentity.toLowerCase();
+
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['members', index, 'exchangeIdentity'],
+          message: 'Duplicate member exchangeIdentity values are not allowed.',
+        });
+        return;
+      }
+
+      seen.add(key);
+    });
+  });
 
 export const exchangeRuntimeSchema = z.object({
   command: z.enum(['powershell.exe', 'pwsh.exe']),
@@ -168,6 +193,30 @@ export const groupsAddMembersResultSchema = z.object({
   }),
 });
 
+export const groupsRemoveMembersResultItemSchema = z.object({
+  member: groupMemberWriteRefSchema,
+  status: z.enum(['removed', 'notMember', 'invalid', 'verificationFailed', 'failed']),
+  detail: z.string().min(1),
+});
+
+export const groupsRemoveMembersResultSchema = z.object({
+  group: exchangeGroupRefSchema,
+  summary: z.object({
+    requested: z.number().int().nonnegative(),
+    removed: z.number().int().nonnegative(),
+    notMember: z.number().int().nonnegative(),
+    invalid: z.number().int().nonnegative(),
+    verificationFailed: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  }),
+  items: z.array(groupsRemoveMembersResultItemSchema),
+  verification: z.object({
+    attempted: z.literal(true),
+    verifiedRemoved: z.number().int().nonnegative(),
+    detail: z.string().min(1),
+  }),
+});
+
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
 export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
@@ -182,3 +231,5 @@ export type GroupsGetMembersResult = z.infer<typeof groupsGetMembersResultSchema
 export type GroupMemberWriteRef = z.infer<typeof groupMemberWriteRefSchema>;
 export type GroupsAddMembersPayload = z.infer<typeof groupsAddMembersPayloadSchema>;
 export type GroupsAddMembersResult = z.infer<typeof groupsAddMembersResultSchema>;
+export type GroupsRemoveMembersPayload = z.infer<typeof groupsRemoveMembersPayloadSchema>;
+export type GroupsRemoveMembersResult = z.infer<typeof groupsRemoveMembersResultSchema>;

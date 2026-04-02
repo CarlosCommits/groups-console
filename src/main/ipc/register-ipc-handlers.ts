@@ -20,10 +20,13 @@ import {
   groupsAddMembersResultSchema,
   groupsGetMembersPayloadSchema,
   groupsGetMembersResultSchema,
+  groupsRemoveMembersPayloadSchema,
+  groupsRemoveMembersResultSchema,
 } from '@/shared/contracts/exchange';
 import { addGroupMembers } from '@/main/exchange/add-group-members';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
+import { removeGroupMembers } from '@/main/exchange/remove-group-members';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
@@ -128,6 +131,17 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'groups.addMembers': {
       const payload = groupsAddMembersPayloadSchema.parse(request.payload);
       const result = groupsAddMembersResultSchema.parse(await addGroupMembers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'groups.removeMembers': {
+      const payload = groupsRemoveMembersPayloadSchema.parse(request.payload);
+      const result = groupsRemoveMembersResultSchema.parse(await removeGroupMembers(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
