@@ -10,6 +10,7 @@ export const commandNameSchema = z.enum([
   'groups.getMembers',
   'groups.addMembers',
   'groups.removeMembers',
+  'recipients.search',
 ]);
 
 export const commandRequestSchema = z.object({

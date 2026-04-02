@@ -65,6 +65,10 @@ type ProgressEvent = {
 - `exchange.disconnect`
 - `exchange.listGroups`
 
+### Recipients
+
+- `recipients.search`
+
 ### Groups
 
 - `groups.getMembers`

@@ -8,6 +8,10 @@ import {
   type CommandResponse,
 } from '@/shared/contracts/command';
 import {
+  recipientsSearchPayloadSchema,
+  recipientsSearchResultSchema,
+} from '@/shared/contracts/recipients';
+import {
   exchangeCapabilitiesSchema,
   exchangeConnectPayloadSchema,
   exchangeConnectionStatusSchema,
@@ -32,6 +36,7 @@ import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabiliti
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 import { getGroupMembers } from '@/main/exchange/get-group-members';
 import { listExchangeGroups } from '@/main/exchange/list-exchange-groups';
+import { recipientDirectory } from '@/main/recipients/recipient-directory';
 
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
@@ -142,6 +147,17 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'groups.removeMembers': {
       const payload = groupsRemoveMembersPayloadSchema.parse(request.payload);
       const result = groupsRemoveMembersResultSchema.parse(await removeGroupMembers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'recipients.search': {
+      const payload = recipientsSearchPayloadSchema.parse(request.payload);
+      const result = recipientsSearchResultSchema.parse(await recipientDirectory.searchRecipients(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
