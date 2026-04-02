@@ -5,6 +5,8 @@ import type {
   GuestsInviteResult,
   GuestsSearchPayload,
   GuestsSearchResult,
+  GuestsUpdateCompanyPayload,
+  GuestsUpdateCompanyResult,
 } from '@/shared/contracts/guests';
 
 const graphOrganizationSchema = z.object({
@@ -159,6 +161,38 @@ export async function inviteGraphGuest(
     ),
   );
 
+  let companyUpdate = {
+    attempted: false,
+    updated: false,
+    detail: 'No company update was requested.',
+  };
+  let appliedCompanyName: string | null = null;
+
+  if (payload.companyName) {
+    try {
+      const updateResult = await updateGraphGuestCompany(accessToken, {
+        guestUserId: invitation.invitedUser.id,
+        companyName: payload.companyName,
+      });
+
+      companyUpdate = {
+        attempted: true,
+        updated: updateResult.verification.companyApplied,
+        detail: updateResult.verification.detail,
+      };
+      appliedCompanyName = updateResult.verification.companyApplied ? updateResult.companyName : null;
+    } catch (error) {
+      companyUpdate = {
+        attempted: true,
+        updated: false,
+        detail:
+          error instanceof Error
+            ? error.message
+            : 'Guest company update failed after the invitation was created.',
+      };
+    }
+  }
+
   try {
     const verifiedGuest = graphUserSchema.parse(
       await graphFetchJson(
@@ -174,8 +208,10 @@ export async function inviteGraphGuest(
       invitedUserDisplayName: verifiedGuest.displayName ?? invitation.invitedUser.displayName ?? null,
       invitedUserUserPrincipalName:
         verifiedGuest.userPrincipalName ?? invitation.invitedUser.userPrincipalName ?? null,
+      companyName: verifiedGuest.companyName ?? appliedCompanyName,
       inviteRedeemUrl: invitation.inviteRedeemUrl ?? null,
       status: invitation.status,
+      companyUpdate,
       verification: {
         attempted: true,
         foundGuest: true,
@@ -189,12 +225,60 @@ export async function inviteGraphGuest(
       invitedUserEmail: payload.email,
       invitedUserDisplayName: invitation.invitedUser.displayName ?? null,
       invitedUserUserPrincipalName: invitation.invitedUser.userPrincipalName ?? null,
+      companyName: appliedCompanyName,
       inviteRedeemUrl: invitation.inviteRedeemUrl ?? null,
       status: invitation.status,
+      companyUpdate,
       verification: {
         attempted: true,
         foundGuest: false,
         detail: 'Invitation succeeded, but the follow-up guest read did not complete yet.',
+      },
+    };
+  }
+}
+
+export async function updateGraphGuestCompany(
+  accessToken: string,
+  payload: GuestsUpdateCompanyPayload,
+): Promise<GuestsUpdateCompanyResult> {
+  await graphFetchJson(`https://graph.microsoft.com/v1.0/users/${payload.guestUserId}`, accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      companyName: payload.companyName,
+    }),
+  });
+
+  try {
+    const verifiedGuest = graphUserSchema.parse(
+      await graphFetchJson(
+        `https://graph.microsoft.com/v1.0/users/${payload.guestUserId}?$select=id,companyName`,
+        accessToken,
+      ),
+    );
+
+    return {
+      guestUserId: payload.guestUserId,
+      companyName: verifiedGuest.companyName ?? null,
+      verification: {
+        attempted: true,
+        foundGuest: true,
+        companyApplied: verifiedGuest.companyName === payload.companyName,
+        detail:
+          verifiedGuest.companyName === payload.companyName
+            ? 'Verified guest company update.'
+            : 'Guest update succeeded, but verification did not match the requested company value.',
+      },
+    };
+  } catch {
+    return {
+      guestUserId: payload.guestUserId,
+      companyName: null,
+      verification: {
+        attempted: true,
+        foundGuest: false,
+        companyApplied: false,
+        detail: 'Guest company update was attempted, but verification could not read the guest user.',
       },
     };
   }

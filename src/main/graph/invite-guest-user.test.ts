@@ -18,8 +18,14 @@ describe('inviteGuestUser', () => {
       invitedUserEmail: 'guest@example.com',
       invitedUserDisplayName: 'Guest Example',
       invitedUserUserPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+      companyName: null,
       inviteRedeemUrl: 'https://example.com/invite',
       status: 'PendingAcceptance',
+      companyUpdate: {
+        attempted: false,
+        updated: false,
+        detail: 'No company update was requested.',
+      },
       verification: {
         attempted: true,
         foundGuest: true,
