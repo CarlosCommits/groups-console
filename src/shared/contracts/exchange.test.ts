@@ -7,6 +7,8 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
+  groupsAddMembersPayloadSchema,
+  groupsAddMembersResultSchema,
   groupsGetMembersPayloadSchema,
   groupsGetMembersResultSchema,
   exchangeListGroupsPayloadSchema,
@@ -46,6 +48,49 @@ describe('exchange contracts', () => {
       }),
     ).not.toThrow();
     expect(() => groupsGetMembersPayloadSchema.parse({})).toThrow();
+  });
+
+  it('accepts strict add-members payloads and rejects duplicates', () => {
+    expect(() =>
+      groupsAddMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        members: [
+          {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+        ],
+        verify: true,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      groupsAddMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        members: [
+          {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+          {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+        ],
+        verify: true,
+      }),
+    ).toThrow();
   });
 
   it('accepts a capabilities response payload', () => {
@@ -137,5 +182,41 @@ describe('exchange contracts', () => {
     });
 
     expect(result.items[0]?.recipientType).toBe('mailbox');
+  });
+
+  it('accepts an add-members result payload', () => {
+    const result = groupsAddMembersResultSchema.parse({
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      summary: {
+        requested: 2,
+        added: 1,
+        alreadyMember: 1,
+        invalid: 0,
+        verificationFailed: 0,
+        failed: 0,
+      },
+      items: [
+        {
+          member: {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+          status: 'added',
+          detail: 'Added successfully.',
+        },
+      ],
+      verification: {
+        attempted: true,
+        verifiedAdded: 1,
+        detail: 'Verified added members.',
+      },
+    });
+
+    expect(result.summary.added).toBe(1);
   });
 });

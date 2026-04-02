@@ -6,10 +6,13 @@ import {
   exchangeConnectionStatusSchema,
   type ExchangeGroupRef,
   exchangeListGroupsResultSchema,
+  groupsAddMembersResultSchema,
   groupsGetMembersResultSchema,
   type ExchangeCapabilities,
   type ExchangeConnectionStatus,
   type ExchangeListGroupsResult,
+  type GroupMemberWriteRef,
+  type GroupsAddMembersResult,
   type GroupsGetMembersResult,
 } from '@/shared/contracts/exchange';
 import { sessionStatusSchema, type SessionStatusSchema } from '@/shared/contracts/session';
@@ -103,6 +106,24 @@ const radAppApi = {
       }
 
       return groupsGetMembersResultSchema.parse(response.data);
+    },
+    async addMembers(
+      group: ExchangeGroupRef,
+      members: GroupMemberWriteRef[],
+    ): Promise<GroupsAddMembersResult> {
+      const request = createCommandRequest('groups.addMembers', {
+        group,
+        members,
+        verify: true,
+      });
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to add group members.');
+      }
+
+      return groupsAddMembersResultSchema.parse(response.data);
     },
   },
 };

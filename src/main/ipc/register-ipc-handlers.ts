@@ -16,9 +16,12 @@ import {
   exchangeGetConnectionStatusPayloadSchema,
   exchangeListGroupsPayloadSchema,
   exchangeListGroupsResultSchema,
+  groupsAddMembersPayloadSchema,
+  groupsAddMembersResultSchema,
   groupsGetMembersPayloadSchema,
   groupsGetMembersResultSchema,
 } from '@/shared/contracts/exchange';
+import { addGroupMembers } from '@/main/exchange/add-group-members';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
@@ -114,6 +117,17 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'groups.getMembers': {
       const payload = groupsGetMembersPayloadSchema.parse(request.payload);
       const result = groupsGetMembersResultSchema.parse(await getGroupMembers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'groups.addMembers': {
+      const payload = groupsAddMembersPayloadSchema.parse(request.payload);
+      const result = groupsAddMembersResultSchema.parse(await addGroupMembers(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
