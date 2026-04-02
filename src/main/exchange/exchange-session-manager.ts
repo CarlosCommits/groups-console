@@ -16,6 +16,14 @@ import {
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
 import {
+  contactsCreateResultSchema,
+  contactsUpdateCompanyResultSchema,
+  type ContactsCreatePayload,
+  type ContactsCreateResult,
+  type ContactsUpdateCompanyPayload,
+  type ContactsUpdateCompanyResult,
+} from '@/shared/contracts/contacts';
+import {
   recipientsSearchResultSchema,
   type RecipientsSearchPayload,
   type RecipientsSearchResult,
@@ -153,6 +161,35 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('addGroupMembers', payload);
 
       return groupsAddMembersResultSchema.parse(rawResult);
+    });
+  }
+
+  async createContact(payload: ContactsCreatePayload): Promise<ContactsCreateResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('createContact', payload as unknown as Record<string, unknown>);
+
+      return contactsCreateResultSchema.parse(rawResult);
+    });
+  }
+
+  async updateContactCompany(
+    payload: ContactsUpdateCompanyPayload,
+  ): Promise<ContactsUpdateCompanyResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request(
+        'updateContactCompany',
+        payload as unknown as Record<string, unknown>,
+      );
+
+      return contactsUpdateCompanyResultSchema.parse(rawResult);
     });
   }
 

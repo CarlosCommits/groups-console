@@ -1,6 +1,8 @@
 . "$PSScriptRoot\..\commands\get-exchange-connection-status.ps1"
 . "$PSScriptRoot\..\commands\connect-exchange.ps1"
 . "$PSScriptRoot\..\commands\disconnect-exchange.ps1"
+. "$PSScriptRoot\..\commands\create-contact.ps1"
+. "$PSScriptRoot\..\commands\update-contact-company.ps1"
 . "$PSScriptRoot\..\commands\add-group-member.ps1"
 . "$PSScriptRoot\..\commands\remove-group-member.ps1"
 . "$PSScriptRoot\..\commands\search-recipients.ps1"
@@ -32,6 +34,12 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             }
             'disconnect' {
                 $data = Invoke-RadAppDisconnectExchange
+            }
+            'createContact' {
+                $data = Invoke-RadAppCreateContact -Payload $payload
+            }
+            'updateContactCompany' {
+                $data = Invoke-RadAppUpdateContactCompany -Payload $payload
             }
             'searchRecipients' {
                 $data = Invoke-RadAppSearchRecipients -Payload $payload
