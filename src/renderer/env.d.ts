@@ -5,6 +5,8 @@ import type {
   ExchangeConnectionStatus,
   ExchangeGroupRef,
   ExchangeListGroupsResult,
+  GroupMemberWriteRef,
+  GroupsAddMembersResult,
   GroupsGetMembersResult,
 } from '@/shared/contracts/exchange';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
@@ -26,6 +28,10 @@ declare global {
       };
       groups: {
         getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
+        addMembers: (
+          group: ExchangeGroupRef,
+          members: GroupMemberWriteRef[],
+        ) => Promise<GroupsAddMembersResult>;
       };
     };
   }

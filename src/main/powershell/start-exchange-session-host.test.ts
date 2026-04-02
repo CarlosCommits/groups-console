@@ -215,4 +215,55 @@ describe('startExchangeSessionHost', () => {
       items: [],
     });
   });
+
+  it('writes addGroupMembers requests through the host protocol', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('addGroupMembers');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { group: { exchangeIdentity: 'finance-group', objectId: null, groupKind: 'distributionList' }, summary: { requested: 1, added: 1, alreadyMember: 0, failed: 0 }, items: [], verification: { attempted: true, verifiedAdded: 1, detail: 'Verified 1 added member.' } } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('addGroupMembers', {
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      members: [
+        {
+          exchangeIdentity: 'jane@example.com',
+          objectId: null,
+          primaryEmail: 'jane@example.com',
+        },
+      ],
+      verify: true,
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toMatchObject({
+      summary: {
+        added: 1,
+      },
+    });
+  });
 });

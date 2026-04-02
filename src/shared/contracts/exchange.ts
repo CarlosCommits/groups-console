@@ -39,6 +39,38 @@ export const groupsGetMembersPayloadSchema = z
     group: exchangeGroupRefSchema,
   })
   .strict();
+export const groupMemberWriteRefSchema = z
+  .object({
+    exchangeIdentity: z.string().min(1),
+    objectId: z.string().nullable(),
+    primaryEmail: z.string().nullable(),
+  })
+  .strict();
+export const groupsAddMembersPayloadSchema = z
+  .object({
+    group: exchangeGroupRefSchema,
+    members: z.array(groupMemberWriteRefSchema).min(1),
+    verify: z.literal(true),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const seen = new Set<string>();
+
+    value.members.forEach((member, index) => {
+      const key = member.exchangeIdentity.toLowerCase();
+
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['members', index, 'exchangeIdentity'],
+          message: 'Duplicate member exchangeIdentity values are not allowed.',
+        });
+        return;
+      }
+
+      seen.add(key);
+    });
+  });
 
 export const exchangeRuntimeSchema = z.object({
   command: z.enum(['powershell.exe', 'pwsh.exe']),
@@ -112,6 +144,30 @@ export const groupsGetMembersResultSchema = z.object({
   items: z.array(groupMemberListItemSchema),
 });
 
+export const groupsAddMembersResultItemSchema = z.object({
+  member: groupMemberWriteRefSchema,
+  status: z.enum(['added', 'alreadyMember', 'invalid', 'verificationFailed', 'failed']),
+  detail: z.string().min(1),
+});
+
+export const groupsAddMembersResultSchema = z.object({
+  group: exchangeGroupRefSchema,
+  summary: z.object({
+    requested: z.number().int().nonnegative(),
+    added: z.number().int().nonnegative(),
+    alreadyMember: z.number().int().nonnegative(),
+    invalid: z.number().int().nonnegative(),
+    verificationFailed: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  }),
+  items: z.array(groupsAddMembersResultItemSchema),
+  verification: z.object({
+    attempted: z.literal(true),
+    verifiedAdded: z.number().int().nonnegative(),
+    detail: z.string().min(1),
+  }),
+});
+
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
 export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
@@ -123,3 +179,6 @@ export type ExchangeListGroupsResult = z.infer<typeof exchangeListGroupsResultSc
 export type GroupsGetMembersPayload = z.infer<typeof groupsGetMembersPayloadSchema>;
 export type GroupMemberListItem = z.infer<typeof groupMemberListItemSchema>;
 export type GroupsGetMembersResult = z.infer<typeof groupsGetMembersResultSchema>;
+export type GroupMemberWriteRef = z.infer<typeof groupMemberWriteRefSchema>;
+export type GroupsAddMembersPayload = z.infer<typeof groupsAddMembersPayloadSchema>;
+export type GroupsAddMembersResult = z.infer<typeof groupsAddMembersResultSchema>;
