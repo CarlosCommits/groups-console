@@ -9,6 +9,8 @@ import {
   exchangeGetCapabilitiesPayloadSchema,
   groupsAddMembersPayloadSchema,
   groupsAddMembersResultSchema,
+  groupsRemoveMembersPayloadSchema,
+  groupsRemoveMembersResultSchema,
   groupsGetMembersPayloadSchema,
   groupsGetMembersResultSchema,
   exchangeListGroupsPayloadSchema,
@@ -71,6 +73,49 @@ describe('exchange contracts', () => {
 
     expect(() =>
       groupsAddMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        members: [
+          {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+          {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+        ],
+        verify: true,
+      }),
+    ).toThrow();
+  });
+
+  it('accepts strict remove-members payloads and rejects duplicates', () => {
+    expect(() =>
+      groupsRemoveMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        members: [
+          {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+        ],
+        verify: true,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      groupsRemoveMembersPayloadSchema.parse({
         group: {
           exchangeIdentity: 'finance-group',
           objectId: null,
@@ -218,5 +263,41 @@ describe('exchange contracts', () => {
     });
 
     expect(result.summary.added).toBe(1);
+  });
+
+  it('accepts a remove-members result payload', () => {
+    const result = groupsRemoveMembersResultSchema.parse({
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      summary: {
+        requested: 2,
+        removed: 1,
+        notMember: 1,
+        invalid: 0,
+        verificationFailed: 0,
+        failed: 0,
+      },
+      items: [
+        {
+          member: {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+          },
+          status: 'removed',
+          detail: 'Removed successfully.',
+        },
+      ],
+      verification: {
+        attempted: true,
+        verifiedRemoved: 1,
+        detail: 'Verified removed members.',
+      },
+    });
+
+    expect(result.summary.removed).toBe(1);
   });
 });

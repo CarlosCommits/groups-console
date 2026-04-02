@@ -5,6 +5,7 @@ import type { ExchangeListGroupsResult } from '@/shared/contracts/exchange';
 import type { GroupMemberWriteRef } from '@/shared/contracts/exchange';
 import type { GroupsAddMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
+import type { GroupsRemoveMembersResult } from '@/shared/contracts/exchange';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
@@ -28,6 +29,10 @@ declare global {
           group: ExchangeGroupRef,
           members: GroupMemberWriteRef[],
         ) => Promise<GroupsAddMembersResult>;
+        removeMembers: (
+          group: ExchangeGroupRef,
+          members: GroupMemberWriteRef[],
+        ) => Promise<GroupsRemoveMembersResult>;
       };
     };
   }
