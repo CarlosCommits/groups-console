@@ -8,7 +8,12 @@ import {
 
 import type { TenantConfig } from '@/shared/contracts/graph';
 
-const DEFAULT_GRAPH_SCOPES = ['User.Read', 'User.Read.All', 'User.Invite.All'];
+const DEFAULT_GRAPH_SCOPES = [
+  'User.Read',
+  'User.Read.All',
+  'User.ReadWrite.All',
+  'User.Invite.All',
+];
 
 export function createGraphPublicClient(
   config: TenantConfig,
