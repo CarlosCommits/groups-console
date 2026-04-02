@@ -7,6 +7,8 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
+  groupsGetMembersPayloadSchema,
+  groupsGetMembersResultSchema,
   exchangeListGroupsPayloadSchema,
   exchangeListGroupsResultSchema,
 } from './exchange';
@@ -31,6 +33,19 @@ describe('exchange contracts', () => {
     expect(() => exchangeListGroupsPayloadSchema.parse({})).not.toThrow();
     expect(() => exchangeListGroupsPayloadSchema.parse({ kind: 'distributionList' })).not.toThrow();
     expect(() => exchangeListGroupsPayloadSchema.parse({ extra: true })).toThrow();
+  });
+
+  it('accepts strict group member payloads', () => {
+    expect(() =>
+      groupsGetMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+      }),
+    ).not.toThrow();
+    expect(() => groupsGetMembersPayloadSchema.parse({})).toThrow();
   });
 
   it('accepts a capabilities response payload', () => {
@@ -99,5 +114,28 @@ describe('exchange contracts', () => {
     });
 
     expect(result.items[0]?.groupKind).toBe('distributionList');
+  });
+
+  it('accepts a group members result payload', () => {
+    const result = groupsGetMembersResultSchema.parse({
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      items: [
+        {
+          objectId: 'recipient-1',
+          exchangeIdentity: 'recipient-identity-1',
+          displayName: 'Jane Example',
+          primaryEmail: 'jane@example.com',
+          alias: 'jexample',
+          recipientType: 'mailbox',
+          recipientTypeDetails: 'UserMailbox',
+        },
+      ],
+    });
+
+    expect(result.items[0]?.recipientType).toBe('mailbox');
   });
 });

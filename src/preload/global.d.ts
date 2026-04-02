@@ -1,6 +1,8 @@
 import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
 import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
+import type { ExchangeGroupRef } from '@/shared/contracts/exchange';
 import type { ExchangeListGroupsResult } from '@/shared/contracts/exchange';
+import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
@@ -17,6 +19,9 @@ declare global {
         listGroups: (
           kind?: 'all' | 'distributionList' | 'mailEnabledSecurityGroup',
         ) => Promise<ExchangeListGroupsResult>;
+      };
+      groups: {
+        getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
       };
     };
   }
