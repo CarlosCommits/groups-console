@@ -8,6 +8,12 @@ import {
   type CommandResponse,
 } from '@/shared/contracts/command';
 import {
+  contactsCreatePayloadSchema,
+  contactsCreateResultSchema,
+  contactsUpdateCompanyPayloadSchema,
+  contactsUpdateCompanyResultSchema,
+} from '@/shared/contracts/contacts';
+import {
   graphConnectPayloadSchema,
   graphConnectionStatusSchema,
   graphDisconnectPayloadSchema,
@@ -22,6 +28,8 @@ import {
   guestsInviteResultSchema,
   guestsSearchPayloadSchema,
   guestsSearchResultSchema,
+  guestsUpdateCompanyPayloadSchema,
+  guestsUpdateCompanyResultSchema,
 } from '@/shared/contracts/guests';
 import {
   exchangeCapabilitiesSchema,
@@ -40,14 +48,17 @@ import {
   groupsRemoveMembersResultSchema,
 } from '@/shared/contracts/exchange';
 import { addGroupMembers } from '@/main/exchange/add-group-members';
+import { createContact } from '@/main/exchange/create-contact';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { removeGroupMembers } from '@/main/exchange/remove-group-members';
+import { updateContactCompany } from '@/main/exchange/update-contact-company';
 import { connectGraph } from '@/main/graph/connect-graph';
 import { disconnectGraph } from '@/main/graph/disconnect-graph';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { inviteGuestUser } from '@/main/graph/invite-guest-user';
 import { searchGuestUsers } from '@/main/graph/search-guest-users';
+import { updateGuestCompany } from '@/main/graph/update-guest-company';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
@@ -230,6 +241,39 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'guests.invite': {
       const payload = guestsInvitePayloadSchema.parse(request.payload);
       const result = guestsInviteResultSchema.parse(await inviteGuestUser(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'guests.updateCompany': {
+      const payload = guestsUpdateCompanyPayloadSchema.parse(request.payload);
+      const result = guestsUpdateCompanyResultSchema.parse(await updateGuestCompany(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'contacts.create': {
+      const payload = contactsCreatePayloadSchema.parse(request.payload);
+      const result = contactsCreateResultSchema.parse(await createContact(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'contacts.updateCompany': {
+      const payload = contactsUpdateCompanyPayloadSchema.parse(request.payload);
+      const result = contactsUpdateCompanyResultSchema.parse(await updateContactCompany(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,

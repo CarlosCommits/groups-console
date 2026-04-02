@@ -16,6 +16,9 @@ export const commandNameSchema = z.enum([
   'graph.disconnect',
   'guests.search',
   'guests.invite',
+  'guests.updateCompany',
+  'contacts.create',
+  'contacts.updateCompany',
 ]);
 
 export const commandRequestSchema = z.object({

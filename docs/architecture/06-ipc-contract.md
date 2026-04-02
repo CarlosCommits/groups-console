@@ -83,14 +83,14 @@ type ProgressEvent = {
 
 ### Contacts
 
-- `contacts.search`
 - `contacts.create`
-- `contacts.updateCompanyFromSpreadsheet`
+- `contacts.updateCompany`
 
 ### Guests
 
 - `guests.search`
 - `guests.invite`
+- `guests.updateCompany`
 
 ### Reports
 
