@@ -7,6 +7,7 @@ export const commandNameSchema = z.enum([
   'exchange.getConnectionStatus',
   'exchange.disconnect',
   'exchange.listGroups',
+  'groups.getMembers',
 ]);
 
 export const commandRequestSchema = z.object({
