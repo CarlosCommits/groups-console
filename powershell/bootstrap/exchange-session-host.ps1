@@ -1,6 +1,7 @@
 . "$PSScriptRoot\..\commands\get-exchange-connection-status.ps1"
 . "$PSScriptRoot\..\commands\connect-exchange.ps1"
 . "$PSScriptRoot\..\commands\disconnect-exchange.ps1"
+. "$PSScriptRoot\..\commands\get-groups.ps1"
 
 $ErrorActionPreference = 'Stop'
 $script:RadAppExchangeConnectionContext = $null
@@ -27,6 +28,9 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             }
             'disconnect' {
                 $data = Invoke-RadAppDisconnectExchange
+            }
+            'listGroups' {
+                $data = Invoke-RadAppListGroups -Payload $payload
             }
             'shutdown' {
                 $data = Invoke-RadAppDisconnectExchange

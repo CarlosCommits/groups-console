@@ -1,5 +1,6 @@
 import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
 import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
+import type { ExchangeListGroupsResult } from '@/shared/contracts/exchange';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
@@ -13,6 +14,9 @@ declare global {
         connect: (userPrincipalName: string) => Promise<ExchangeConnectionStatus>;
         getConnectionStatus: () => Promise<ExchangeConnectionStatus>;
         disconnect: () => Promise<ExchangeConnectionStatus>;
+        listGroups: (
+          kind?: 'all' | 'distributionList' | 'mailEnabledSecurityGroup',
+        ) => Promise<ExchangeListGroupsResult>;
       };
     };
   }

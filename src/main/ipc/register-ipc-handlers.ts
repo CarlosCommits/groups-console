@@ -14,12 +14,15 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
+  exchangeListGroupsPayloadSchema,
+  exchangeListGroupsResultSchema,
 } from '@/shared/contracts/exchange';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import { listExchangeGroups } from '@/main/exchange/list-exchange-groups';
 
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
@@ -92,6 +95,17 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
         success: true,
         completedAt: new Date().toISOString(),
         data: connection,
+      }) as CommandResponse;
+    }
+    case 'exchange.listGroups': {
+      const payload = exchangeListGroupsPayloadSchema.parse(request.payload);
+      const result = exchangeListGroupsResultSchema.parse(await listExchangeGroups(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
       }) as CommandResponse;
     }
   }

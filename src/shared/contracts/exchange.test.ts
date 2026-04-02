@@ -7,6 +7,8 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
+  exchangeListGroupsPayloadSchema,
+  exchangeListGroupsResultSchema,
 } from './exchange';
 
 describe('exchange contracts', () => {
@@ -23,6 +25,12 @@ describe('exchange contracts', () => {
     ).not.toThrow();
     expect(() => exchangeGetConnectionStatusPayloadSchema.parse({})).not.toThrow();
     expect(() => exchangeDisconnectPayloadSchema.parse({})).not.toThrow();
+  });
+
+  it('accepts strict list-groups payloads', () => {
+    expect(() => exchangeListGroupsPayloadSchema.parse({})).not.toThrow();
+    expect(() => exchangeListGroupsPayloadSchema.parse({ kind: 'distributionList' })).not.toThrow();
+    expect(() => exchangeListGroupsPayloadSchema.parse({ extra: true })).toThrow();
   });
 
   it('accepts a capabilities response payload', () => {
@@ -71,5 +79,25 @@ describe('exchange contracts', () => {
     });
 
     expect(result.state).toBe('connected');
+  });
+
+  it('accepts a group list result payload', () => {
+    const result = exchangeListGroupsResultSchema.parse({
+      appliedKind: 'all',
+      items: [
+        {
+          objectId: null,
+          exchangeIdentity: 'group-identity-1',
+          displayName: 'Finance Distribution',
+          alias: 'finance',
+          primaryEmail: 'finance@example.com',
+          groupKind: 'distributionList',
+          managedByDisplayNames: ['Owner One'],
+          whenChangedUtc: '2026-04-01T12:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(result.items[0]?.groupKind).toBe('distributionList');
   });
 });
