@@ -2,6 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import { commandResponseSchema } from '@/shared/contracts/command';
 import {
+  contactsCreateResultSchema,
+  contactsUpdateCompanyResultSchema,
+  type ContactsCreatePayload,
+  type ContactsCreateResult,
+  type ContactsUpdateCompanyPayload,
+  type ContactsUpdateCompanyResult,
+} from '@/shared/contracts/contacts';
+import {
   graphConnectionStatusSchema,
   type GraphConnectionStatus,
 } from '@/shared/contracts/graph';
@@ -12,6 +20,9 @@ import {
   type GuestsInviteResult,
   type GuestsSearchPayload,
   type GuestsSearchResult,
+  guestsUpdateCompanyResultSchema,
+  type GuestsUpdateCompanyPayload,
+  type GuestsUpdateCompanyResult,
 } from '@/shared/contracts/guests';
 import {
   recipientsSearchResultSchema,
@@ -220,6 +231,43 @@ const radAppApi = {
       }
 
       return guestsInviteResultSchema.parse(response.data);
+    },
+    async updateCompany(payload: GuestsUpdateCompanyPayload): Promise<GuestsUpdateCompanyResult> {
+      const request = createCommandRequest('guests.updateCompany', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to update guest company.');
+      }
+
+      return guestsUpdateCompanyResultSchema.parse(response.data);
+    },
+  },
+  contacts: {
+    async create(payload: ContactsCreatePayload): Promise<ContactsCreateResult> {
+      const request = createCommandRequest('contacts.create', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to create contact.');
+      }
+
+      return contactsCreateResultSchema.parse(response.data);
+    },
+    async updateCompany(
+      payload: ContactsUpdateCompanyPayload,
+    ): Promise<ContactsUpdateCompanyResult> {
+      const request = createCommandRequest('contacts.updateCompany', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to update contact company.');
+      }
+
+      return contactsUpdateCompanyResultSchema.parse(response.data);
     },
   },
   recipients: {
