@@ -8,12 +8,14 @@ import {
   exchangeListGroupsResultSchema,
   groupsAddMembersResultSchema,
   groupsGetMembersResultSchema,
+  groupsRemoveMembersResultSchema,
   type ExchangeCapabilities,
   type ExchangeConnectionStatus,
   type ExchangeListGroupsResult,
   type GroupMemberWriteRef,
   type GroupsAddMembersResult,
   type GroupsGetMembersResult,
+  type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
 import { sessionStatusSchema, type SessionStatusSchema } from '@/shared/contracts/session';
 import { createCommandRequest } from '@/shared/validation/create-command-request';
@@ -124,6 +126,24 @@ const radAppApi = {
       }
 
       return groupsAddMembersResultSchema.parse(response.data);
+    },
+    async removeMembers(
+      group: ExchangeGroupRef,
+      members: GroupMemberWriteRef[],
+    ): Promise<GroupsRemoveMembersResult> {
+      const request = createCommandRequest('groups.removeMembers', {
+        group,
+        members,
+        verify: true,
+      });
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to remove group members.');
+      }
+
+      return groupsRemoveMembersResultSchema.parse(response.data);
     },
   },
 };

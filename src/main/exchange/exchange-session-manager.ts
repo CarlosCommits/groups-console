@@ -5,12 +5,15 @@ import {
   exchangeListGroupsResultSchema,
   groupsGetMembersResultSchema,
   groupsAddMembersResultSchema,
+  groupsRemoveMembersResultSchema,
   type ExchangeListGroupsPayload,
   type ExchangeListGroupsResult,
   type GroupsAddMembersPayload,
   type GroupsAddMembersResult,
   type GroupsGetMembersPayload,
   type GroupsGetMembersResult,
+  type GroupsRemoveMembersPayload,
+  type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
 
 import { startExchangeSessionHost, type ExchangeSessionHost } from '@/main/powershell/start-exchange-session-host';
@@ -133,6 +136,18 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('addGroupMembers', payload);
 
       return groupsAddMembersResultSchema.parse(rawResult);
+    });
+  }
+
+  async removeMembers(payload: GroupsRemoveMembersPayload): Promise<GroupsRemoveMembersResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('removeGroupMembers', payload);
+
+      return groupsRemoveMembersResultSchema.parse(rawResult);
     });
   }
 

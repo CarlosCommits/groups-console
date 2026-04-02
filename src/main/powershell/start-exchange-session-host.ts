@@ -11,6 +11,7 @@ export type ExchangeSessionHostCommand =
   | 'listGroups'
   | 'getGroupMembers'
   | 'addGroupMembers'
+  | 'removeGroupMembers'
   | 'shutdown';
 
 export type ExchangeSessionHost = {
