@@ -65,6 +65,12 @@ type ProgressEvent = {
 - `exchange.disconnect`
 - `exchange.listGroups`
 
+### Graph
+
+- `graph.connect`
+- `graph.getConnectionStatus`
+- `graph.disconnect`
+
 ### Recipients
 
 - `recipients.search`
@@ -85,7 +91,6 @@ type ProgressEvent = {
 
 - `guests.search`
 - `guests.invite`
-- `guests.update`
 
 ### Reports
 
@@ -94,9 +99,11 @@ type ProgressEvent = {
 ## Backend routing rules
 
 - commands beginning with `exchange.` route to EXO worker or Exchange session host
+- commands beginning with `graph.` route to the main-process Graph session manager
 - group-listing currently lives under `exchange.listGroups`; member operations remain planned under `groups.*`
 - commands beginning with `contacts.` route to EXO worker
 - commands beginning with `guests.` route to Graph adapter
+- `recipients.search` routes through the app-owned recipient directory, which can combine Exchange and Graph providers
 - `reports.generateMembershipMatrix` uses EXO reads and JS export
 
 ## Example write command

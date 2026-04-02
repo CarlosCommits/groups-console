@@ -8,9 +8,21 @@ import {
   type CommandResponse,
 } from '@/shared/contracts/command';
 import {
+  graphConnectPayloadSchema,
+  graphConnectionStatusSchema,
+  graphDisconnectPayloadSchema,
+  graphGetConnectionStatusPayloadSchema,
+} from '@/shared/contracts/graph';
+import {
   recipientsSearchPayloadSchema,
   recipientsSearchResultSchema,
 } from '@/shared/contracts/recipients';
+import {
+  guestsInvitePayloadSchema,
+  guestsInviteResultSchema,
+  guestsSearchPayloadSchema,
+  guestsSearchResultSchema,
+} from '@/shared/contracts/guests';
 import {
   exchangeCapabilitiesSchema,
   exchangeConnectPayloadSchema,
@@ -31,6 +43,11 @@ import { addGroupMembers } from '@/main/exchange/add-group-members';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { removeGroupMembers } from '@/main/exchange/remove-group-members';
+import { connectGraph } from '@/main/graph/connect-graph';
+import { disconnectGraph } from '@/main/graph/disconnect-graph';
+import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
+import { inviteGuestUser } from '@/main/graph/invite-guest-user';
+import { searchGuestUsers } from '@/main/graph/search-guest-users';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
@@ -158,6 +175,61 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'recipients.search': {
       const payload = recipientsSearchPayloadSchema.parse(request.payload);
       const result = recipientsSearchResultSchema.parse(await recipientDirectory.searchRecipients(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'graph.connect': {
+      graphConnectPayloadSchema.parse(request.payload);
+      const result = graphConnectionStatusSchema.parse(await connectGraph());
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'graph.getConnectionStatus': {
+      graphGetConnectionStatusPayloadSchema.parse(request.payload);
+      const result = graphConnectionStatusSchema.parse(await getGraphConnectionStatus());
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'graph.disconnect': {
+      graphDisconnectPayloadSchema.parse(request.payload);
+      const result = graphConnectionStatusSchema.parse(await disconnectGraph());
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'guests.search': {
+      const payload = guestsSearchPayloadSchema.parse(request.payload);
+      const result = guestsSearchResultSchema.parse(await searchGuestUsers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'guests.invite': {
+      const payload = guestsInvitePayloadSchema.parse(request.payload);
+      const result = guestsInviteResultSchema.parse(await inviteGuestUser(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,

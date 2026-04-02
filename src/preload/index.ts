@@ -2,6 +2,18 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import { commandResponseSchema } from '@/shared/contracts/command';
 import {
+  graphConnectionStatusSchema,
+  type GraphConnectionStatus,
+} from '@/shared/contracts/graph';
+import {
+  guestsInviteResultSchema,
+  guestsSearchResultSchema,
+  type GuestsInvitePayload,
+  type GuestsInviteResult,
+  type GuestsSearchPayload,
+  type GuestsSearchResult,
+} from '@/shared/contracts/guests';
+import {
   recipientsSearchResultSchema,
   type RecipientsSearchPayload,
   type RecipientsSearchResult,
@@ -102,6 +114,41 @@ const radAppApi = {
       return exchangeListGroupsResultSchema.parse(response.data);
     },
   },
+  graph: {
+    async connect(): Promise<GraphConnectionStatus> {
+      const request = createCommandRequest('graph.connect', {});
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to connect to Microsoft Graph.');
+      }
+
+      return graphConnectionStatusSchema.parse(response.data);
+    },
+    async getConnectionStatus(): Promise<GraphConnectionStatus> {
+      const request = createCommandRequest('graph.getConnectionStatus', {});
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to load Microsoft Graph connection status.');
+      }
+
+      return graphConnectionStatusSchema.parse(response.data);
+    },
+    async disconnect(): Promise<GraphConnectionStatus> {
+      const request = createCommandRequest('graph.disconnect', {});
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to disconnect from Microsoft Graph.');
+      }
+
+      return graphConnectionStatusSchema.parse(response.data);
+    },
+  },
   groups: {
     async getMembers(group: ExchangeGroupRef): Promise<GroupsGetMembersResult> {
       const request = createCommandRequest('groups.getMembers', { group });
@@ -149,6 +196,30 @@ const radAppApi = {
       }
 
       return groupsRemoveMembersResultSchema.parse(response.data);
+    },
+  },
+  guests: {
+    async search(payload: GuestsSearchPayload): Promise<GuestsSearchResult> {
+      const request = createCommandRequest('guests.search', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to search guest users.');
+      }
+
+      return guestsSearchResultSchema.parse(response.data);
+    },
+    async invite(payload: GuestsInvitePayload): Promise<GuestsInviteResult> {
+      const request = createCommandRequest('guests.invite', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to invite guest user.');
+      }
+
+      return guestsInviteResultSchema.parse(response.data);
     },
   },
   recipients: {
