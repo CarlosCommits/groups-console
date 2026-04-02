@@ -262,6 +262,92 @@ describe('startExchangeSessionHost', () => {
     });
   });
 
+  it('writes createContact requests through the host protocol', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('createContact');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { contact: { exchangeIdentity: 'jane@example.com', objectId: null, primaryEmail: 'jane@example.com', displayName: 'Jane Example', companyName: 'Example Corp' }, verification: { attempted: true, companyApplied: true, detail: 'Verified contact creation and company assignment.' } } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('createContact', {
+      firstName: 'Jane',
+      lastName: 'Example',
+      email: 'jane@example.com',
+      companyName: 'Example Corp',
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toMatchObject({
+      contact: {
+        exchangeIdentity: 'jane@example.com',
+      },
+    });
+  });
+
+  it('writes updateContactCompany requests through the host protocol', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('updateContactCompany');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { contact: { exchangeIdentity: 'jane@example.com', objectId: null, primaryEmail: 'jane@example.com', companyName: 'New Company' }, verification: { attempted: true, companyApplied: true, detail: 'Verified company update.' } } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('updateContactCompany', {
+      contact: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: null,
+        primaryEmail: 'jane@example.com',
+      },
+      companyName: 'New Company',
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toMatchObject({
+      contact: {
+        companyName: 'New Company',
+      },
+    });
+  });
+
   it('writes addGroupMembers requests through the host protocol', async () => {
     Object.defineProperty(process, 'platform', {
       value: 'win32',
