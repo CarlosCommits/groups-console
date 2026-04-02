@@ -2,6 +2,11 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import { commandResponseSchema } from '@/shared/contracts/command';
 import {
+  recipientsSearchResultSchema,
+  type RecipientsSearchPayload,
+  type RecipientsSearchResult,
+} from '@/shared/contracts/recipients';
+import {
   exchangeCapabilitiesSchema,
   exchangeConnectionStatusSchema,
   type ExchangeGroupRef,
@@ -144,6 +149,19 @@ const radAppApi = {
       }
 
       return groupsRemoveMembersResultSchema.parse(response.data);
+    },
+  },
+  recipients: {
+    async search(payload: RecipientsSearchPayload): Promise<RecipientsSearchResult> {
+      const request = createCommandRequest('recipients.search', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to search recipients.');
+      }
+
+      return recipientsSearchResultSchema.parse(response.data);
     },
   },
 };

@@ -216,6 +216,52 @@ describe('startExchangeSessionHost', () => {
     });
   });
 
+  it('writes searchRecipients requests through the host protocol', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('searchRecipients');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { query: 'ja', appliedLimit: 25, appliedTypes: ['mailbox'], sourceStatus: { exchange: 'searched', graph: 'deferred' }, items: [] } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('searchRecipients', {
+      query: 'ja',
+      limit: 25,
+      types: ['mailbox'],
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toEqual({
+      query: 'ja',
+      appliedLimit: 25,
+      appliedTypes: ['mailbox'],
+      sourceStatus: {
+        exchange: 'searched',
+        graph: 'deferred',
+      },
+      items: [],
+    });
+  });
+
   it('writes addGroupMembers requests through the host protocol', async () => {
     Object.defineProperty(process, 'platform', {
       value: 'win32',

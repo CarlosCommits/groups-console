@@ -10,6 +10,7 @@ import type {
   GroupsGetMembersResult,
   GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
+import type { RecipientsSearchPayload, RecipientsSearchResult } from '@/shared/contracts/recipients';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
@@ -37,6 +38,9 @@ declare global {
           group: ExchangeGroupRef,
           members: GroupMemberWriteRef[],
         ) => Promise<GroupsRemoveMembersResult>;
+      };
+      recipients: {
+        search: (payload: RecipientsSearchPayload) => Promise<RecipientsSearchResult>;
       };
     };
   }

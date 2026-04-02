@@ -15,6 +15,11 @@ import {
   type GroupsRemoveMembersPayload,
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
+import {
+  recipientsSearchResultSchema,
+  type RecipientsSearchPayload,
+  type RecipientsSearchResult,
+} from '@/shared/contracts/recipients';
 
 import { startExchangeSessionHost, type ExchangeSessionHost } from '@/main/powershell/start-exchange-session-host';
 
@@ -112,6 +117,18 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('listGroups', payload);
 
       return exchangeListGroupsResultSchema.parse(rawResult);
+    });
+  }
+
+  async searchRecipients(payload: RecipientsSearchPayload): Promise<RecipientsSearchResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('searchRecipients', payload);
+
+      return recipientsSearchResultSchema.parse(rawResult);
     });
   }
 
