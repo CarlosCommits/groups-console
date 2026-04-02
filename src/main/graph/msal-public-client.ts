@@ -40,8 +40,8 @@ export async function acquireInteractiveGraphToken(
     openBrowser: async (url: string) => {
       await shell.openExternal(url);
     },
-    successTemplate: 'Authentication complete. You can return to RAD App.',
-    errorTemplate: 'Authentication failed. You can close this window and return to RAD App.',
+    successTemplate: 'Authentication complete. You can return to Groups Console.',
+    errorTemplate: 'Authentication failed. You can close this window and return to Groups Console.',
   });
 }
 

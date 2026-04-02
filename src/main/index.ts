@@ -13,7 +13,7 @@ if (started) {
 
 void app.whenReady().then(() => {
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.radapp.desktop');
+    app.setAppUserModelId('com.groupsconsole.desktop');
   }
 
   registerIpcHandlers();

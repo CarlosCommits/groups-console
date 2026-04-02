@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the trust boundaries and security requirements for RAD-app v2.
+Define the trust boundaries and security requirements for Groups Console v2.
 
 ## Non-negotiable controls
 

@@ -6,7 +6,7 @@ Define the preflight checks and conflict rules that protect the app from bad wri
 
 ## Core problem
 
-The same external email address can appear in multiple systems and object types, especially around contacts and guest users. RAD-app v2 must treat SMTP as an attribute, not as the canonical key.
+The same external email address can appear in multiple systems and object types, especially around contacts and guest users. Groups Console v2 must treat SMTP as an attribute, not as the canonical key.
 
 ## Canonical identity model
 

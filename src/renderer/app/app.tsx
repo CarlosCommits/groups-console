@@ -155,7 +155,7 @@ export function App() {
       <div className="flex min-h-screen items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>RAD App</CardTitle>
+            <CardTitle>Groups Console</CardTitle>
             <CardDescription>Loading application status…</CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,7 +181,7 @@ export function App() {
                 <Power className="size-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold">RAD App</h1>
+                <h1 className="text-xl font-semibold">Groups Console</h1>
                 <p className="text-sm text-muted-foreground">
                   v{status.appVersion}
                 </p>

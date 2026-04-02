@@ -12,7 +12,7 @@ export function getMainWindowOptions(): BrowserWindowConstructorOptions {
     minWidth: 1024,
     minHeight: 720,
     show: false,
-    title: 'RAD App',
+    title: 'Groups Console',
     backgroundColor: '#09090b',
     webPreferences: {
       preload: path.join(__dirname, '../preload.js'),

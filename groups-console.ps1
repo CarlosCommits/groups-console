@@ -11,7 +11,7 @@ ______  ___ ______    ___  ____________
 "@
 
 Write-Host $asciiTitle
-Write-Host "Welcome to RAD APP - Your Office 365 Exchange Distribution List Manager"
+Write-Host "Welcome to Groups Console - Your Office 365 Exchange Administration Tool"
 
 # Change execution policy
 Write-Host "`nChecking and setting execution policy..."
@@ -337,5 +337,5 @@ Write-Host "Disconnecting from Exchange Online..."
 Disconnect-ExchangeOnline -Confirm:$false
 
 
-Write-Host "Thank you for using RAD APP!`n"
+Write-Host "Thank you for using Groups Console!`n"
 Read-Host
