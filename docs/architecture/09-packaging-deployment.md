@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how RAD-app v2 is built, signed, installed, and updated on administrator workstations.
+Define how Groups Console v2 is built, signed, installed, and updated on administrator workstations.
 
 ## Packaging choice
 

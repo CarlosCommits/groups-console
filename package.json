@@ -1,6 +1,6 @@
 {
-  "name": "rad-app",
-  "productName": "RAD App",
+  "name": "groups-console",
+  "productName": "Groups Console",
   "version": "0.1.0",
   "description": "Windows-first Exchange admin desktop app.",
   "main": ".vite/build/index.js",

@@ -1,6 +1,6 @@
-# RAD APP - Office 365 Exchange Distribution List Manager
+# Groups Console - Office 365 Exchange Administration Tool
 
-> Note: this repository now includes the RAD-app v2 Electron scaffold alongside the legacy PowerShell script. On Linux development hosts, Electron may fail to start if the local `chrome-sandbox` helper is not configured correctly. Treat that as an environment issue; do not disable the app's sandbox or renderer security settings to work around it.
+> Note: this repository now includes the Groups Console v2 Electron scaffold alongside the legacy PowerShell script. On Linux development hosts, Electron may fail to start if the local `chrome-sandbox` helper is not configured correctly. Treat that as an environment issue; do not disable the app's sandbox or renderer security settings to work around it.
 
 ```
 ______  ___ ______    ___  ____________ 
@@ -13,7 +13,7 @@ ______  ___ ______    ___  ____________
 
 ## Overview
 
-RAD APP is a PowerShell-based tool designed to simplify the management of Office 365 Exchange Distribution Lists. It provides an intuitive interface for managing distribution lists, contacts, and group memberships within your Office 365 environment.
+Groups Console started as a PowerShell-based tool designed to simplify Office 365 Exchange administration. It now includes an Electron-based admin console for managing distribution lists, mail-enabled security groups, contacts, guest users, and recipient workflows across Exchange Online and Microsoft Graph.
 
 ## Features
 
@@ -37,12 +37,12 @@ The script will automatically install these modules if they're not present:
 
 ## Installation & Setup
 
-1. Download the `RAD app.ps1` script to your local machine
+1. Download the `groups-console.ps1` script to your local machine
 2. Open PowerShell as an administrator
 3. Navigate to the directory containing the script
 4. Run the script:
    ```powershell
-   .\RAD app.ps1
+   .\groups-console.ps1
    ```
 
 The script will automatically:
@@ -138,4 +138,4 @@ If you encounter issues:
 
 - Select option 5 from the main menu
 - The script will automatically disconnect from Exchange Online
-- Wait for the "Thank you for using RAD APP!" message before closing the window
+- Wait for the "Thank you for using Groups Console!" message before closing the window

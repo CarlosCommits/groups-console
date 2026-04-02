@@ -9,7 +9,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 vi.mock('@/main/app/paths', () => ({
-  getRadAppWorkerScriptPath: () => 'C:/RADApp/powershell/bootstrap/worker.ps1',
+  getRadAppWorkerScriptPath: () => 'C:/GroupsConsole/powershell/bootstrap/worker.ps1',
 }));
 
 import { executeRadAppWorkerCommand } from './execute-radapp-worker-command';

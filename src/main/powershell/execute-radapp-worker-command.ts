@@ -41,7 +41,7 @@ export async function executeRadAppWorkerCommand(
   if (process.platform !== 'win32') {
     return {
       kind: 'unsupported-host',
-      detail: `Current host platform is ${process.platform}. RAD App worker commands target Windows admin workstations.`,
+      detail: `Current host platform is ${process.platform}. Groups Console worker commands target Windows admin workstations.`,
     };
   }
 

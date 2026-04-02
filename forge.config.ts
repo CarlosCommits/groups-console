@@ -8,14 +8,14 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'RADApp',
+    executableName: 'GroupsConsole',
     extraResource: ['powershell'],
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
-      name: 'RADApp',
-      setupExe: 'RADAppSetup.exe',
+      name: 'GroupsConsole',
+      setupExe: 'GroupsConsoleSetup.exe',
     }),
     new MakerZIP({}, ['win32']),
   ],
