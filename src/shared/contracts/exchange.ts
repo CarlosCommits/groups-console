@@ -10,6 +10,15 @@ export const exchangeConnectPayloadSchema = z
   .strict();
 export const exchangeGetConnectionStatusPayloadSchema = z.object({}).strict();
 export const exchangeDisconnectPayloadSchema = z.object({}).strict();
+export const exchangeGroupKindSchema = z.enum([
+  'distributionList',
+  'mailEnabledSecurityGroup',
+]);
+export const exchangeListGroupsPayloadSchema = z
+  .object({
+    kind: z.enum(['all', 'distributionList', 'mailEnabledSecurityGroup']).optional(),
+  })
+  .strict();
 
 export const exchangeRuntimeSchema = z.object({
   command: z.enum(['powershell.exe', 'pwsh.exe']),
@@ -52,7 +61,26 @@ export const exchangeConnectionStatusSchema = z.object({
   connectedAtUtc: z.string().nullable(),
 });
 
+export const exchangeGroupListItemSchema = z.object({
+  objectId: z.string().nullable(),
+  exchangeIdentity: z.string().min(1),
+  displayName: z.string().min(1),
+  alias: z.string().nullable(),
+  primaryEmail: z.string().nullable(),
+  groupKind: exchangeGroupKindSchema,
+  managedByDisplayNames: z.array(z.string()),
+  whenChangedUtc: z.string().nullable(),
+});
+
+export const exchangeListGroupsResultSchema = z.object({
+  appliedKind: z.enum(['all', 'distributionList', 'mailEnabledSecurityGroup']),
+  items: z.array(exchangeGroupListItemSchema),
+});
+
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
 export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
 export type ExchangeConnectionStatus = z.infer<typeof exchangeConnectionStatusSchema>;
+export type ExchangeListGroupsPayload = z.infer<typeof exchangeListGroupsPayloadSchema>;
+export type ExchangeGroupListItem = z.infer<typeof exchangeGroupListItemSchema>;
+export type ExchangeListGroupsResult = z.infer<typeof exchangeListGroupsResultSchema>;
