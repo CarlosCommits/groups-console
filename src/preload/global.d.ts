@@ -1,3 +1,4 @@
+import type { ContactsCreatePayload, ContactsCreateResult, ContactsUpdateCompanyPayload, ContactsUpdateCompanyResult } from '@/shared/contracts/contacts';
 import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
 import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
 import type { ExchangeGroupRef } from '@/shared/contracts/exchange';
@@ -7,7 +8,7 @@ import type { GroupsAddMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsRemoveMembersResult } from '@/shared/contracts/exchange';
 import type { GraphConnectionStatus } from '@/shared/contracts/graph';
-import type { GuestsInvitePayload, GuestsInviteResult, GuestsSearchPayload, GuestsSearchResult } from '@/shared/contracts/guests';
+import type { GuestsInvitePayload, GuestsInviteResult, GuestsSearchPayload, GuestsSearchResult, GuestsUpdateCompanyPayload, GuestsUpdateCompanyResult } from '@/shared/contracts/guests';
 import type { RecipientsSearchPayload } from '@/shared/contracts/recipients';
 import type { RecipientsSearchResult } from '@/shared/contracts/recipients';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
@@ -46,6 +47,11 @@ declare global {
       guests: {
         search: (payload: GuestsSearchPayload) => Promise<GuestsSearchResult>;
         invite: (payload: GuestsInvitePayload) => Promise<GuestsInviteResult>;
+        updateCompany: (payload: GuestsUpdateCompanyPayload) => Promise<GuestsUpdateCompanyResult>;
+      };
+      contacts: {
+        create: (payload: ContactsCreatePayload) => Promise<ContactsCreateResult>;
+        updateCompany: (payload: ContactsUpdateCompanyPayload) => Promise<ContactsUpdateCompanyResult>;
       };
       recipients: {
         search: (payload: RecipientsSearchPayload) => Promise<RecipientsSearchResult>;

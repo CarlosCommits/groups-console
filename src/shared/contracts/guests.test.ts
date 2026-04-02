@@ -5,6 +5,8 @@ import {
   guestsInviteResultSchema,
   guestsSearchPayloadSchema,
   guestsSearchResultSchema,
+  guestsUpdateCompanyPayloadSchema,
+  guestsUpdateCompanyResultSchema,
 } from './guests';
 
 describe('guest contracts', () => {
@@ -39,7 +41,15 @@ describe('guest contracts', () => {
       guestsInvitePayloadSchema.parse({
         email: 'guest@example.com',
         displayName: 'Guest Example',
+        companyName: 'Guest Co',
         sendInvitationMessage: false,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      guestsUpdateCompanyPayloadSchema.parse({
+        guestUserId: 'guest-1',
+        companyName: 'Guest Co',
       }),
     ).not.toThrow();
 
@@ -49,8 +59,14 @@ describe('guest contracts', () => {
       invitedUserEmail: 'guest@example.com',
       invitedUserDisplayName: 'Guest Example',
       invitedUserUserPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+      companyName: 'Guest Co',
       inviteRedeemUrl: 'https://invitations.microsoft.com/redeem',
       status: 'PendingAcceptance',
+      companyUpdate: {
+        attempted: true,
+        updated: true,
+        detail: 'Verified guest company update.',
+      },
       verification: {
         attempted: true,
         foundGuest: true,
@@ -59,5 +75,18 @@ describe('guest contracts', () => {
     });
 
     expect(result.verification.foundGuest).toBe(true);
+
+    const updateResult = guestsUpdateCompanyResultSchema.parse({
+      guestUserId: 'guest-1',
+      companyName: 'New Guest Co',
+      verification: {
+        attempted: true,
+        foundGuest: true,
+        companyApplied: true,
+        detail: 'Verified guest company update.',
+      },
+    });
+
+    expect(updateResult.verification.companyApplied).toBe(true);
   });
 });
