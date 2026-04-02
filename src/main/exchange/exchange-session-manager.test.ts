@@ -101,6 +101,103 @@ describe('ExchangeSessionManager', () => {
     expect(result.items[0]?.groupKind).toBe('mailEnabledSecurityGroup');
   });
 
+  it('creates contacts through the live host', async () => {
+    const manager = new ExchangeSessionManager();
+
+    vi.mocked(startExchangeSessionHost).mockResolvedValue({
+      runtime: {
+        command: 'powershell.exe',
+        label: 'Windows PowerShell',
+      },
+      request: vi
+        .fn()
+        .mockResolvedValueOnce({
+          state: 'connected',
+          detail: 'Connected to Exchange Online.',
+          psVersion: '5.1.19041.1',
+          psEdition: 'Desktop',
+          userPrincipalName: 'admin@example.com',
+          connectionId: 'connection-1',
+          tenantId: 'tenant-1',
+          tokenStatus: 'Active',
+          tokenExpiryTimeUtc: '2026-04-01T12:00:00.000Z',
+          connectedAtUtc: '2026-04-01T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          contact: {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example',
+            companyName: 'Example Corp',
+          },
+          verification: {
+            attempted: true,
+            companyApplied: true,
+            detail: 'Verified contact creation and company assignment.',
+          },
+        }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await manager.connect({ userPrincipalName: 'admin@example.com' });
+    const result = await manager.createContact({
+      firstName: 'Jane',
+      lastName: 'Example',
+      email: 'jane@example.com',
+      companyName: 'Example Corp',
+    });
+
+    expect(result.contact.companyName).toBe('Example Corp');
+  });
+
+  it('updates contact company through the live host', async () => {
+    const manager = new ExchangeSessionManager();
+
+    vi.mocked(startExchangeSessionHost).mockResolvedValue({
+      runtime: {
+        command: 'powershell.exe',
+        label: 'Windows PowerShell',
+      },
+      request: vi
+        .fn()
+        .mockResolvedValueOnce({
+          state: 'connected',
+          detail: 'Connected to Exchange Online.',
+          psVersion: '5.1.19041.1',
+          psEdition: 'Desktop',
+          userPrincipalName: 'admin@example.com',
+          connectionId: 'connection-1',
+          tenantId: 'tenant-1',
+          tokenStatus: 'Active',
+          tokenExpiryTimeUtc: '2026-04-01T12:00:00.000Z',
+          connectedAtUtc: '2026-04-01T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          contact: {
+            exchangeIdentity: 'jane@example.com',
+            objectId: null,
+            primaryEmail: 'jane@example.com',
+            companyName: 'New Company',
+          },
+          verification: {
+            attempted: true,
+            companyApplied: true,
+            detail: 'Verified company update.',
+          },
+        }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await manager.connect({ userPrincipalName: 'admin@example.com' });
+    const result = await manager.updateContactCompany({
+      exchangeIdentity: 'jane@example.com',
+      companyName: 'New Company',
+    });
+
+    expect(result.contact.companyName).toBe('New Company');
+  });
+
   it('searches recipients through the live host', async () => {
     const manager = new ExchangeSessionManager();
 

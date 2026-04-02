@@ -8,6 +8,8 @@ export type ExchangeSessionHostCommand =
   | 'connect'
   | 'getStatus'
   | 'disconnect'
+  | 'createContact'
+  | 'updateContactCompany'
   | 'searchRecipients'
   | 'listGroups'
   | 'getGroupMembers'
