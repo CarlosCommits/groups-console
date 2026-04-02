@@ -11,6 +11,11 @@ export const commandNameSchema = z.enum([
   'groups.addMembers',
   'groups.removeMembers',
   'recipients.search',
+  'graph.connect',
+  'graph.getConnectionStatus',
+  'graph.disconnect',
+  'guests.search',
+  'guests.invite',
 ]);
 
 export const commandRequestSchema = z.object({
