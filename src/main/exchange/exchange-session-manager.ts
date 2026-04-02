@@ -2,6 +2,9 @@ import {
   exchangeConnectionStatusSchema,
   type ExchangeConnectPayload,
   type ExchangeConnectionStatus,
+  exchangeListGroupsResultSchema,
+  type ExchangeListGroupsPayload,
+  type ExchangeListGroupsResult,
 } from '@/shared/contracts/exchange';
 
 import { startExchangeSessionHost, type ExchangeSessionHost } from '@/main/powershell/start-exchange-session-host';
@@ -88,6 +91,18 @@ export class ExchangeSessionManager {
       } finally {
         await this.disposeHost();
       }
+    });
+  }
+
+  async listGroups(payload: ExchangeListGroupsPayload): Promise<ExchangeListGroupsResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('listGroups', payload);
+
+      return exchangeListGroupsResultSchema.parse(rawResult);
     });
   }
 

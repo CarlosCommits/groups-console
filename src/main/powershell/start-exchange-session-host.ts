@@ -4,7 +4,12 @@ import readline from 'node:readline';
 
 import { getRadAppPowerShellAssetRoot } from '@/main/app/paths';
 
-export type ExchangeSessionHostCommand = 'connect' | 'getStatus' | 'disconnect' | 'shutdown';
+export type ExchangeSessionHostCommand =
+  | 'connect'
+  | 'getStatus'
+  | 'disconnect'
+  | 'listGroups'
+  | 'shutdown';
 
 export type ExchangeSessionHost = {
   runtime: {
