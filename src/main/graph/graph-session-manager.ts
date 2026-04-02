@@ -7,6 +7,8 @@ import type {
   GuestsInviteResult,
   GuestsSearchPayload,
   GuestsSearchResult,
+  GuestsUpdateCompanyPayload,
+  GuestsUpdateCompanyResult,
 } from '@/shared/contracts/guests';
 
 import { loadTenantConfig } from '../config/tenant-config';
@@ -15,6 +17,7 @@ import {
   fetchGraphOrganization,
   inviteGraphGuest,
   searchGraphGuests,
+  updateGraphGuestCompany,
 } from './graph-client';
 import {
   acquireInteractiveGraphToken,
@@ -170,6 +173,15 @@ export class GraphSessionManager {
     return await this.runExclusive(async () => {
       const { accessToken, config } = await this.acquireGraphToken();
       return await inviteGraphGuest(accessToken, payload, config.graph.inviteRedirectUrl);
+    });
+  }
+
+  async updateGuestCompany(
+    payload: GuestsUpdateCompanyPayload,
+  ): Promise<GuestsUpdateCompanyResult> {
+    return await this.runExclusive(async () => {
+      const { accessToken } = await this.acquireGraphToken();
+      return await updateGraphGuestCompany(accessToken, payload);
     });
   }
 

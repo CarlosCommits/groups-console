@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { inviteGraphGuest, searchGraphGuests } from './graph-client';
+import { inviteGraphGuest, searchGraphGuests, updateGraphGuestCompany } from './graph-client';
 
 describe('graph-client', () => {
   const originalFetch = global.fetch;
@@ -86,5 +86,77 @@ describe('graph-client', () => {
 
     expect(result.invitationId).toBe('invite-1');
     expect(result.verification.foundGuest).toBe(false);
+  });
+
+  it('keeps invite success when optional company update fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'invite-1',
+          status: 'PendingAcceptance',
+          inviteRedeemUrl: 'https://example.com/invite',
+          invitedUser: {
+            id: 'guest-1',
+            displayName: 'Guest Example',
+            userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'guest-1',
+          displayName: 'Guest Example',
+          userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          mail: 'guest@example.com',
+          otherMails: ['guest@example.com'],
+          companyName: null,
+          externalUserState: 'PendingAcceptance',
+        }),
+      });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await inviteGraphGuest(
+      'token',
+      { email: 'guest@example.com', companyName: 'Guest Co' },
+      'https://example.com/complete',
+    );
+
+    expect(result.invitationId).toBe('invite-1');
+    expect(result.companyUpdate.updated).toBe(false);
+    expect(result.companyUpdate.detail).toContain('403');
+  });
+
+  it('updates guest company and verifies the new value', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'guest-1',
+          companyName: 'Guest Co',
+        }),
+      });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await updateGraphGuestCompany('token', {
+      guestUserId: 'guest-1',
+      companyName: 'Guest Co',
+    });
+
+    expect(result.verification.companyApplied).toBe(true);
   });
 });

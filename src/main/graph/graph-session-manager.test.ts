@@ -16,6 +16,7 @@ vi.mock('./graph-client', () => ({
   fetchGraphMe: vi.fn(),
   searchGraphGuests: vi.fn(),
   inviteGraphGuest: vi.fn(),
+  updateGraphGuestCompany: vi.fn(),
 }));
 
 vi.mock('@/main/exchange/get-exchange-connection-status', () => ({
@@ -30,6 +31,7 @@ import {
   fetchGraphOrganization,
   inviteGraphGuest,
   searchGraphGuests,
+  updateGraphGuestCompany,
 } from './graph-client';
 import {
   acquireInteractiveGraphToken,
@@ -217,8 +219,14 @@ describe('GraphSessionManager', () => {
       invitedUserEmail: 'guest@example.com',
       invitedUserDisplayName: 'Guest Example',
       invitedUserUserPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+      companyName: null,
       inviteRedeemUrl: 'https://example.com/invite',
       status: 'PendingAcceptance',
+      companyUpdate: {
+        attempted: false,
+        updated: false,
+        detail: 'No company update was requested.',
+      },
       verification: {
         attempted: true,
         foundGuest: true,
@@ -230,5 +238,63 @@ describe('GraphSessionManager', () => {
     const result = await manager.inviteGuest({ email: 'guest@example.com' });
 
     expect(result.invitedUserId).toBe('guest-1');
+  });
+
+  it('updates a guest company through the active session', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account: {
+        tenantId: 'tenant-configured',
+        username: 'admin@example.com',
+        name: 'Admin Example',
+      },
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(acquireSilentGraphToken).mockResolvedValue({
+      accessToken: 'token-2',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'disconnected',
+      detail: 'Exchange session host is not running.',
+      runtime: null,
+      userPrincipalName: null,
+      connectionId: null,
+      tenantId: null,
+      tokenStatus: null,
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+    vi.mocked(updateGraphGuestCompany).mockResolvedValue({
+      guestUserId: 'guest-1',
+      companyName: 'Guest Co',
+      verification: {
+        attempted: true,
+        foundGuest: true,
+        companyApplied: true,
+        detail: 'Verified guest company update.',
+      },
+    });
+
+    await manager.connect();
+    const result = await manager.updateGuestCompany({
+      guestUserId: 'guest-1',
+      companyName: 'Guest Co',
+    });
+
+    expect(result.verification.companyApplied).toBe(true);
   });
 });
