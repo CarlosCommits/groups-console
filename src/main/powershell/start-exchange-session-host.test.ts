@@ -12,7 +12,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 vi.mock('@/main/app/paths', () => ({
-  getRadAppPowerShellAssetRoot: () => 'C:\\RADApp\\powershell',
+  getRadAppPowerShellAssetRoot: () => 'C:\\GroupsConsole\\powershell',
 }));
 
 import { startExchangeSessionHost } from './start-exchange-session-host';

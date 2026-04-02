@@ -119,7 +119,7 @@ switch ($CommandName) {
     }
 
     default {
-        Write-Error "Unknown RAD-app worker command: $CommandName"
+        Write-Error "Unknown Groups Console worker command: $CommandName"
         exit 1
     }
 }

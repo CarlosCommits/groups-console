@@ -84,7 +84,7 @@ export async function getExchangeCapabilities(): Promise<ExchangeCapabilities> {
       : parsed.status;
   const normalizedDetail =
     parsed.status === 'ready' && execution.runtime.command !== 'powershell.exe'
-      ? `${parsed.detail} PowerShell 7 is usable, but RAD App currently treats Windows PowerShell 5.1 as the preferred Exchange runtime.`
+      ? `${parsed.detail} PowerShell 7 is usable, but Groups Console currently treats Windows PowerShell 5.1 as the preferred Exchange runtime.`
       : parsed.detail;
 
   return exchangeCapabilitiesSchema.parse({

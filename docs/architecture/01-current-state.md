@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Document how RAD-app works today so v2 preserves the useful behavior, removes the risky parts, and avoids accidental regressions.
+Document how Groups Console works today so v2 preserves the useful behavior, removes the risky parts, and avoids accidental regressions.
 
 ## Current repository shape
 
-- `RAD app.ps1` — single monolithic PowerShell script
+- `groups-console.ps1` — single monolithic PowerShell script
 - `README.md` — user-facing setup and usage notes
 
 ## Current workflows

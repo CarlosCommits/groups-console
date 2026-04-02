@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how RAD-app v2 will be verified before and during rollout.
+Define how Groups Console v2 will be verified before and during rollout.
 
 ## Testing principles
 
