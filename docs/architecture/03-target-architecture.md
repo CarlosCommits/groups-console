@@ -97,12 +97,17 @@ docs/
 ### Primary screens
 
 1. Dashboard / connection status
-2. Groups explorer
-3. Group membership editor
-4. Contacts workspace
-5. Guest users workspace
-6. Reports / exports
-7. Settings / diagnostics
+2. Groups workspace
+3. Directory workspace
+4. Reports / exports
+5. Settings / diagnostics
+
+### Workspace model
+
+- **Groups** is the primary operational workspace and contains both group browsing and membership editing.
+- **Directory** is the unified people/recipient workspace and replaces separate top-level Contacts, Guests, and Recipients pages.
+- `recipients.search` is a shared backend capability, not a separate primary destination.
+- Contacts and guests should appear as filtered modes or tabs inside Directory rather than separate top-level pages.
 
 ### UX expectations
 
@@ -111,6 +116,8 @@ docs/
 - explicit dry-run or preflight messaging before writes
 - clear distinction between success, partial success, and blocked operations
 - first-class bulk membership workflow: select one subject, select many groups, review changes, then execute with per-group results
+- one unified recipient search surface with a single results table and explicit Type and Source columns
+- type-aware actions inside Directory so contact and guest workflows remain focused without fragmenting navigation
 
 ## Job model
 
