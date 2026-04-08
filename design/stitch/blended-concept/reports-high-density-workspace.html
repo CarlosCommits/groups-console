@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reports - Groups Console</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#f7f9fb",
+                        "on-primary-container": "#f4fffc",
+                        "surface-container-highest": "#e0e3e5",
+                        "error": "#ba1a1a",
+                        "outline": "#6d7a77",
+                        "secondary-fixed-dim": "#80d5cb",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#d8dadc",
+                        "primary-fixed": "#89f5e7",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-variant": "#e0e3e5",
+                        "on-surface-variant": "#3d4947",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#773215",
+                        "inverse-primary": "#6bd8cb",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#370e00",
+                        "secondary-fixed": "#9cf2e8",
+                        "on-primary-fixed": "#00201d",
+                        "on-secondary-fixed": "#00201d",
+                        "tertiary": "#924628",
+                        "primary": "#00685f",
+                        "on-secondary-container": "#006f67",
+                        "on-background": "#191c1e",
+                        "on-secondary-fixed-variant": "#00504a",
+                        "tertiary-fixed": "#ffdbce",
+                        "secondary": "#006a63",
+                        "on-surface": "#191c1e",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#006a61",
+                        "inverse-surface": "#2d3133",
+                        "background": "#f7f9fb",
+                        "tertiary-container": "#b05e3d",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "secondary-container": "#99efe5",
+                        "surface-container": "#eceef0",
+                        "surface-bright": "#f7f9fb",
+                        "on-primary-fixed-variant": "#005049",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-error": "#ffffff",
+                        "primary-container": "#008378",
+                        "outline-variant": "#bcc9c6",
+                        "surface-container-high": "#e6e8ea"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<aside class="h-screen w-64 fixed left-0 top-0 bg-white border-r border-slate-100 flex flex-col py-6 px-4 z-50">
+<div class="mb-10 px-2">
+<span class="text-xl font-bold text-teal-800 font-headline">Groups Console</span>
+<p class="text-[10px] text-slate-500 font-inter tracking-wide mt-0.5">System Management</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:text-teal-600 hover:bg-slate-50 transition-colors font-manrope tracking-tight font-semibold" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span class="text-sm">Dashboard</span></a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:text-teal-600 hover:bg-slate-50 transition-colors font-manrope tracking-tight font-semibold" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span class="text-sm">Groups</span></a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:text-teal-600 hover:bg-slate-50 transition-colors font-manrope tracking-tight font-semibold" href="#"><span class="material-symbols-outlined text-[20px]">folder_shared</span><span class="text-sm">Directory</span></a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-teal-50 text-teal-700 font-bold font-manrope tracking-tight" href="#"><span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">analytics</span><span class="text-sm">Reports</span></a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:text-teal-600 hover:bg-slate-50 transition-colors font-manrope tracking-tight font-semibold" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="text-sm">Settings</span></a>
+</nav>
+<div class="mt-auto pt-6 px-2 flex items-center gap-3 border-t border-slate-50">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden"><img alt="Admin User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDesrgZ3pkCAG7wSBBum70wQRvVm9_hJ9FRnfUsol47Furf8PafI7Y1vwZTKbMjQjNO5SOfZs7nuli9zgoY5aMiYUTtSAIeG-AwAchGXs6bLm6mRNwoI2rYDguyBKjQP-ilFd3IK_ly18a0igkHGSDTcXONdWxayL2fKKiydkO_51QJWTNFoLQ40aCHFr7M5vDWVLFtwpKMexEdhlXADIjwSwghXEr_lO8S9f-4iOnirnWejBh_KVy0PtllCO3kqxzoXWpAkLbnMbU4"/></div>
+<div><p class="text-xs font-bold text-slate-700">Admin User</p><p class="text-[9px] uppercase tracking-widest text-slate-500">Superuser</p></div>
+</div>
+</aside>
+<header class="ml-64 sticky top-0 bg-white/90 backdrop-blur-md flex justify-between items-center h-14 px-8 z-40 border-b border-slate-100 font-inter text-sm">
+<div class="flex items-center gap-4 flex-1"><div class="relative w-full max-w-sm"><span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span><input class="w-full bg-slate-50 border border-slate-200 rounded-md pl-9 py-1.5 focus:ring-1 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-xs text-slate-700" placeholder="Search reports..." type="text"/></div></div>
+<div class="flex items-center gap-5"><div class="flex items-center gap-3 text-slate-400"><span class="material-symbols-outlined cursor-pointer hover:text-teal-600 text-lg">notifications</span><span class="material-symbols-outlined cursor-pointer hover:text-teal-600 text-lg">settings_input_component</span><span class="material-symbols-outlined cursor-pointer hover:text-teal-600 text-lg">cloud_done</span></div><div class="h-4 w-[1px] bg-slate-200"></div><div class="flex gap-4 text-[11px]"><span class="text-slate-500 hover:text-teal-600 cursor-pointer">Exchange Active</span><span class="text-teal-700 font-semibold cursor-pointer">Graph Connected</span></div></div>
+</header>
+<main class="ml-64 p-6 bg-surface min-h-[calc(100vh-56px)]">
+<header class="mb-5 flex justify-between items-center"><div><h1 class="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Reports</h1><p class="text-xs text-slate-500 mt-0.5 font-inter">System health, activity audit, and directory analytics.</p></div><div class="flex gap-2"><button class="bg-white border border-slate-200 px-4 py-1.5 rounded-md text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors">Export CSV</button><button class="bg-primary px-4 py-1.5 rounded-md text-on-primary font-semibold text-xs shadow-sm hover:bg-primary-container transition-colors">Generate Audit</button></div></header>
+<div class="grid grid-cols-3 gap-4 mb-6">
+<div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4"><div class="w-10 h-10 rounded bg-teal-50 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-xl">health_and_safety</span></div><div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Directory Health</div><div class="flex items-center gap-2"><span class="text-lg font-bold text-on-surface">Stable</span><span class="text-[10px] font-bold text-primary px-1.5 py-0.5 bg-teal-50 rounded">98.2%</span></div></div></div>
+<div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4"><div class="w-10 h-10 rounded bg-teal-50 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-xl">monitoring</span></div><div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Active Groups</div><div class="flex items-center gap-2"><span class="text-lg font-bold text-on-surface">1,284</span><span class="text-[10px] font-bold text-tertiary px-1.5 py-0.5 bg-tertiary-fixed/30 rounded">+12%</span></div></div></div>
+<div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4"><div class="w-10 h-10 rounded bg-tertiary/10 flex items-center justify-center text-tertiary"><span class="material-symbols-outlined text-xl">report_problem</span></div><div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Critical Alerts</div><div class="flex items-center gap-2"><span class="text-lg font-bold text-on-surface">03</span><span class="text-[10px] font-medium text-slate-500">2m ago</span></div></div></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+<div class="lg:col-span-3">
+<div class="bg-white border border-slate-200 rounded-t-lg px-4 py-2.5 flex items-center justify-between"><div class="flex items-center gap-4"><span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Filters</span><div class="flex gap-2"><select class="bg-slate-50 border-slate-200 text-[11px] py-1 rounded-md focus:ring-teal-500 focus:border-teal-500"><option>Last 24 Hours</option><option>Last 7 Days</option><option>Custom Range</option></select><select class="bg-slate-50 border-slate-200 text-[11px] py-1 rounded-md focus:ring-teal-500 focus:border-teal-500"><option>All Statuses</option><option>Success</option><option>Warning</option><option>Pending</option></select><select class="bg-slate-50 border-slate-200 text-[11px] py-1 rounded-md focus:ring-teal-500 focus:border-teal-500"><option>Event Type: All</option><option>Sync</option><option>Security</option><option>Cleanup</option></select></div></div><button class="text-primary text-[11px] font-bold uppercase tracking-widest hover:underline">Clear All</button></div>
+<div class="bg-white border-x border-b border-slate-200 rounded-b-lg overflow-hidden shadow-sm"><div class="overflow-x-auto"><table class="w-full text-left font-body"><thead><tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider"><th class="px-5 py-2 font-bold">Event / Source</th><th class="px-5 py-2 font-bold">Status</th><th class="px-5 py-2 font-bold text-right">Timestamp</th></tr></thead><tbody class="divide-y divide-slate-100"><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-primary">sync</span><div><div class="text-[12px] font-semibold text-slate-800">Directory Sync Initiated</div><div class="text-[10px] text-slate-400">Azure AD Connector</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-teal-50 text-teal-700">Success</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Today, 09:42 AM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-slate-400">person_add</span><div><div class="text-[12px] font-semibold text-slate-800">Bulk Group Assignment</div><div class="text-[10px] text-slate-400">m.weaver@console.com</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-100 text-slate-600">Pending</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Today, 08:15 AM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">security</span><div><div class="text-[12px] font-semibold text-slate-800">Policy Breach Detected</div><div class="text-[10px] text-slate-400">Node: US-EAST-02</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-tertiary-fixed/30 text-on-tertiary-fixed">Warning</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Yesterday, 11:59 PM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-primary">rule</span><div><div class="text-[12px] font-semibold text-slate-800">Automatic Cleanup Task</div><div class="text-[10px] text-slate-400">42 Orphaned Groups Removed</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-teal-50 text-teal-700">Success</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Yesterday, 06:00 PM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-primary">settings_backup_restore</span><div><div class="text-[12px] font-semibold text-slate-800">Schema Cache Refresh</div><div class="text-[10px] text-slate-400">Internal System Trigger</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-teal-50 text-teal-700">Success</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Yesterday, 04:30 PM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-slate-400">admin_panel_settings</span><div><div class="text-[12px] font-semibold text-slate-800">Admin Role Update</div><div class="text-[10px] text-slate-400">Admin: l.chen@console.com</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-teal-50 text-teal-700">Success</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Yesterday, 02:15 PM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-primary">folder_managed</span><div><div class="text-[12px] font-semibold text-slate-800">Domain Migration Scan</div><div class="text-[10px] text-slate-400">Migration Script V2</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-slate-100 text-slate-600">Pending</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Yesterday, 11:00 AM</td></tr><tr class="hover:bg-teal-50/30 transition-colors"><td class="px-5 py-2"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">error_outline</span><div><div class="text-[12px] font-semibold text-slate-800">API Gateway Timeout</div><div class="text-[10px] text-slate-400">Endpoint: /v1/groups/sync</div></div></div></td><td class="px-5 py-2"><span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-tertiary-fixed/30 text-on-tertiary-fixed">Warning</span></td><td class="px-5 py-2 text-right text-[11px] text-slate-500 font-medium">Yesterday, 09:45 AM</td></tr></tbody></table></div><div class="px-5 py-2 bg-slate-50/50 border-t border-slate-200 flex justify-between items-center"><span class="text-[10px] text-slate-500 font-medium">Showing 8 of 254 entries</span><div class="flex gap-2"><button class="text-[10px] font-bold text-slate-400 hover:text-primary">Previous</button><button class="text-[10px] font-bold text-primary">Next</button></div></div></div>
+</div>
+<div class="space-y-4">
+<div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm"><h3 class="text-xs font-bold text-slate-800 mb-4">Directory Distribution</h3><div class="space-y-3"><div><div class="flex justify-between text-[10px] mb-1"><span class="font-semibold text-slate-600">Azure AD</span><span class="text-slate-400">65%</span></div><div class="h-1 w-full bg-slate-100 rounded-full"><div class="h-full bg-primary rounded-full" style="width: 65%;"></div></div></div><div><div class="flex justify-between text-[10px] mb-1"><span class="font-semibold text-slate-600">Google Workspace</span><span class="text-slate-400">28%</span></div><div class="h-1 w-full bg-slate-100 rounded-full"><div class="h-full bg-secondary rounded-full" style="width: 28%;"></div></div></div></div></div>
+<div class="relative h-28 rounded-lg overflow-hidden border border-slate-200 group"><img alt="Data visualization" class="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 transition-all duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcFUExqGCLFpR1sdehu6CZNZB20hqkPwziUpUAGHYJfQpawEugBZC_QVmVZTmvLWnUoviuEoIiul7fI-DCoSyr4EyGgIU2ZBczGSFeiXkcIRgtTXh0gexPvGo3zG1TfkcI4s2VHADw43Uuf5YnoPQLmev4qpuRukvB-m2tZnqGlUPWIbZqyxbcULaAOAcJGKfNzFlfTop9atKKGLKu8jnJ3Z74oD4jk-wrZndmAGqMfvKg9Eg7vF0n9ZVPXoQpQc1UxlVnx0tadEHD"/><div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent p-3 flex flex-col justify-end"><p class="text-white text-[9px] font-bold uppercase tracking-widest">Q3 Security Review</p><p class="text-slate-300 text-[10px] leading-tight">Comprehensive report</p></div></div>
+<div class="bg-white rounded-lg border border-slate-200 p-4"><h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tasks</h3><ul class="space-y-2"><li class="flex items-center justify-between group cursor-pointer"><span class="text-[11px] font-medium text-slate-700 group-hover:text-primary">Refresh Cache</span><span class="material-symbols-outlined text-slate-300 text-[14px]">chevron_right</span></li><li class="flex items-center justify-between group cursor-pointer"><span class="text-[11px] font-medium text-slate-700 group-hover:text-primary">Prune Meta</span><span class="material-symbols-outlined text-slate-300 text-[14px]">chevron_right</span></li><li class="flex items-center justify-between group cursor-pointer"><span class="text-[11px] font-medium text-slate-700 group-hover:text-primary">Recalc Sizes</span><span class="material-symbols-outlined text-slate-300 text-[14px]">chevron_right</span></li></ul></div>
+</div>
+</div>
+</main>
+</body></html>
