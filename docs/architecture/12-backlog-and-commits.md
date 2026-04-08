@@ -39,13 +39,13 @@ Turn the architecture package into a practical execution order.
 - report generation
 - add/remove member flows
 - create contact
-- update company from spreadsheet
+- update contact company
 
 ### Epic 6 — expansion workflows
 
 - mail-enabled security group explorer
 - shared membership editor for DL + MESG
-- guest-aware recipient picker
+- unified directory workspace with guest-aware recipient picker
 
 ### Epic 7 — hardening
 
@@ -169,6 +169,7 @@ That slice validates the architecture before the first write-capable workflows a
 - guest lifecycle beyond invite and selected updates
 - centralized orchestration service
 - unattended jobs and scheduled reporting
+- spreadsheet-based company update workflow
 
 ## Acceptance criteria
 

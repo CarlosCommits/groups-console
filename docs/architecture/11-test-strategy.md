@@ -150,10 +150,11 @@ Use Playwright for Electron or equivalent to cover:
 
 - Tool: Playwright + Exchange worker integration test + overlap fixtures
 - Steps:
-  1. open Contacts
-  2. enter first name, last name, company, and target email
-  3. submit once with a unique email
-  4. submit once with an email already represented by a guest overlap fixture
+  1. open Directory
+  2. switch to the Contacts filter or Contacts tab
+  3. enter first name, last name, company, and target email
+  4. submit once with a unique email
+  5. submit once with an email already represented by a guest overlap fixture
 - Expected result:
   - unique email create succeeds
   - overlap case is blocked during preflight with specific explanation
@@ -162,26 +163,27 @@ Use Playwright for Electron or equivalent to cover:
 
 - Tool: Playwright + Graph adapter integration test
 - Steps:
-  1. open Guests
-  2. invite a new guest email
-  3. inspect resulting guest details view
+  1. open Directory
+  2. switch to the Guests filter or Guests tab
+  3. invite a new guest email
+  4. inspect resulting guest details view
 - Expected result:
   - operation routes to Graph adapter
   - created/invited guest appears in follow-up read
   - audit/log entry is written with safe metadata
 
-### QA-07: Bulk company update from spreadsheet
+### QA-07: Unified recipient search and type-aware actions
 
-- Tool: Playwright + fixture spreadsheet + Exchange worker integration test
+- Tool: Playwright + Exchange/Graph integration fixtures
 - Steps:
-  1. open Contacts bulk update screen
-  2. choose fixture spreadsheet
-  3. run preflight
-  4. confirm execution
+  1. open Directory
+  2. search for a term that returns Exchange and Graph-backed results
+  3. inspect the unified results table
+  4. verify type-aware actions for Contact and Guest rows
 - Expected result:
-  - rows with blank company are skipped correctly
-  - only eligible contacts are updated
-  - final summary contains updated, skipped, and failed counts
+  - one unified result table is used instead of separate search modes
+  - results clearly show Type and Source
+  - contact actions and guest actions are scoped correctly to the selected row type
 
 ### QA-08: Diagnostics bundle export
 
