@@ -74,6 +74,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/renderer/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+    },
+  },
+  {
     files: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'playwright.config.ts'],
     languageOptions: {
       globals: {
