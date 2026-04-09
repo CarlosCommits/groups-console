@@ -17,8 +17,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/renderer/components/ui/table";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/renderer/components/ui/card";
 import { Button } from "@/renderer/components/ui/button";
 import { AppShell, PageHeader, StatCard, StatusBadge } from "@/renderer/components/console";
+import {
+  CONSOLE_SURFACE_CARD,
+  CONSOLE_SURFACE_HEADER,
+  CONSOLE_SURFACE_HEADER_COMPACT,
+} from "@/renderer/components/console/surface-styles";
 import { cn } from "@/renderer/lib/utils";
 
 const recentActivity = [
@@ -67,11 +78,11 @@ const attentionItems = [
 ];
 
 const shortcuts = [
-  { icon: Users, label: "Open Groups" },
-  { icon: UserSearch, label: "Search Directory" },
-  { icon: Contact, label: "Create Contact" },
-  { icon: UserPlus, label: "Invite Guest" },
-  { icon: RefreshCw, label: "Refresh Sessions" },
+  { id: "open-groups", icon: Users, label: "Open Groups" },
+  { id: "search-directory", icon: UserSearch, label: "Search Directory" },
+  { id: "create-contact", icon: Contact, label: "Create Contact" },
+  { id: "invite-guest", icon: UserPlus, label: "Invite Guest" },
+  { id: "refresh-sessions", icon: RefreshCw, label: "Refresh Sessions" },
 ];
 
 export function DashboardScreen() {
@@ -104,140 +115,157 @@ export function DashboardScreen() {
             />
           </section>
 
-          <section className="bg-white border border-[var(--color-outline-variant)]/30 rounded-lg shadow-sm overflow-hidden">
-            <div className="px-4 py-2.5 bg-[var(--color-surface-container-low)] border-b border-[var(--color-outline-variant)]/20 flex items-center justify-between">
-              <h2 className="text-xs font-extrabold font-headline flex items-center gap-2 uppercase tracking-wide text-[var(--color-foreground)]">
+          <Card className={cn(CONSOLE_SURFACE_CARD, "overflow-hidden")}>
+            <CardHeader
+              className={cn(
+                CONSOLE_SURFACE_HEADER,
+                "bg-[var(--color-surface-container-low)] py-2.5"
+              )}
+            >
+              <CardTitle className="text-xs font-extrabold font-headline flex items-center gap-2 uppercase tracking-wide text-[var(--color-foreground)]">
                 <AlertCircle className="size-4 text-[var(--color-tertiary)]" />
                 Attention Required
-              </h2>
+              </CardTitle>
               <StatusBadge variant="warning" size="sm">
                 4 Pending Issues
               </StatusBadge>
-            </div>
-            <div className="divide-y divide-[var(--color-outline-variant)]/10">
-              {attentionItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded flex items-center justify-center",
-                        item.type === "error"
-                          ? "bg-[var(--color-error-container)]/20"
-                          : "bg-[var(--color-primary)]/10"
-                      )}
-                    >
-                      <item.icon
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-[var(--color-outline-variant)]/10">
+                {attentionItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
                         className={cn(
-                          "size-[18px]",
+                          "w-8 h-8 rounded flex items-center justify-center",
                           item.type === "error"
-                            ? "text-[var(--color-error)]"
-                            : "text-[var(--color-primary)]"
+                            ? "bg-[var(--color-error-container)]/20"
+                            : "bg-[var(--color-primary)]/10"
                         )}
-                      />
+                      >
+                        <item.icon
+                          className={cn(
+                            "size-[18px]",
+                            item.type === "error"
+                              ? "text-[var(--color-error)]"
+                              : "text-[var(--color-primary)]"
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold">{item.title}</h3>
+                        <p className="text-[11px] text-[var(--color-outline)]">
+                          {item.description}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xs font-bold">{item.title}</h3>
-                      <p className="text-[11px] text-[var(--color-outline)]">
-                        {item.description}
-                      </p>
-                    </div>
+                    <Button variant="outline" size="sm" className="text-[10px] font-bold">
+                      {item.action}
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" className="text-[10px] font-bold">
-                    {item.action}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          <section className="bg-white border border-[var(--color-outline-variant)]/30 rounded-lg shadow-sm">
-            <div className="px-4 py-3 border-b border-[var(--color-outline-variant)]/20 flex items-center justify-between">
-              <h2 className="text-sm font-extrabold font-headline">Recent Activity</h2>
+          <Card className={CONSOLE_SURFACE_CARD}>
+            <CardHeader className={CONSOLE_SURFACE_HEADER}>
+              <CardTitle className="text-sm font-extrabold font-headline">Recent Activity</CardTitle>
               <Button variant="ghost" size="sm" className="text-[11px] font-bold text-[var(--color-primary)]">
                 Full Audit Log
               </Button>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-full">Event</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentActivity.map((activity) => (
-                  <TableRow key={activity.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <activity.icon className="size-4 text-[var(--color-outline)]" />
-                        <div>
-                          <p className="text-[11px] font-bold">
-                            {activity.title}
-                          </p>
-                          <p className="text-[10px] text-[var(--color-outline)]">
-                            {activity.user} • {activity.time}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <StatusBadge
-                        variant={
-                          activity.status === "success" ? "success" : "error"
-                        }
-                        size="sm"
-                      >
-                        {activity.status === "success" ? "Success" : "Failed"}
-                      </StatusBadge>
-                    </TableCell>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-full">Event</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </section>
+                </TableHeader>
+                <TableBody>
+                  {recentActivity.map((activity) => (
+                    <TableRow key={activity.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <activity.icon className="size-4 text-[var(--color-outline)]" />
+                          <div>
+                            <p className="text-[11px] font-bold">
+                              {activity.title}
+                            </p>
+                            <p className="text-[10px] text-[var(--color-outline)]">
+                              {activity.user} • {activity.time}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <StatusBadge
+                          variant={
+                            activity.status === "success" ? "success" : "error"
+                          }
+                          size="sm"
+                        >
+                          {activity.status === "success" ? "Success" : "Failed"}
+                        </StatusBadge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="col-span-12 lg:col-span-4 space-y-5">
-          <section className="bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/10 rounded-lg p-4 shadow-sm">
-            <h2 className="text-xs font-extrabold uppercase tracking-widest text-[var(--color-primary)] mb-4 flex items-center gap-2">
-              <CheckCircle className="size-4" />
-              Operational Shortcuts
-            </h2>
-            <div className="space-y-2">
-              {shortcuts.map((shortcut, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border-[var(--color-outline-variant)]/30 hover:border-[var(--color-primary)]/40 hover:shadow-sm transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[var(--color-primary)]">
-                      <shortcut.icon className="size-5" />
+          <Card className={cn(CONSOLE_SURFACE_CARD, "bg-[var(--color-primary)]/5 border-[var(--color-primary)]/10")}>
+            <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
+              <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-[var(--color-primary)] flex items-center gap-2">
+                <CheckCircle className="size-4" />
+                Operational Shortcuts
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-4">
+              <div className="space-y-2">
+                {shortcuts.map((shortcut) => (
+                  <Button
+                    key={shortcut.id}
+                    variant="outline"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border-[var(--color-outline-variant)]/30 hover:border-[var(--color-primary)]/40 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[var(--color-primary)]">
+                        <shortcut.icon className="size-5" />
+                      </div>
+                      <span className="text-xs font-bold text-[var(--color-foreground)]">
+                        {shortcut.label}
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-[var(--color-foreground)]">
-                      {shortcut.label}
-                    </span>
-                  </div>
-                  <ChevronRight className="size-4 text-[var(--color-outline)]" />
-                </Button>
-              ))}
-            </div>
-          </section>
+                    <ChevronRight className="size-4 text-[var(--color-outline)]" />
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          <section className="bg-white border border-[var(--color-outline-variant)]/30 rounded-lg p-4">
-            <h2 className="text-xs font-bold mb-2">Admin Resources</h2>
-            <div className="space-y-1.5">
-              <Button variant="link" className="text-[11px] text-[var(--color-primary)] p-0 h-auto justify-start">
-                Naming Policy Guidelines
-              </Button>
-              <Button variant="link" className="text-[11px] text-[var(--color-primary)] p-0 h-auto justify-start">
-                Privileged Access Manual
-              </Button>
-            </div>
-          </section>
+          <Card className={CONSOLE_SURFACE_CARD}>
+            <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
+              <CardTitle className="text-xs font-bold">Admin Resources</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              <div className="space-y-1.5">
+                <Button variant="link" className="text-[11px] text-[var(--color-primary)] p-0 h-auto justify-start">
+                  Naming Policy Guidelines
+                </Button>
+                <Button variant="link" className="text-[11px] text-[var(--color-primary)] p-0 h-auto justify-start">
+                  Privileged Access Manual
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppShell>
