@@ -68,8 +68,8 @@ export function GroupsScreen() {
 
   return (
     <AppShell>
-      <div className="ml-60 pt-14 h-screen flex flex-col overflow-hidden">
-        <div className="flex flex-1 overflow-hidden">
+      <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+        <div className="flex flex-1 overflow-hidden rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
           <section className="w-80 flex flex-col bg-slate-50 border-r border-slate-200/50 flex-none h-full">
             <div className="p-4 bg-white border-b border-slate-200/50 flex-none">
               <div className="flex justify-between items-center mb-3">
@@ -137,7 +137,7 @@ export function GroupsScreen() {
             </div>
           </section>
 
-          <section className="flex-1 bg-[var(--color-surface)] flex flex-col overflow-hidden h-full">
+          <section className="flex-1 bg-[var(--color-surface)] flex flex-col overflow-hidden h-full min-w-0">
             <div className="p-6 bg-white border-b border-slate-200/50 flex-none">
               <div className="flex justify-between items-start">
                 <div className="flex gap-4">
