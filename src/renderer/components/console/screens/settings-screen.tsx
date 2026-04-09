@@ -109,7 +109,6 @@ export function SettingsScreen() {
           <div className="space-y-2 text-sm text-[var(--color-outline)]">
             <p>Groups Console v1.0.0</p>
             <p>Electron renderer process with secure IPC bridge</p>
-            <p className="text-xs">Built with React, shadcn/ui, and Tailwind CSS</p>
           </div>
         </div>
       </div>
