@@ -41,44 +41,47 @@ export function TableToolbar({
   );
 }
 
-export interface FilterTabsProps {
+export interface FilterSegmentedControlProps {
   tabs: { label: string; value: string; count?: number }[];
   activeTab: string;
   onTabChange: (value: string) => void;
   className?: string;
 }
 
-export function FilterTabs({
+export function FilterSegmentedControl({
   tabs,
   activeTab,
   onTabChange,
   className,
-}: FilterTabsProps) {
+}: FilterSegmentedControlProps) {
   return (
-    <div
+    <fieldset
       className={cn(
-        "flex bg-[var(--color-surface-container)] p-0.5 rounded-md flex-row",
+        "flex rounded-md bg-[var(--color-surface-container)] p-0.5",
         className
       )}
     >
-      {tabs.map((tab) => (
-        <button
-          key={tab.value}
-          onClick={() => onTabChange(tab.value)}
-          className={cn(
-            "px-2 py-1 text-[10px] font-semibold rounded transition-colors",
-            activeTab === tab.value
-              ? "bg-white text-[var(--color-primary)] shadow-sm"
-              : "text-slate-600 hover:text-[var(--color-primary)]"
-          )}
-        >
-          {tab.label}
-          {tab.count !== undefined && (
-            <span className="ml-1 text-[9px] text-slate-400">({tab.count})</span>
-          )}
-        </button>
-      ))}
-    </div>
+        <legend className="sr-only">View filters</legend>
+        {tabs.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            aria-pressed={activeTab === tab.value}
+            onClick={() => onTabChange(tab.value)}
+            className={cn(
+              "flex-none rounded px-2 py-1 text-[10px] font-semibold transition-colors",
+              activeTab === tab.value
+                ? "bg-white text-[var(--color-primary)] shadow-sm"
+                : "text-slate-600 hover:text-[var(--color-primary)]"
+            )}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className="ml-1 text-[9px] text-slate-400">({tab.count})</span>
+            )}
+          </button>
+        ))}
+    </fieldset>
   );
 }
 
