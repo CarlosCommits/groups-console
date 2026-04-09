@@ -263,14 +263,11 @@ export function GroupsScreen() {
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-2 pb-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                    <Input
-                      className="bg-slate-100 border-none text-[11px] rounded-full pl-7 pr-3 py-1 w-48"
-                      placeholder="Filter current list..."
-                      type="text"
-                    />
-                  </div>
+                  <Input
+                    className="bg-slate-100 border-none text-[11px] rounded-full pl-3 pr-3 py-1 w-48"
+                    placeholder="Filter current list..."
+                    type="text"
+                  />
                   <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger size="sm" className="bg-white border-slate-200 text-[11px]">
                       <SelectValue />
