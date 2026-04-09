@@ -68,55 +68,32 @@ export function DirectoryScreen() {
 
   return (
     <AppShell>
-      <div className="pt-14 h-screen flex flex-col overflow-hidden">
-        <header className="flex justify-between items-center h-12 px-8 sticky top-0 z-20 bg-white border-b border-[var(--color-outline-variant)]/10">
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Workspace / Directory
-            </span>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4 text-slate-500 text-[10px]">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
-                Graph Connected
-              </span>
-              <span className="w-px h-3 bg-[var(--color-outline-variant)]/30" />
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
-                Active
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="size-7">
-                <span className="sr-only">Notifications</span>
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <div className="p-4 flex-1 overflow-hidden flex flex-col">
+      <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h1 className="text-xl font-extrabold font-headline tracking-tight text-[var(--color-foreground)]">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                Workspace / Directory
+              </p>
+              <h1 className="text-2xl font-extrabold font-headline tracking-tight text-[var(--color-foreground)]">
                 Directory Workspace
               </h1>
-              <p className="text-[10px] text-slate-500">
+              <p className="mt-1 max-w-3xl text-sm text-slate-500">
                 Manage users, cross-functional groups, and external guests in a high-density operational view.
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="text-[10px]">
+              <Button variant="outline" size="sm" className="text-xs font-semibold">
                 Export Registry
               </Button>
-              <Button size="sm" className="text-[10px]">
+              <Button size="sm" className="text-xs font-semibold">
                 <Plus className="size-3 mr-1" />
                 Create Identity
               </Button>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-[var(--color-outline-variant)]/20 overflow-hidden shadow-sm flex-1 flex flex-col">
+          <div className="bg-white rounded-xl border border-[var(--color-outline-variant)]/20 overflow-hidden shadow-sm flex-1 flex flex-col min-h-0">
             <TableToolbar
               searchPlaceholder="Search by name, email, or handle..."
               filters={
@@ -131,26 +108,26 @@ export function DirectoryScreen() {
               }
             />
 
-            <div className="overflow-x-auto flex-1 custom-scrollbar">
+            <div className="overflow-x-auto flex-1 custom-scrollbar min-h-0">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 border-b border-[var(--color-outline-variant)]/10">
-                    <TableHead className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider w-1/4">
+                    <TableHead className="w-[22%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Identity Name
                     </TableHead>
-                    <TableHead className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <TableHead className="w-[23%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Email / ID
                     </TableHead>
-                    <TableHead className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <TableHead className="w-[17%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Organization
                     </TableHead>
-                    <TableHead className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center">
+                    <TableHead className="w-[12%] text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Type
                     </TableHead>
-                    <TableHead className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <TableHead className="w-[12%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Source
                     </TableHead>
-                    <TableHead className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <TableHead className="w-[14%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Membership
                     </TableHead>
                     <TableHead className="text-right w-10"></TableHead>
@@ -169,43 +146,43 @@ export function DirectoryScreen() {
                               {item.initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs font-semibold text-[var(--color-foreground)] font-bold">
+                          <span className="text-sm font-semibold text-[var(--color-foreground)]">
                             {item.name}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-700">
+                      <TableCell className="text-sm text-slate-700 font-medium">
                         {item.email}
                         {item.emailSuffix && (
-                          <span className="text-[9px] text-slate-400 ml-1">
+                          <span className="ml-1 text-[10px] text-slate-400">
                             {item.emailSuffix}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-400 font-normal">
+                      <TableCell className="text-sm text-slate-500">
                         {item.organization}
                       </TableCell>
                       <TableCell className="text-center">
                         {item.type === "user" && (
-                          <Badge className="text-[9px] bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20">
+                          <Badge className="border border-teal-200 bg-teal-50 text-[11px] font-semibold text-[var(--color-primary)]">
                             ACTIVE USER
                           </Badge>
                         )}
                         {item.type === "group" && (
-                          <Badge variant="secondary" className="text-[9px]">
+                          <Badge className="border-transparent bg-[var(--color-primary)] text-white text-[11px] font-semibold">
                             GROUP
                           </Badge>
                         )}
                         {item.type === "guest" && (
-                          <Badge className="text-[9px] bg-[var(--color-tertiary-fixed)] text-[var(--color-tertiary-fixed)] border border-[var(--color-tertiary)]/20">
+                          <Badge className="border border-orange-200 bg-orange-50 text-[11px] font-semibold text-[var(--color-tertiary)]">
                             GUEST
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-500">
+                      <TableCell className="text-sm text-slate-600">
                         {item.source}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-400 font-normal">
+                      <TableCell className="text-sm text-slate-500">
                         {item.membership}
                       </TableCell>
                       <TableCell className="text-right">
@@ -223,7 +200,7 @@ export function DirectoryScreen() {
               </Table>
             </div>
 
-            <div className="mt-4 grid grid-cols-12 gap-3">
+            <div className="mt-3 grid grid-cols-12 gap-3">
               <div className="col-span-12 lg:col-span-8">
                 <div className="bg-white rounded-lg p-3 border border-[var(--color-outline-variant)]/20 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
@@ -244,13 +221,13 @@ export function DirectoryScreen() {
                             activity.type === "success" ? "bg-teal-500" : "bg-amber-500"
                           )}
                         />
-                        <span className="font-semibold w-28 shrink-0">
+                        <span className="w-32 shrink-0 text-[11px] font-semibold text-slate-700">
                           {activity.title}
                         </span>
-                        <span className="text-slate-500 truncate">
+                        <span className="truncate text-[11px] text-slate-500">
                           {activity.description}
                         </span>
-                        <span className="ml-auto text-[9px] text-slate-400 whitespace-nowrap">
+                        <span className="ml-auto whitespace-nowrap text-[10px] text-slate-400">
                           {activity.time}
                         </span>
                       </div>
