@@ -250,22 +250,6 @@ export function DashboardScreen() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className={CONSOLE_SURFACE_CARD}>
-            <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
-              <CardTitle className="text-xs font-bold">Admin Resources</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-2">
-              <div className="space-y-1.5">
-                <Button variant="link" className="text-[11px] text-[var(--color-primary)] p-0 h-auto justify-start">
-                  Naming Policy Guidelines
-                </Button>
-                <Button variant="link" className="text-[11px] text-[var(--color-primary)] p-0 h-auto justify-start">
-                  Privileged Access Manual
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </AppShell>
