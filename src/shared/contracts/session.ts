@@ -22,5 +22,6 @@ export const sessionStatusSchema = z.object({
   }),
 });
 
+export type BootstrapCheckStatus = z.infer<typeof bootstrapCheckStatusSchema>;
 export type SessionGetStatusPayload = z.infer<typeof sessionGetStatusPayloadSchema>;
 export type SessionStatusSchema = z.infer<typeof sessionStatusSchema>;
