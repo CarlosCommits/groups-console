@@ -1,7 +1,12 @@
 import { constants as fsConstants } from 'node:fs';
 import { access, mkdir, readFile } from 'node:fs/promises';
 
-import { getRadAppLogDirectory, getRadAppTenantConfigPath } from '@/main/app/paths';
+import {
+  getRadAppDevTenantConfigPath,
+  getRadAppLogDirectory,
+  getRadAppTenantConfigPath,
+} from '@/main/app/paths';
+import { isPackagedRuntime } from '@/main/app/runtime-mode';
 import type { BootstrapCheck } from '@/shared/dto/session-status';
 
 export type LocalBootstrapCheck = Pick<BootstrapCheck, 'status' | 'detail'>;
@@ -30,41 +35,64 @@ export async function checkLogDirectoryReadiness(
 export async function checkTenantConfigPresence(
   tenantConfigPath = getRadAppTenantConfigPath(),
 ): Promise<LocalBootstrapCheck> {
-  try {
-    await access(tenantConfigPath, fsConstants.R_OK);
-    const fileContents = await readFile(tenantConfigPath, 'utf8');
+  const candidatePaths = [tenantConfigPath];
 
-    if (!fileContents.trim()) {
+  if (!isPackagedRuntime()) {
+    const devTenantConfigPath = getRadAppDevTenantConfigPath();
+    if (devTenantConfigPath !== tenantConfigPath) {
+      candidatePaths.push(devTenantConfigPath);
+    }
+  }
+
+  let firstMissingPath: string | null = null;
+
+  for (const candidatePath of candidatePaths) {
+    try {
+      await access(candidatePath, fsConstants.R_OK);
+      const fileContents = await readFile(candidatePath, 'utf8');
+
+      if (!fileContents.trim()) {
+        return {
+          status: 'warning',
+          detail: `Tenant configuration exists at ${candidatePath} but is empty.`,
+        };
+      }
+
+      JSON.parse(fileContents);
+
+      return {
+        status: 'ready',
+        detail: `Tenant configuration is readable at ${candidatePath}.`,
+      };
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        firstMissingPath ??= candidatePath;
+        continue;
+      }
+
+      const message = error instanceof Error ? error.message : 'Unknown configuration error.';
+
       return {
         status: 'warning',
-        detail: `Tenant configuration exists at ${tenantConfigPath} but is empty.`,
+        detail: `Tenant configuration could not be read from ${candidatePath}: ${message}`,
       };
     }
+  }
 
-    JSON.parse(fileContents);
-
+  if (firstMissingPath) {
     return {
-      status: 'ready',
-      detail: `Tenant configuration is readable at ${tenantConfigPath}.`,
-    };
-  } catch (error) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      error.code === 'ENOENT'
-    ) {
-      return {
-        status: 'missing',
-        detail: `Tenant configuration was not found at ${tenantConfigPath}.`,
-      };
-    }
-
-    const message = error instanceof Error ? error.message : 'Unknown configuration error.';
-
-    return {
-      status: 'warning',
-      detail: `Tenant configuration could not be read from ${tenantConfigPath}: ${message}`,
+      status: 'missing',
+      detail: `Tenant configuration was not found at ${firstMissingPath}.`,
     };
   }
+
+  return {
+    status: 'warning',
+    detail: 'Tenant configuration could not be resolved.',
+  };
 }
