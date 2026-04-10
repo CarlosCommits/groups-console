@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ShellState } from "./app-context";
-import { deriveShellReadiness } from "./shell-readiness";
+import { deriveShellReadiness, deriveAuthSetupStep } from "./shell-readiness";
 
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
@@ -218,5 +218,85 @@ describe("deriveShellReadiness", () => {
     const shell = makeShell();
     const result = deriveShellReadiness(shell);
     expect(result.secondaryLine).toBe("No active session");
+  });
+
+  it("includes setupStep in deriveShellReadiness result", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph(),
+      exchangeConnection: makeExchange(),
+    });
+    const result = deriveShellReadiness(shell);
+    expect(result.setupStep).toBe("ready");
+  });
+});
+
+describe("deriveAuthSetupStep", () => {
+  it("returns graphNeeded when neither service is connected", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph({ state: "disconnected", exchangeAlignment: "unknown" }),
+      exchangeConnection: makeExchange({ state: "disconnected" }),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("graphNeeded");
+  });
+
+  it("returns graphNeeded when both connections are null", () => {
+    const shell = makeShell();
+    expect(deriveAuthSetupStep(shell)).toBe("graphNeeded");
+  });
+
+  it("returns graphNeeded when Graph is in error state", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph({ state: "error", exchangeAlignment: "unknown" }),
+      exchangeConnection: makeExchange({ state: "disconnected" }),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("graphNeeded");
+  });
+
+  it("returns exchangeNeeded when Graph is connected but Exchange is disconnected", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph(),
+      exchangeConnection: makeExchange({ state: "disconnected" }),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("exchangeNeeded");
+  });
+
+  it("returns exchangeNeeded when Graph is connected but Exchange is in error state", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph(),
+      exchangeConnection: makeExchange({ state: "error" }),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("exchangeNeeded");
+  });
+
+  it("returns mismatched when both connected but exchangeAlignment is mismatched", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph({ exchangeAlignment: "mismatched" }),
+      exchangeConnection: makeExchange(),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("mismatched");
+  });
+
+  it("returns mismatched when both connected but exchangeAlignment is unknown", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph({ exchangeAlignment: "unknown" }),
+      exchangeConnection: makeExchange(),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("mismatched");
+  });
+
+  it("returns ready when both connected and exchangeAlignment is matched", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph(),
+      exchangeConnection: makeExchange(),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("ready");
+  });
+
+  it("returns graphNeeded when Exchange is connected but Graph is disconnected", () => {
+    const shell = makeShell({
+      graphConnection: makeGraph({ state: "disconnected", exchangeAlignment: "unknown" }),
+      exchangeConnection: makeExchange(),
+    });
+    expect(deriveAuthSetupStep(shell)).toBe("graphNeeded");
   });
 });

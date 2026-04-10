@@ -2,12 +2,45 @@ import type { ShellState } from "./app-context";
 
 export type ReadinessLevel = "signedOut" | "partial" | "ready";
 
+export type AuthSetupStep =
+  | "graphNeeded"
+  | "exchangeNeeded"
+  | "mismatched"
+  | "ready";
+
 export interface ShellReadinessSummary {
   readiness: ReadinessLevel;
   displayName: string;
   secondaryLine: string;
   graphConnected: boolean;
   exchangeActive: boolean;
+  setupStep: AuthSetupStep;
+}
+
+export function deriveAuthSetupStep(shell: ShellState): AuthSetupStep {
+  const graph = shell.graphConnection;
+  const exchange = shell.exchangeConnection;
+
+  const graphConnected = graph?.state === "connected";
+  const exchangeActive = exchange?.state === "connected";
+
+  if (!graphConnected) {
+    return "graphNeeded";
+  }
+
+  if (graphConnected && !exchangeActive) {
+    return "exchangeNeeded";
+  }
+
+  if (graphConnected && exchangeActive && graph?.exchangeAlignment === "matched") {
+    return "ready";
+  }
+
+  if (graphConnected && exchangeActive && graph?.exchangeAlignment !== "matched") {
+    return "mismatched";
+  }
+
+  return "graphNeeded";
 }
 
 export function deriveShellReadiness(shell: ShellState): ShellReadinessSummary {
@@ -42,11 +75,14 @@ export function deriveShellReadiness(shell: ShellState): ShellReadinessSummary {
     readiness = "partial";
   }
 
+  const setupStep = deriveAuthSetupStep(shell);
+
   return {
     readiness,
     displayName,
     secondaryLine,
     graphConnected,
     exchangeActive,
+    setupStep,
   };
 }
