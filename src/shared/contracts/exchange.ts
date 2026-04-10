@@ -220,6 +220,7 @@ export const groupsRemoveMembersResultSchema = z.object({
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
 export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
+export type ExchangeConnectionState = z.infer<typeof exchangeConnectionStateSchema>;
 export type ExchangeConnectionStatus = z.infer<typeof exchangeConnectionStatusSchema>;
 export type ExchangeListGroupsPayload = z.infer<typeof exchangeListGroupsPayloadSchema>;
 export type ExchangeGroupRef = z.infer<typeof exchangeGroupRefSchema>;
