@@ -15,7 +15,7 @@ export function getMainWindowOptions(): BrowserWindowConstructorOptions {
     title: 'Groups Console',
     backgroundColor: '#09090b',
     webPreferences: {
-      preload: path.join(__dirname, '../preload.js'),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
