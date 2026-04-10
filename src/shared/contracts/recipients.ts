@@ -57,6 +57,10 @@ export const recipientsSearchResultSchema = z.object({
   items: z.array(recipientSearchItemSchema),
 });
 
+export type RecipientSearchSource = z.infer<typeof recipientSearchSourceSchema>;
+export type RecipientSearchType = z.infer<typeof recipientSearchTypeSchema>;
+export type RecipientMembershipSupport = z.infer<typeof recipientMembershipSupportSchema>;
+export type RecipientSearchSourceStatus = z.infer<typeof recipientSearchSourceStatusSchema>;
 export type RecipientsSearchPayload = z.infer<typeof recipientsSearchPayloadSchema>;
 export type RecipientSearchItem = z.infer<typeof recipientSearchItemSchema>;
 export type RecipientsSearchResult = z.infer<typeof recipientsSearchResultSchema>;
