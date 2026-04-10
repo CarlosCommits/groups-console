@@ -1,25 +1,34 @@
 import { Search, Bell } from "lucide-react";
 import { cn } from "@/renderer/lib/utils";
-import { ConnectionStatus } from "./status-badge";
+import { ConnectionStatus, StatusBadge } from "./status-badge";
 import { Input } from "@/renderer/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/renderer/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/renderer/components/ui/avatar";
 import { Button } from "@/renderer/components/ui/button";
+import type { ReadinessLevel } from "./shell-readiness";
+
+const readinessConfig: Record<ReadinessLevel, { label: string; variant: "success" | "warning" | "error" }> = {
+  ready: { label: "Ready", variant: "success" },
+  partial: { label: "Partial", variant: "warning" },
+  signedOut: { label: "Signed out", variant: "error" },
+};
 
 export interface AppHeaderProps {
   graphConnected?: boolean;
   exchangeActive?: boolean;
+  readiness?: ReadinessLevel;
   userName?: string;
-  userAvatar?: string;
   className?: string;
 }
 
 export function AppHeader({
   graphConnected = false,
   exchangeActive = false,
+  readiness,
   userName = "Admin User",
-  userAvatar,
   className,
 }: AppHeaderProps) {
+  const readinessDisplay = readiness ? readinessConfig[readiness] : null;
+
   return (
     <header
       className={cn(
@@ -40,12 +49,16 @@ export function AppHeader({
           graphConnected={graphConnected}
           exchangeActive={exchangeActive}
         />
+        {readinessDisplay && (
+          <StatusBadge variant={readinessDisplay.variant} size="sm">
+            {readinessDisplay.label}
+          </StatusBadge>
+        )}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="size-4" />
           <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[var(--color-error)] rounded-full border-2 border-white" />
         </Button>
         <Avatar className="size-7">
-          <AvatarImage src={userAvatar} alt={userName} />
           <AvatarFallback className="text-xs">
             {userName
               .split(" ")
