@@ -32,5 +32,6 @@ export const tenantConfigSchema = z.object({
   }),
 });
 
+export type GraphConnectionState = z.infer<typeof graphConnectionStateSchema>;
 export type GraphConnectionStatus = z.infer<typeof graphConnectionStatusSchema>;
 export type TenantConfig = z.infer<typeof tenantConfigSchema>;
