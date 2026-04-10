@@ -12,6 +12,10 @@ export function getRadAppTenantConfigPath(): string {
   return path.join(getRadAppConfigDirectory(), 'tenant.json');
 }
 
+export function getRadAppDevTenantConfigPath(): string {
+  return path.join(app.getAppPath(), 'config', 'tenant.json');
+}
+
 export function getRadAppLogDirectory(): string {
   return path.join(app.getPath('userData'), 'logs');
 }
