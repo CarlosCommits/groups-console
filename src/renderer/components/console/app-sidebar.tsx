@@ -1,19 +1,17 @@
 import { CircleDot } from "lucide-react";
 import { cn } from "@/renderer/lib/utils";
 import { ConsoleNav } from "./nav";
-import { Avatar, AvatarFallback, AvatarImage } from "@/renderer/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/renderer/components/ui/avatar";
 
 export interface AppSidebarProps {
   userName?: string;
   userRole?: string;
-  userAvatar?: string;
   className?: string;
 }
 
 export function AppSidebar({
-  userName = "Admin User",
-  userRole = "System Admin",
-  userAvatar,
+  userName = "Not connected",
+  userRole = "No active session",
   className,
 }: AppSidebarProps) {
   return (
@@ -41,7 +39,6 @@ export function AppSidebar({
       <ConsoleNav />
       <div className="mt-auto px-2 py-3 border-t border-[var(--color-outline-variant)]/20 flex items-center gap-3">
         <Avatar className="size-8">
-          <AvatarImage src={userAvatar} alt={userName} />
           <AvatarFallback className="text-xs">
             {userName
               .split(" ")

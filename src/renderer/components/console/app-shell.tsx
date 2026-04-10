@@ -2,36 +2,38 @@ import * as React from "react";
 import { cn } from "@/renderer/lib/utils";
 import { AppSidebar } from "./app-sidebar";
 import { AppHeader } from "./app-header";
+import { useApp } from "./app-context";
+import { deriveShellReadiness } from "./shell-readiness";
 
 export interface AppShellProps {
   children: React.ReactNode;
-  graphConnected?: boolean;
-  exchangeActive?: boolean;
-  userName?: string;
-  userAvatar?: string;
   className?: string;
 }
 
 export function AppShell({
   children,
-  graphConnected = true,
-  exchangeActive = true,
-  userName = "Alex Rivera",
-  userAvatar,
   className,
 }: AppShellProps) {
+  const { shell } = useApp();
+  const hasResolvedShell =
+    shell.session !== null ||
+    shell.graphConnection !== null ||
+    shell.exchangeConnection !== null ||
+    shell.exchangeCapabilities !== null ||
+    shell.loadError !== null;
+  const summary = hasResolvedShell ? deriveShellReadiness(shell) : null;
+
   return (
     <div className={cn("min-h-screen bg-[var(--color-surface)]", className)}>
       <AppSidebar
-        userName={userName}
-        userRole="System Admin"
-        userAvatar={userAvatar}
+        userName={summary?.displayName ?? "Loading shell…"}
+        userRole={summary?.secondaryLine ?? "Loading application state"}
       />
       <AppHeader
-        graphConnected={graphConnected}
-        exchangeActive={exchangeActive}
-        userName={userName}
-        userAvatar={userAvatar}
+        graphConnected={summary?.graphConnected ?? false}
+        exchangeActive={summary?.exchangeActive ?? false}
+        readiness={summary?.readiness}
+        userName={summary?.displayName ?? "Loading shell"}
       />
       <main className="ml-60 pt-14 px-6 pb-6 min-h-screen">
         {children}

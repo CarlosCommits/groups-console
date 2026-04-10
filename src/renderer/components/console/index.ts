@@ -7,3 +7,6 @@ export { StatCard } from "./stat-card";
 export { StatusBadge, ConnectionStatus } from "./status-badge";
 export { TableToolbar, FilterSegmentedControl, TableFilterButton } from "./table-toolbar";
 export { AppProvider, useApp } from "./app-context";
+export type { ShellState } from "./app-context";
+export { deriveShellReadiness } from "./shell-readiness";
+export type { ReadinessLevel, ShellReadinessSummary } from "./shell-readiness";
