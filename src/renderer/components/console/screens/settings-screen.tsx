@@ -1,8 +1,4 @@
 import {
-  useState,
-  useEffect,
-} from "react";
-import {
   Shield,
   Lock,
   Unlock,
@@ -23,18 +19,6 @@ import { useApp } from "@/renderer/components/console";
 import type { BootstrapCheckStatus } from "@/shared/contracts/session";
 import type { GraphConnectionState } from "@/shared/contracts/graph";
 import type { ExchangeConnectionState } from "@/shared/contracts/exchange";
-
-type PendingAction =
-  | "graphConnect"
-  | "graphDisconnect"
-  | "exchangeConnect"
-  | "exchangeDisconnect"
-  | null;
-
-interface ActionErrors {
-  graph?: string;
-  exchange?: string;
-}
 
 interface SettingRowProps {
   label: string;
@@ -122,112 +106,27 @@ function exchangeStateToLabel(state: ExchangeConnectionState) {
 }
 
 export function SettingsScreen() {
-  const { shell, refreshShellState } = useApp();
+  const {
+    shell,
+    refreshShellState,
+    pendingAction,
+    actionErrors,
+    exchangeUpn,
+    setExchangeUpn,
+    connectGraph,
+    disconnectGraph,
+    connectExchange,
+    disconnectExchange,
+  } = useApp();
+
   const { session, graphConnection, exchangeConnection, isHydrating, loadError } = shell;
 
   const security = session?.security;
   const powershellCheck = session?.checks.find((c) => c.id === "powershell");
 
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [actionErrors, setActionErrors] = useState<ActionErrors>({});
-
-  const exchangeUpnPreset =
-    exchangeConnection?.userPrincipalName ??
-    graphConnection?.accountUsername ??
-    "";
-  const [exchangeUpn, setExchangeUpn] = useState(exchangeUpnPreset);
-
-  useEffect(() => {
-    setExchangeUpn((currentValue) => {
-      if (currentValue.trim().length > 0 && currentValue !== exchangeUpnPreset) {
-        return currentValue;
-      }
-
-      return exchangeUpnPreset;
-    });
-  }, [exchangeUpnPreset]);
-
-  const clearError = (key: keyof ActionErrors) => {
-    setActionErrors((prev) => {
-      if (prev[key]) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return prev;
-    });
-  };
-
-  const handleGraphConnect = async () => {
-    setPendingAction("graphConnect");
-    clearError("graph");
-    try {
-      const result = await window.radApp.graph.connect();
-      if (result.state === "error") {
-        setActionErrors((prev) => ({ ...prev, graph: result.detail }));
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Graph connect failed.";
-      setActionErrors((prev) => ({ ...prev, graph: message }));
-    } finally {
-      setPendingAction(null);
-      await refreshShellState();
-    }
-  };
-
-  const handleGraphDisconnect = async () => {
-    setPendingAction("graphDisconnect");
-    clearError("graph");
-    try {
-      const result = await window.radApp.graph.disconnect();
-      if (result.state === "error") {
-        setActionErrors((prev) => ({ ...prev, graph: result.detail }));
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Graph disconnect failed.";
-      setActionErrors((prev) => ({ ...prev, graph: message }));
-    } finally {
-      setPendingAction(null);
-      await refreshShellState();
-    }
-  };
-
-  const handleExchangeConnect = async () => {
-    setPendingAction("exchangeConnect");
-    clearError("exchange");
-    try {
-      const result = await window.radApp.exchange.connect(exchangeUpn.trim());
-      if (result.state === "error") {
-        setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Exchange connect failed.";
-      setActionErrors((prev) => ({ ...prev, exchange: message }));
-    } finally {
-      setPendingAction(null);
-      await refreshShellState();
-    }
-  };
-
-  const handleExchangeDisconnect = async () => {
-    setPendingAction("exchangeDisconnect");
-    clearError("exchange");
-    try {
-      const result = await window.radApp.exchange.disconnect();
-      if (result.state === "error") {
-        setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Exchange disconnect failed.";
-      setActionErrors((prev) => ({ ...prev, exchange: message }));
-    } finally {
-      setPendingAction(null);
-      await refreshShellState();
-    }
-  };
-
   const graphConnected = graphConnection?.state === "connected";
   const exchangeConnected = exchangeConnection?.state === "connected";
+  const isBusy = pendingAction !== null || isHydrating;
 
   return (
     <AppShell>
@@ -314,9 +213,9 @@ export function SettingsScreen() {
                      variant="outline"
                      size="sm"
                      className="h-7 gap-1 text-xs"
-                     disabled={pendingAction !== null || isHydrating}
+                     disabled={isBusy}
                      onClick={() => {
-                       void (graphConnected ? handleGraphDisconnect() : handleGraphConnect());
+                       void (graphConnected ? disconnectGraph() : connectGraph());
                      }}
                    >
                     {graphConnected ? (
@@ -356,15 +255,15 @@ export function SettingsScreen() {
                     placeholder="user@domain.com"
                     value={exchangeUpn}
                     onChange={(e) => setExchangeUpn(e.target.value)}
-                    disabled={pendingAction !== null || isHydrating}
+                    disabled={isBusy}
                   />
                    <Button
                      variant="outline"
                      size="sm"
                      className="h-7 gap-1 text-xs"
-                     disabled={pendingAction !== null || isHydrating || exchangeUpn.trim().length === 0}
+                     disabled={isBusy || exchangeUpn.trim().length === 0}
                      onClick={() => {
-                       void handleExchangeConnect();
+                       void connectExchange();
                      }}
                    >
                     <Plug className="size-3" />
@@ -378,9 +277,9 @@ export function SettingsScreen() {
                      variant="outline"
                      size="sm"
                      className="h-7 gap-1 text-xs"
-                     disabled={pendingAction !== null || isHydrating}
+                     disabled={isBusy}
                      onClick={() => {
-                       void handleExchangeDisconnect();
+                       void disconnectExchange();
                      }}
                    >
                     <Unplug className="size-3" />
