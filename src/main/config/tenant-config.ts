@@ -1,13 +1,41 @@
 import { access, readFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 
-import { getRadAppTenantConfigPath } from '@/main/app/paths';
+import {
+  getRadAppDevTenantConfigPath,
+  getRadAppTenantConfigPath,
+} from '@/main/app/paths';
+import { isPackagedRuntime } from '@/main/app/runtime-mode';
 import { tenantConfigSchema, type TenantConfig } from '@/shared/contracts/graph';
 
-export async function loadTenantConfig(): Promise<TenantConfig> {
-  const tenantConfigPath = getRadAppTenantConfigPath();
+async function resolveTenantConfigPath(): Promise<string> {
+  const primaryPath = getRadAppTenantConfigPath();
 
-  await access(tenantConfigPath, fsConstants.R_OK);
+  try {
+    await access(primaryPath, fsConstants.R_OK);
+    return primaryPath;
+  } catch (error) {
+    if (
+      typeof error !== 'object' ||
+      error === null ||
+      !('code' in error) ||
+      error.code !== 'ENOENT'
+    ) {
+      throw error;
+    }
+
+    if (isPackagedRuntime()) {
+      throw error;
+    }
+
+    const devFallbackPath = getRadAppDevTenantConfigPath();
+    await access(devFallbackPath, fsConstants.R_OK);
+    return devFallbackPath;
+  }
+}
+
+export async function loadTenantConfig(): Promise<TenantConfig> {
+  const tenantConfigPath = await resolveTenantConfigPath();
   const rawFile = await readFile(tenantConfigPath, 'utf8');
 
   return tenantConfigSchema.parse(JSON.parse(rawFile) as unknown);
