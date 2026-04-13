@@ -28,7 +28,6 @@ describe('graph contracts', () => {
       tenantId: 'tenant-configured',
       graph: {
         clientId: 'client-id',
-        redirectUri: 'msalclientid://auth',
         inviteRedirectUrl: 'https://example.com/invite-complete',
         authorityHost: 'https://login.microsoftonline.com',
         scopes: ['User.Read', 'User.Read.All', 'User.Invite.All'],
