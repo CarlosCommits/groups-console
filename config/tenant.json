@@ -2,7 +2,6 @@
   "tenantId": "90e9e865-badf-483e-b6ba-440486db0fd6",
   "graph": {
     "clientId": "25e921f9-8d01-4173-9b81-d0e3aa43d9a1",
-    "redirectUri": "https://login.microsoftonline.com/common/oauth2/nativeclient",
     "inviteRedirectUrl": "https://your-company-site.example.com"
   }
 }
