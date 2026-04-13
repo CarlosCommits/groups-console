@@ -23,7 +23,6 @@ const validTenantConfig = JSON.stringify({
   tenantId: 'tenant-configured',
   graph: {
     clientId: 'client-id',
-    redirectUri: 'msalclientid://auth',
     inviteRedirectUrl: 'https://example.com/invite-complete',
   },
 });
