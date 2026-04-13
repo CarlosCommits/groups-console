@@ -25,7 +25,6 @@ export const tenantConfigSchema = z.object({
   tenantId: z.string().min(1),
   graph: z.object({
     clientId: z.string().min(1),
-    redirectUri: z.string().url(),
     inviteRedirectUrl: z.string().url(),
     authorityHost: z.string().url().optional(),
     scopes: z.array(z.string().min(1)).min(1).optional(),
