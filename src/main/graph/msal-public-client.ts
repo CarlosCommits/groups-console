@@ -36,7 +36,6 @@ export async function acquireInteractiveGraphToken(
 ): Promise<AuthenticationResult> {
   return await publicClient.acquireTokenInteractive({
     scopes: getGraphScopes(config),
-    redirectUri: config.graph.redirectUri,
     openBrowser: async (url: string) => {
       await shell.openExternal(url);
     },
