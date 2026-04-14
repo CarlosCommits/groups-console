@@ -172,6 +172,20 @@ Use Playwright for Electron or equivalent to cover:
   - created/invited guest appears in follow-up read
   - audit/log entry is written with safe metadata
 
+### QA-07: Add guest when contact and guest coexist
+
+- Tool: Playwright + Exchange worker integration test + Graph guest fixture
+- Steps:
+  1. open Groups
+  2. search for an external identity that exists as both a contact and a guest
+  3. select the guest entry, not the contact entry
+  4. submit add-members
+  5. re-open group membership and inspect the resulting member type
+- Expected result:
+  - the selected guest resolves to Exchange `GuestMailUser`
+  - the app does not treat the same-email contact as the selected principal
+  - per-item result reporting stays tied to the chosen principal identity
+
 ### QA-07: Unified recipient search and type-aware actions
 
 - Tool: Playwright + Exchange/Graph integration fixtures

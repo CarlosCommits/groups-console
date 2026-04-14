@@ -31,12 +31,14 @@ These items are in place and are not the focus of this document. They are listed
 - Recipient search/resolution foundation (`recipients.search`, internal `resolveRecipientForMembership`)
 - Graph foundation (`graph.connect`, `graph.getConnectionStatus`, `graph.disconnect`, `guests.search`, `guests.invite`, `guests.updateCompany`)
 - Contact company workflows (`contacts.create`, `contacts.updateCompany`)
+- Overlap-safe recipient preflight for contact create and guest invite, including typed conflict outcomes and Exchange/Graph ownership checks
 
 **Frontend surfaces:**
 
 - Shell and connection UX
 - Groups workspace with member reads and writes
 - Directory workspace with search, contact create/update, and guest invite/update
+- Directory conflict rendering for blocked contact/guest overlap outcomes
 - Dashboard with truthful connection status
 - Reports screen in deferred-state presentation
 
@@ -65,42 +67,41 @@ What is needed:
 
 ### 2. Guest membership execution path
 
-**Status:** partially missing
+**Status:** completed
 
-The resolution layer now recognizes guest candidates but intentionally defers them. The frontend can search for guests and display them, but adding a guest to a group is not yet possible.
+Guest candidates can now be selected in the Groups workflow and resolved into Exchange-visible `GuestMailUser` membership targets before the final Exchange write.
 
 Current reality:
 
-- `src/main/recipients/resolve-recipient-for-membership.ts` returns `graphDeferred` for guest candidates with the reason: "Guest membership support requires the future Graph-backed recipient resolver."
-- membership write commands (`groups.addMembers`, `groups.removeMembers`) operate only on Exchange-direct member refs
-- there is no backend bridge to turn a selected Graph guest into a safe Exchange membership target
+- `src/main/recipients/resolve-recipient-for-membership.ts` now resolves selected Graph guests by Graph object ID and Exchange `GuestMailUser` identity instead of returning `graphDeferred`
+- `groups.addMembers` accepts selected principal refs and resolves Graph guests to Exchange member refs in the main process before the Exchange write executes
+- the backend bridge validates guest object IDs as GUIDs, re-reads the Graph guest by ID, and resolves the matching Exchange `GuestMailUser`
+- the Groups UI now allows `graphBridgeable` guest selections while preserving selected-principal identity instead of collapsing everything to SMTP overlap
+- Exchange member reads now surface `guestMailUser` explicitly, including fallback external email display when `PrimarySmtpAddress` is blank
 
-What is needed:
+Follow-up that still remains outside this completed slice:
 
-- implement the bridge that resolves a Graph guest into an Exchange-visible membership target
-- update `resolveRecipientForMembership` to return a resolvable member ref for guests instead of `graphDeferred`
-- add preflight checks for guest membership that account for the dual-system identity model described in `07-validation-conflicts.md`
-- wire the frontend membership flows to accept guest candidates once the backend bridge exists
+- report/export still needs to cover guest-backed membership reads once the report backend is built
+- richer guest/detail read flows are still missing separate detail commands
 
 ### 3. Guest/contact overlap-safe validation and remediation
 
-**Status:** missing
+**Status:** completed
 
-The validation and conflict handling plan in `07-validation-conflicts.md` requires explicit overlap checks before creating a contact or inviting a guest. These cross-system checks are not yet enforced.
+The overlap-safe validation and conflict handling plan in `07-validation-conflicts.md` is now enforced for `contacts.create` and `guests.invite`. The application now fails closed with typed conflict outcomes instead of making unsafe cross-system assumptions.
 
 Current reality:
 
-- `contacts.create` only checks Exchange contact existence, not overlapping Graph guest users with the same email
-- `guests.invite` does not preflight for overlapping Exchange contacts or mail contacts before invitation
-- there is no single backend conflict service that explains dual representations of the same external email across Exchange and Graph
-- the conflict categories defined in `07-validation-conflicts.md` (`emailAlreadyOwned`, `guestContactOverlap`, `tenantMismatch`, `unsupportedRecipientType`, `existingMembership`, `eventualConsistencyDelay`) are not yet surfaced in the resolution or validation layer
+- `contacts.create` and `guests.invite` both run cross-system preflight before mutation
+- a dedicated backend conflict service now detects and explains overlap across Exchange and Graph for the same external email
+- typed `blockedConflict` outcomes are returned for blocked create/invite paths, including `emailAlreadyOwned`, `guestContactOverlap`, `tenantMismatch`, and `preflightUnavailable` cases
+- Exchange recipient ownership checks now cover direct recipient matches, mail contacts, and broader proxy-address overlap lookup before proceeding
+- the Directory workflow renders conflict details with record type/source context and blocks unsafe assumptions when overlap is detected
+- the coexistence rule is now asymmetric by design: guest invite is allowed over an existing contact, while contact creation remains blocked when a guest already exists
 
-What is needed:
+Follow-up that still remains outside this completed slice:
 
-- implement cross-system preflight checks in `contacts.create` and `guests.invite`
-- build a conflict resolution service that can detect and explain guest/contact overlap
-- surface conflict explanations in the renderer with the type and source of each overlapping record, as required by the overlap policy in `07-validation-conflicts.md`
-- block destructive assumptions when overlap is detected, rather than guessing
+- the broader failure/remediation taxonomy in `14-permission-matrix.md` still needs to be extended as later workflows land
 
 ### 4. Richer contact and guest detail reads
 
@@ -182,18 +183,21 @@ The capability matrix says mail contact list/search is supported. In practice th
 
 The remaining work items are interdependent. This order accounts for dependencies and risk.
 
-1. **Guest/contact overlap-safe conflict service** — unblocks safe contact creation and guest invitation, and is a prerequisite for the guest membership path
-2. **Guest membership execution path** — depends on the conflict service for safe resolution; completes the core membership workflow for guest users
-3. **Report and export backend** — independent of the guest path; completes the v1 parity feature set
-4. **Observability, audit, and diagnostics** — should be built alongside or immediately after the above, so that pilot workflows produce traceable logs and exportable diagnostics from the start
-5. **Richer contact and guest detail reads** — can be built in parallel with the report backend; not a blocker for core workflows but needed for full capability matrix coverage
-6. **Deeper permission and remediation classification** — grows incrementally as each workflow is implemented; the error classification framework should be wired early and extended as new workflows land
+1. **Report and export backend** — now the highest-impact missing slice; completes the v1 parity feature set
+2. **Observability, audit, and diagnostics** — should be built alongside or immediately after reports so pilot workflows produce traceable logs and exportable diagnostics from the start
+3. **Richer contact and guest detail reads** — can be built in parallel with the report backend; not a blocker for core workflows but needed for full capability matrix coverage
+4. **Deeper permission and remediation classification** — grows incrementally as each remaining workflow is implemented; the error classification framework should be wired early and extended as new workflows land
+
+Completed since the previous revision:
+
+- **Guest membership execution path** — shipped as Graph-objectId → Exchange `GuestMailUser` resolution with selected-principal preservation in group add flows
+- **Guest/contact overlap-safe conflict service** — shipped as typed cross-system preflight and renderer conflict remediation for `contacts.create` and `guests.invite`
 
 ## Acceptance criteria
 
 - Every item listed as "missing" in this document has either been implemented or has a tracked follow-up with clear scope.
-- The guest membership path resolves guest candidates to Exchange membership targets instead of returning `graphDeferred`.
-- Contact creation and guest invitation both run cross-system overlap checks before proceeding.
+- The guest membership path resolves guest candidates to Exchange membership targets instead of returning `graphDeferred`. **Completed.**
+- Contact creation and guest invitation both run cross-system overlap checks before proceeding. **Completed.**
 - The Reports screen is wired to a live export backend, not a deferred placeholder.
 - Structured logs are written for every mutation, and a diagnostics bundle can be exported without manual file hunting.
 - The permission matrix is updated as each new workflow is implemented.
