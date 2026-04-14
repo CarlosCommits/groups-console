@@ -2,11 +2,12 @@
 
 import type { ContactsCreatePayload, ContactsCreateResult, ContactsUpdateCompanyPayload, ContactsUpdateCompanyResult } from '@/shared/contracts/contacts';
 import type {
-  ExchangeCapabilities,
-  ExchangeConnectionStatus,
-  ExchangeGroupRef,
-  ExchangeListGroupsResult,
-  GroupMemberWriteRef,
+    ExchangeCapabilities,
+    ExchangeConnectionStatus,
+    ExchangeGroupRef,
+    ExchangeListGroupsResult,
+    GroupMemberSelectionRef,
+    GroupMemberWriteRef,
   GroupsAddMembersResult,
   GroupsGetMembersResult,
   GroupsRemoveMembersResult,
@@ -40,7 +41,7 @@ declare global {
         getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
         addMembers: (
           group: ExchangeGroupRef,
-          members: GroupMemberWriteRef[],
+          members: GroupMemberSelectionRef[],
         ) => Promise<GroupsAddMembersResult>;
         removeMembers: (
           group: ExchangeGroupRef,

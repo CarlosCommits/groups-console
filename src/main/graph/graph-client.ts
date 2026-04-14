@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type {
+  GuestSearchItem,
   GuestsInvitePayload,
   GuestsInviteResult,
   GuestsSearchPayload,
@@ -33,6 +34,7 @@ const graphUserSchema = z.object({
   otherMails: z.array(z.string()).optional(),
   companyName: z.string().nullable().optional(),
   externalUserState: z.string().nullable().optional(),
+  userType: z.string().nullable().optional(),
 });
 
 const graphUsersResponseSchema = z.object({
@@ -106,15 +108,7 @@ export async function searchGraphGuests(
         continue;
       }
 
-      items.push({
-        stableKey: `graph:objectId:${user.id}`,
-        objectId: user.id,
-        displayName: user.displayName ?? null,
-        primaryEmail: user.mail ?? user.otherMails?.[0] ?? null,
-        userPrincipalName: user.userPrincipalName ?? null,
-        companyName: user.companyName ?? null,
-        externalUserState: normalizeExternalUserState(user.externalUserState),
-      });
+      items.push(mapGraphUserToGuestSearchItem(user));
 
       if (items.length >= appliedLimit) {
         break;
@@ -129,6 +123,24 @@ export async function searchGraphGuests(
     appliedLimit,
     items,
   };
+}
+
+export async function getGraphGuestById(
+  accessToken: string,
+  guestObjectId: string,
+): Promise<GuestSearchItem> {
+  const payload = graphUserSchema.parse(
+    await graphFetchJson(
+      `https://graph.microsoft.com/v1.0/users/${guestObjectId}?$select=id,displayName,userPrincipalName,mail,otherMails,companyName,externalUserState,userType`,
+      accessToken,
+    ),
+  );
+
+  if (payload.userType !== 'Guest') {
+    throw new Error(`Graph object '${guestObjectId}' is not a guest user.`);
+  }
+
+  return mapGraphUserToGuestSearchItem(payload);
 }
 
 export async function findGraphGuestByEmail(
@@ -329,6 +341,18 @@ function matchesGuestQuery(user: GraphUser, query: string): boolean {
   );
 
   return candidates.some((value) => value.includes(query));
+}
+
+function mapGraphUserToGuestSearchItem(user: GraphUser): GuestSearchItem {
+  return {
+    stableKey: `graph:objectId:${user.id}`,
+    objectId: user.id,
+    displayName: user.displayName ?? null,
+    primaryEmail: user.mail ?? user.otherMails?.[0] ?? null,
+    userPrincipalName: user.userPrincipalName ?? null,
+    companyName: user.companyName ?? null,
+    externalUserState: normalizeExternalUserState(user.externalUserState),
+  };
 }
 
 function getGraphUserEmailCandidates(user: GraphUser): string[] {

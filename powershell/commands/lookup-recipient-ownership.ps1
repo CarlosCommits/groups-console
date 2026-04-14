@@ -110,6 +110,7 @@ function ConvertTo-RadAppOwnershipRecord {
         'EquipmentMailbox' { 'mailbox' }
         'MailContact' { 'mailContact' }
         'MailUser' { 'mailUser' }
+        'GuestMailUser' { 'guestMailUser' }
         'MailUniversalDistributionGroup' { 'distributionList' }
         'MailUniversalSecurityGroup' { 'mailEnabledSecurityGroup' }
         default { 'unknown' }
@@ -117,6 +118,9 @@ function ConvertTo-RadAppOwnershipRecord {
 
     $primaryEmail = if ($Recipient.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and $Recipient.PrimarySmtpAddress) {
         [string]$Recipient.PrimarySmtpAddress
+    }
+    elseif ($Recipient.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $Recipient.ExternalEmailAddress) {
+        Get-RadAppNormalizedExternalEmailAddress -MailContact $Recipient
     }
     elseif ($Recipient.PSObject.Properties.Name -contains 'WindowsEmailAddress' -and $Recipient.WindowsEmailAddress) {
         [string]$Recipient.WindowsEmailAddress

@@ -102,12 +102,7 @@ function Invoke-RadAppAddGroupMembers {
 
         $isAlreadyMember = $false
         foreach ($existingMember in $existingMembers) {
-            if ([string]$existingMember.Identity -eq $normalizedMember.exchangeIdentity) {
-                $isAlreadyMember = $true
-                break
-            }
-
-            if ($recipientPrimaryEmail -and $existingMember.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and [string]$existingMember.PrimarySmtpAddress -eq $recipientPrimaryEmail) {
+            if (Test-RadAppRecipientIdentityMatch -LeftRecipient $existingMember -RightMember $normalizedMember) {
                 $isAlreadyMember = $true
                 break
             }
@@ -156,12 +151,7 @@ function Invoke-RadAppAddGroupMembers {
         foreach ($addedMember in $addedMembers) {
             $isVerified = $false
             foreach ($verifiedMember in $verifiedMembers) {
-                if ([string]$verifiedMember.Identity -eq $addedMember.exchangeIdentity) {
-                    $isVerified = $true
-                    break
-                }
-
-                if ($addedMember.primaryEmail -and $verifiedMember.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and [string]$verifiedMember.PrimarySmtpAddress -eq $addedMember.primaryEmail) {
+                if (Test-RadAppRecipientIdentityMatch -LeftRecipient $verifiedMember -RightMember $addedMember) {
                     $isVerified = $true
                     break
                 }
@@ -208,4 +198,27 @@ function Invoke-RadAppAddGroupMembers {
             detail = "Verified $verifiedAdded added member(s); $verificationFailedCount member(s) could not be confirmed."
         }
     }
+}
+
+function Test-RadAppRecipientIdentityMatch {
+    param(
+        [Parameter(Mandatory = $true)]
+        $LeftRecipient,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$RightMember
+    )
+
+    $leftObjectId = $null
+    if ($LeftRecipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $LeftRecipient.ExternalDirectoryObjectId) {
+        $leftObjectId = [string]$LeftRecipient.ExternalDirectoryObjectId
+    }
+    elseif ($LeftRecipient.PSObject.Properties.Name -contains 'Guid' -and $LeftRecipient.Guid) {
+        $leftObjectId = [string]$LeftRecipient.Guid
+    }
+
+    if ($leftObjectId -and $RightMember.objectId -and $leftObjectId -eq [string]$RightMember.objectId) {
+        return $true
+    }
+
+    return [string]$LeftRecipient.Identity -eq [string]$RightMember.exchangeIdentity
 }

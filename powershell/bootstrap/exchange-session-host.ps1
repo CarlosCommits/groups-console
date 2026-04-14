@@ -2,6 +2,7 @@
 . "$PSScriptRoot\..\commands\connect-exchange.ps1"
 . "$PSScriptRoot\..\commands\disconnect-exchange.ps1"
 . "$PSScriptRoot\..\commands\lookup-recipient-ownership.ps1"
+. "$PSScriptRoot\..\commands\resolve-guest-mail-user.ps1"
 . "$PSScriptRoot\..\commands\create-contact.ps1"
 . "$PSScriptRoot\..\commands\update-contact-company.ps1"
 . "$PSScriptRoot\..\commands\add-group-member.ps1"
@@ -68,6 +69,9 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             }
             'lookupRecipientOwnership' {
                 $data = Invoke-RadAppLookupRecipientOwnership -Payload $payload
+            }
+            'resolveGuestMailUser' {
+                $data = Invoke-RadAppResolveGuestMailUser -Payload $payload
             }
             'updateContactCompany' {
                 $data = Invoke-RadAppUpdateContactCompany -Payload $payload

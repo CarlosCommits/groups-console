@@ -3,6 +3,7 @@ import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
 import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
 import type { ExchangeGroupRef } from '@/shared/contracts/exchange';
 import type { ExchangeListGroupsResult } from '@/shared/contracts/exchange';
+import type { GroupMemberSelectionRef } from '@/shared/contracts/exchange';
 import type { GroupMemberWriteRef } from '@/shared/contracts/exchange';
 import type { GroupsAddMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
@@ -37,7 +38,7 @@ declare global {
         getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
         addMembers: (
           group: ExchangeGroupRef,
-          members: GroupMemberWriteRef[],
+          members: GroupMemberSelectionRef[],
         ) => Promise<GroupsAddMembersResult>;
         removeMembers: (
           group: ExchangeGroupRef,

@@ -65,16 +65,33 @@ function Invoke-RadAppGetGroupMembers {
                 'EquipmentMailbox' { 'mailbox' }
                 'MailContact' { 'mailContact' }
                 'MailUser' { 'mailUser' }
+                'GuestMailUser' { 'guestMailUser' }
                 'MailUniversalDistributionGroup' { 'distributionList' }
                 'MailUniversalSecurityGroup' { 'mailEnabledSecurityGroup' }
                 default { 'unknown' }
+            }
+
+            $primaryEmail = if ($member.PrimarySmtpAddress) {
+                [string]$member.PrimarySmtpAddress
+            }
+            elseif ($member.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $member.ExternalEmailAddress) {
+                $rawExternalEmail = $member.ExternalEmailAddress.ToString()
+                if ($rawExternalEmail -match '^(?i)smtp:(.+)$') {
+                    $Matches[1]
+                }
+                else {
+                    $rawExternalEmail
+                }
+            }
+            else {
+                $null
             }
 
             @{
                 objectId = $objectId
                 exchangeIdentity = [string]$member.Identity
                 displayName = [string]$member.DisplayName
-                primaryEmail = if ($member.PrimarySmtpAddress) { [string]$member.PrimarySmtpAddress } else { $null }
+                primaryEmail = $primaryEmail
                 alias = if ($member.Alias) { [string]$member.Alias } else { $null }
                 recipientType = $recipientType
                 recipientTypeDetails = [string]$member.RecipientTypeDetails
