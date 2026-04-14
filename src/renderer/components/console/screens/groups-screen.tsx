@@ -64,6 +64,7 @@ import type {
   ExchangeGroupListItem,
   ExchangeGroupRef,
   GroupMemberListItem,
+  GroupMemberSelectionRef,
   GroupMemberWriteRef,
   GroupsAddMembersResult,
   GroupsRemoveMembersResult,
@@ -82,6 +83,7 @@ const RECIPIENT_TYPE_LABELS: Record<GroupMemberListItem["recipientType"], string
   mailbox: "Mailbox",
   mailContact: "Mail Contact",
   mailUser: "Mail User",
+  guestMailUser: "Guest Mail User",
   distributionList: "Distribution",
   mailEnabledSecurityGroup: "Security",
   unknown: "Unknown",
@@ -128,6 +130,7 @@ const RECIPIENT_SEARCH_TYPE_LABELS: Record<RecipientSearchType, string> = {
   mailbox: "Mailbox",
   mailContact: "Mail Contact",
   mailUser: "Mail User",
+  guestMailUser: "Guest Mail User",
   distributionList: "Distribution",
   mailEnabledSecurityGroup: "Security",
   guestUser: "Guest",
@@ -151,18 +154,27 @@ const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["s
 };
 
 function isCandidateSelectable(candidate: RecipientSearchItem): boolean {
-  return candidate.membershipSupport === "exchangeDirect" && candidate.exchangeIdentity !== null;
+  if (candidate.membershipSupport === "exchangeDirect" && candidate.exchangeIdentity !== null) {
+    return true;
+  }
+  if (candidate.membershipSupport === "graphBridgeable" && candidate.objectId !== null) {
+    return true;
+  }
+  return false;
 }
 
 function candidateDisableReason(candidate: RecipientSearchItem): string | null {
   if (candidate.membershipSupport === "graphDeferred") {
-    return "Deferred to Graph";
+    return "Requires Graph connection to add";
   }
   if (candidate.membershipSupport === "unsupported") {
-    return "Unsupported for Exchange membership";
+    return "Not eligible for group membership";
   }
-  if (candidate.exchangeIdentity === null) {
+  if (candidate.membershipSupport === "exchangeDirect" && candidate.exchangeIdentity === null) {
     return "No Exchange identity";
+  }
+  if (candidate.membershipSupport === "graphBridgeable" && candidate.objectId === null) {
+    return "No Graph object identity";
   }
   return null;
 }
@@ -179,6 +191,7 @@ const CANDIDATE_SEARCH_TYPES: RecipientSearchType[] = [
   "mailbox",
   "mailContact",
   "mailUser",
+  "guestMailUser",
   "distributionList",
   "mailEnabledSecurityGroup",
   "guestUser",
@@ -396,11 +409,23 @@ export function GroupsScreen() {
       (c) => isCandidateSelectable(c) && addSelectedKeys.has(c.stableKey),
     );
     if (selectable.length === 0) return;
-    const memberRefs: GroupMemberWriteRef[] = selectable.map((c) => ({
-      exchangeIdentity: c.exchangeIdentity!,
-      objectId: c.objectId,
-      primaryEmail: c.primaryEmail,
-    }));
+    const memberRefs: GroupMemberSelectionRef[] = selectable.map((c) => {
+      if (c.membershipSupport === "graphBridgeable") {
+        return {
+          kind: "graphGuest" as const,
+          objectId: c.objectId!,
+          primaryEmail: c.primaryEmail,
+          displayName: c.displayName,
+        };
+      }
+      return {
+        kind: "exchangeRecipient" as const,
+        exchangeIdentity: c.exchangeIdentity!,
+        objectId: c.objectId,
+        primaryEmail: c.primaryEmail,
+        displayName: c.displayName,
+      };
+    });
     const groupRef = groupRefFromListItem(selectedGroup);
     setAddPending(true);
     setAddError(null);
@@ -887,7 +912,7 @@ export function GroupsScreen() {
           <DialogHeader>
             <DialogTitle>Add Members to {selectedGroup?.displayName ?? "Group"}</DialogTitle>
             <DialogDescription>
-              Search for recipients to add to this group. Only recipients with Exchange Direct membership support can be selected.
+              Search for recipients to add to this group. Exchange Direct and Graph guest recipients can be selected.
             </DialogDescription>
           </DialogHeader>
 

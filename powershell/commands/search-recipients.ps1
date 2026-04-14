@@ -45,6 +45,7 @@ function Invoke-RadAppSearchRecipients {
             'EquipmentMailbox' { 'mailbox' }
             'MailContact' { 'mailContact' }
             'MailUser' { 'mailUser' }
+            'GuestMailUser' { 'guestMailUser' }
             'MailUniversalDistributionGroup' { 'distributionList' }
             'MailUniversalSecurityGroup' { 'mailEnabledSecurityGroup' }
             default { 'unknown' }
@@ -66,6 +67,10 @@ function Invoke-RadAppSearchRecipients {
 
         $primaryEmail = if ($recipient.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and $recipient.PrimarySmtpAddress) {
             [string]$recipient.PrimarySmtpAddress
+        }
+        elseif ($recipient.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $recipient.ExternalEmailAddress) {
+            $normalizedExternalEmail = Get-RadAppNormalizedExternalEmailAddress -MailContact $recipient
+            if ($normalizedExternalEmail) { $normalizedExternalEmail } else { $null }
         }
         elseif ($recipient.PSObject.Properties.Name -contains 'WindowsEmailAddress' -and $recipient.WindowsEmailAddress) {
             [string]$recipient.WindowsEmailAddress

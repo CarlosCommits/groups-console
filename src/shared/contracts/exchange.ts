@@ -30,6 +30,7 @@ export const groupMemberRecipientTypeSchema = z.enum([
   'mailbox',
   'mailContact',
   'mailUser',
+  'guestMailUser',
   'distributionList',
   'mailEnabledSecurityGroup',
   'unknown',
@@ -46,7 +47,63 @@ export const groupMemberWriteRefSchema = z
     primaryEmail: z.string().nullable(),
   })
   .strict();
+export const exchangeMemberSelectionRefSchema = z
+  .object({
+    kind: z.literal('exchangeRecipient'),
+    exchangeIdentity: z.string().min(1),
+    objectId: z.string().nullable(),
+    primaryEmail: z.string().nullable(),
+    displayName: z.string().min(1),
+  })
+  .strict();
+export const graphGuestMemberSelectionRefSchema = z
+  .object({
+    kind: z.literal('graphGuest'),
+    objectId: z.string().uuid(),
+    primaryEmail: z.string().nullable(),
+    displayName: z.string().min(1),
+  })
+  .strict();
+export const groupMemberSelectionRefSchema = z.discriminatedUnion('kind', [
+  exchangeMemberSelectionRefSchema,
+  graphGuestMemberSelectionRefSchema,
+]);
+export const guestMembershipTargetResultSchema = z
+  .object({
+    resolved: z.boolean(),
+    member: groupMemberWriteRefSchema.nullable(),
+    detail: z.string().min(1),
+  })
+  .strict();
 export const groupsAddMembersPayloadSchema = z
+  .object({
+    group: exchangeGroupRefSchema,
+    members: z.array(groupMemberSelectionRefSchema).min(1),
+    verify: z.literal(true),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const seen = new Set<string>();
+
+    value.members.forEach((member, index) => {
+      const key =
+        member.kind === 'exchangeRecipient'
+          ? `exchange:${member.exchangeIdentity.toLowerCase()}`
+          : `graph:${member.objectId.toLowerCase()}`;
+
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['members', index],
+          message: 'Duplicate member selections are not allowed.',
+        });
+        return;
+      }
+
+      seen.add(key);
+    });
+  });
+export const resolvedGroupsAddMembersPayloadSchema = z
   .object({
     group: exchangeGroupRefSchema,
     members: z.array(groupMemberWriteRefSchema).min(1),
@@ -230,7 +287,12 @@ export type GroupsGetMembersPayload = z.infer<typeof groupsGetMembersPayloadSche
 export type GroupMemberListItem = z.infer<typeof groupMemberListItemSchema>;
 export type GroupsGetMembersResult = z.infer<typeof groupsGetMembersResultSchema>;
 export type GroupMemberWriteRef = z.infer<typeof groupMemberWriteRefSchema>;
+export type ExchangeMemberSelectionRef = z.infer<typeof exchangeMemberSelectionRefSchema>;
+export type GraphGuestMemberSelectionRef = z.infer<typeof graphGuestMemberSelectionRefSchema>;
+export type GroupMemberSelectionRef = z.infer<typeof groupMemberSelectionRefSchema>;
+export type GuestMembershipTargetResult = z.infer<typeof guestMembershipTargetResultSchema>;
 export type GroupsAddMembersPayload = z.infer<typeof groupsAddMembersPayloadSchema>;
+export type ResolvedGroupsAddMembersPayload = z.infer<typeof resolvedGroupsAddMembersPayloadSchema>;
 export type GroupsAddMembersResult = z.infer<typeof groupsAddMembersResultSchema>;
 export type GroupsRemoveMembersPayload = z.infer<typeof groupsRemoveMembersPayloadSchema>;
 export type GroupsRemoveMembersResult = z.infer<typeof groupsRemoveMembersResultSchema>;

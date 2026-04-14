@@ -103,6 +103,7 @@ describe('recipientDirectory', () => {
 
     expect(result.sourceStatus.graph).toBe('searched');
     expect(result.items[0]?.source).toBe('graph');
+    expect(result.items[0]?.membershipSupport).toBe('graphBridgeable');
   });
 
   it('defers Graph guests when tenant alignment mismatches Exchange', async () => {

@@ -84,6 +84,7 @@ const TYPE_LABELS: Record<RecipientSearchType, string> = {
   mailbox: "MAILBOX",
   mailContact: "CONTACT",
   mailUser: "MAIL USER",
+  guestMailUser: "GUEST MAIL USER",
   distributionList: "GROUP",
   mailEnabledSecurityGroup: "SECURITY GROUP",
   guestUser: "GUEST",
@@ -92,6 +93,7 @@ const TYPE_LABELS: Record<RecipientSearchType, string> = {
 
 const MEMBERSHIP_LABELS: Record<string, string> = {
   exchangeDirect: "Exchange Direct",
+  graphBridgeable: "Graph Bridgeable",
   graphDeferred: "Graph Deferred",
   unsupported: "Unsupported",
 };
