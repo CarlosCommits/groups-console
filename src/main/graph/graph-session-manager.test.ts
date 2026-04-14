@@ -213,6 +213,7 @@ describe('GraphSessionManager', () => {
       connectedAtUtc: null,
     });
     vi.mocked(inviteGraphGuest).mockResolvedValue({
+      outcome: 'invited',
       invitationId: 'invite-1',
       invitedUserId: 'guest-1',
       invitedUserEmail: 'guest@example.com',
@@ -235,6 +236,11 @@ describe('GraphSessionManager', () => {
 
     await manager.connect();
     const result = await manager.inviteGuest({ email: 'guest@example.com' });
+
+    expect(result.outcome).toBe('invited');
+    if (result.outcome !== 'invited') {
+      throw new Error('Expected Graph session manager to return an invited guest result.');
+    }
 
     expect(result.invitedUserId).toBe('guest-1');
   });

@@ -8,6 +8,7 @@ import type {
   GuestsUpdateCompanyPayload,
   GuestsUpdateCompanyResult,
 } from '@/shared/contracts/guests';
+import type { RecipientConflictRecord } from '@/shared/contracts/conflicts';
 
 const graphOrganizationSchema = z.object({
   value: z.array(
@@ -130,6 +131,42 @@ export async function searchGraphGuests(
   };
 }
 
+export async function findGraphGuestByEmail(
+  accessToken: string,
+  email: string,
+): Promise<RecipientConflictRecord | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const escapedEmail = normalizedEmail.replace(/'/g, "''");
+  const encodedFilter = encodeURIComponent(
+    `userType eq 'Guest' and (mail eq '${escapedEmail}' or otherMails/any(x:x eq '${escapedEmail}'))`,
+  );
+  const payload = graphUsersResponseSchema.parse(
+    await graphFetchJson(
+      `https://graph.microsoft.com/v1.0/users?$filter=${encodedFilter}&$select=id,displayName,userPrincipalName,mail,otherMails,companyName,externalUserState&$top=10`,
+      accessToken,
+    ),
+  );
+  const exactMatch = payload.value.find((user) => getGraphUserEmailCandidates(user).includes(normalizedEmail));
+
+  if (!exactMatch) {
+    return null;
+  }
+
+  const alternateEmails = Array.from(new Set(getGraphUserEmailCandidates(exactMatch)));
+
+  return {
+    source: 'graph',
+    recipientType: 'guestUser',
+    objectId: exactMatch.id,
+    exchangeIdentity: null,
+    userPrincipalName: exactMatch.userPrincipalName ?? null,
+    displayName:
+      exactMatch.displayName ?? exactMatch.mail ?? exactMatch.userPrincipalName ?? normalizedEmail,
+    primaryEmail: exactMatch.mail?.toLowerCase() ?? normalizedEmail,
+    alternateEmails,
+  };
+}
+
 function normalizeExternalUserState(
   externalUserState: string | null | undefined,
 ): 'PendingAcceptance' | 'Accepted' | 'unknown' {
@@ -202,6 +239,7 @@ export async function inviteGraphGuest(
     );
 
     return {
+      outcome: 'invited',
       invitationId: invitation.id,
       invitedUserId: invitation.invitedUser.id,
       invitedUserEmail: payload.email,
@@ -220,6 +258,7 @@ export async function inviteGraphGuest(
     };
   } catch {
     return {
+      outcome: 'invited',
       invitationId: invitation.id,
       invitedUserId: invitation.invitedUser.id,
       invitedUserEmail: payload.email,
@@ -285,14 +324,17 @@ export async function updateGraphGuestCompany(
 }
 
 function matchesGuestQuery(user: GraphUser, query: string): boolean {
-  const candidates = [
-    user.displayName ?? '',
-    user.mail ?? '',
-    user.userPrincipalName ?? '',
-    ...(user.otherMails ?? []),
-  ].map((value) => value.toLowerCase());
+  const candidates = [user.displayName ?? '', ...getGraphUserEmailCandidates(user)].map((value) =>
+    value.toLowerCase(),
+  );
 
   return candidates.some((value) => value.includes(query));
+}
+
+function getGraphUserEmailCandidates(user: GraphUser): string[] {
+  return [user.mail ?? '', user.userPrincipalName ?? '', ...(user.otherMails ?? [])]
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => value.length > 0);
 }
 
 async function graphFetchJson(

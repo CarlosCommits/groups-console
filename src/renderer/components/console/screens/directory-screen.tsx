@@ -8,6 +8,7 @@ import {
   Search,
   Info,
   CheckCircle2,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Table,
@@ -22,6 +23,8 @@ import { Badge } from "@/renderer/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/renderer/components/ui/avatar";
 import { Input } from "@/renderer/components/ui/input";
 import { Checkbox } from "@/renderer/components/ui/checkbox";
+import { Alert, AlertTitle, AlertDescription } from "@/renderer/components/ui/alert";
+import { Separator } from "@/renderer/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +99,14 @@ const MEMBERSHIP_LABELS: Record<string, string> = {
 const SOURCE_LABELS: Record<string, string> = {
   exchange: "Exchange",
   graph: "Graph",
+};
+
+const CONFLICT_CATEGORY_LABELS: Record<string, string> = {
+  emailAlreadyOwned: "Email Already Owned",
+  guestContactOverlap: "Guest/Contact Overlap",
+  tenantMismatch: "Tenant Mismatch",
+  eventualConsistencyDelay: "Eventual Consistency Delay",
+  preflightUnavailable: "Preflight Unavailable",
 };
 
 function getInitials(name: string): string {
@@ -368,15 +379,20 @@ export function DirectoryScreen() {
 
   const handleCreateClose = () => {
     if (createResult) {
-      const email =
-        createResult.mode === "contact"
-          ? createResult.data.contact.primaryEmail
-          : createResult.data.invitedUserEmail;
-      const nextTab = createResult.mode === "contact" ? "contacts" : "guests";
-      setActiveTab(nextTab);
-      if (email) {
-        setSearchText(email);
-        setEffectiveQuery(email);
+      if (createResult.mode === "contact" && createResult.data.outcome === "created") {
+        setActiveTab("contacts");
+        const email = createResult.data.contact.primaryEmail;
+        if (email) {
+          setSearchText(email);
+          setEffectiveQuery(email);
+        }
+      } else if (createResult.mode === "guest" && createResult.data.outcome === "invited") {
+        setActiveTab("guests");
+        const email = createResult.data.invitedUserEmail;
+        if (email) {
+          setSearchText(email);
+          setEffectiveQuery(email);
+        }
       }
     }
     setCreateDialogOpen(false);
@@ -699,17 +715,92 @@ export function DirectoryScreen() {
       <Dialog open={createDialogOpen} onOpenChange={(open) => { if (!open) handleCreateClose(); }}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Create Identity</DialogTitle>
+            <DialogTitle>
+              {createResult && createResult.data.outcome === "blockedConflict"
+                ? "Creation Blocked"
+                : "Create Identity"}
+            </DialogTitle>
             <DialogDescription>
               {createResult
-                ? "Identity created successfully."
+                ? createResult.data.outcome === "blockedConflict"
+                  ? "This identity could not be created due to a blocking conflict."
+                  : "Identity created successfully."
                 : "Create a new contact or invite a guest user to the directory."}
             </DialogDescription>
           </DialogHeader>
 
           {createResult ? (
             <div className="flex-1 overflow-y-auto space-y-2 py-2">
-              {createResult.mode === "contact" ? (
+              {createResult.data.outcome === "blockedConflict" ? (
+                <>
+                  <Alert variant="destructive">
+                    <ShieldAlert className="size-4" />
+                    <AlertTitle className="flex items-center gap-2">
+                      <Badge className="border border-red-200 bg-red-50 text-[11px] font-semibold text-red-700">
+                        {CONFLICT_CATEGORY_LABELS[createResult.data.conflict.category] ??
+                          createResult.data.conflict.category}
+                      </Badge>
+                    </AlertTitle>
+                    <AlertDescription>
+                      {createResult.data.conflict.message}
+                    </AlertDescription>
+                  </Alert>
+                  <div className="text-xs text-slate-600 bg-amber-50 rounded-md px-3 py-2">
+                    <span className="font-semibold">Guidance:</span>{" "}
+                    {createResult.data.conflict.guidance}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Target:{" "}
+                    <span className="font-medium text-slate-700">
+                      {createResult.data.conflict.targetEmail}
+                    </span>
+                  </div>
+                  {createResult.data.conflict.records.length > 0 && (
+                    <>
+                      <Separator />
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Conflicting Records
+                      </p>
+                      <div className="space-y-2">
+                        {createResult.data.conflict.records.map((record) => (
+                          <div
+                            key={`${record.displayName}-${record.source}`}
+                            className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md text-xs"
+                          >
+                            <Avatar className="w-6 h-6 text-[10px]">
+                              <AvatarFallback className={avatarColorFor(record.displayName)}>
+                                {getInitials(record.displayName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-slate-800 truncate">
+                                {record.displayName}
+                              </p>
+                              <p className="text-[11px] text-slate-500 truncate">
+                                {record.primaryEmail ??
+                                  record.userPrincipalName ??
+                                  record.exchangeIdentity ??
+                                  "\u2014"}
+                              </p>
+                            </div>
+                            <Badge
+                              className={cn(
+                                "shrink-0",
+                                typeBadgeClass(record.recipientType),
+                              )}
+                            >
+                              {TYPE_LABELS[record.recipientType]}
+                            </Badge>
+                            <span className="text-[11px] text-slate-400 shrink-0">
+                              {SOURCE_LABELS[record.source] ?? record.source}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : createResult.mode === "contact" ? (
                 <>
                   <div className="flex items-start gap-2 rounded-md px-3 py-2 text-xs bg-emerald-50 text-emerald-800">
                     <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />

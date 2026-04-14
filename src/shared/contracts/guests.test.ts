@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   guestsInvitePayloadSchema,
   guestsInviteResultSchema,
+  guestsInviteSuccessResultSchema,
   guestsSearchPayloadSchema,
   guestsSearchResultSchema,
   guestsUpdateCompanyPayloadSchema,
@@ -54,6 +55,7 @@ describe('guest contracts', () => {
     ).not.toThrow();
 
     const result = guestsInviteResultSchema.parse({
+      outcome: 'invited',
       invitationId: 'invite-1',
       invitedUserId: 'guest-1',
       invitedUserEmail: 'guest@example.com',
@@ -74,7 +76,36 @@ describe('guest contracts', () => {
       },
     });
 
-    expect(result.verification.foundGuest).toBe(true);
+    const blocked = guestsInviteResultSchema.parse({
+      outcome: 'blockedConflict',
+      conflict: {
+        action: 'guests.invite',
+        category: 'emailAlreadyOwned',
+        blocking: true,
+        targetEmail: 'guest@example.com',
+        message: 'A guest already exists for this email address.',
+        guidance: 'Use the existing guest account instead.',
+        records: [
+          {
+            source: 'graph',
+            recipientType: 'guestUser',
+            objectId: 'guest-1',
+            exchangeIdentity: null,
+            userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+            displayName: 'Guest Example',
+            primaryEmail: 'guest@example.com',
+            alternateEmails: ['guest@example.com'],
+          },
+        ],
+      },
+    });
+
+    expect(guestsInviteSuccessResultSchema.parse(result).verification.foundGuest).toBe(true);
+    expect(blocked.outcome).toBe('blockedConflict');
+    if (blocked.outcome !== 'blockedConflict') {
+      throw new Error('Expected blocked guest invite result.');
+    }
+    expect(blocked.conflict.category).toBe('emailAlreadyOwned');
 
     const updateResult = guestsUpdateCompanyResultSchema.parse({
       guestUserId: 'guest-1',
