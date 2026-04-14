@@ -18,11 +18,18 @@ function Invoke-RadAppConnectExchange {
         throw "Exchange Online is already connected as $($script:RadAppExchangeConnectionContext.UserPrincipalName). Disconnect first before connecting as a different user."
     }
 
-    Connect-ExchangeOnline `
-        -UserPrincipalName $userPrincipalName `
-        -ShowBanner:$false `
-        -SkipLoadingFormatData `
-        -DisableWAM
+    $connectExchangeCommand = Get-Command Connect-ExchangeOnline -ErrorAction Stop
+    $connectExchangeParameters = @{
+        UserPrincipalName     = $userPrincipalName
+        ShowBanner            = $false
+        SkipLoadingFormatData = $true
+    }
+
+    if ($connectExchangeCommand.Parameters.ContainsKey('DisableWAM')) {
+        $connectExchangeParameters.DisableWAM = $true
+    }
+
+    Connect-ExchangeOnline @connectExchangeParameters
 
     $connection = Get-ConnectionInformation -ErrorAction Stop | Select-Object -First 1
 
