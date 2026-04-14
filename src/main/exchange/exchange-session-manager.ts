@@ -24,6 +24,10 @@ import {
   type ContactsUpdateCompanyResult,
 } from '@/shared/contracts/contacts';
 import {
+  recipientConflictLookupResultSchema,
+  type RecipientConflictRecord,
+} from '@/shared/contracts/conflicts';
+import {
   recipientsSearchResultSchema,
   type RecipientsSearchPayload,
   type RecipientsSearchResult,
@@ -173,6 +177,22 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('createContact', payload as unknown as Record<string, unknown>);
 
       return contactsCreateResultSchema.parse(rawResult);
+    });
+  }
+
+  async lookupRecipientOwnershipByEmail(email: string): Promise<RecipientConflictRecord[]> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request(
+        'lookupRecipientOwnership' as Parameters<ExchangeSessionHost['request']>[0],
+        { email },
+      );
+      const result = recipientConflictLookupResultSchema.parse(rawResult);
+
+      return result.records;
     });
   }
 

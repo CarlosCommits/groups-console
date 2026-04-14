@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { recipientConflictSchema } from './conflicts';
+
 export const guestExternalUserStateSchema = z.enum([
   'PendingAcceptance',
   'Accepted',
@@ -38,7 +40,8 @@ export const guestsInvitePayloadSchema = z
   })
   .strict();
 
-export const guestsInviteResultSchema = z.object({
+export const guestsInviteSuccessResultSchema = z.object({
+  outcome: z.literal('invited'),
   invitationId: z.string().min(1),
   invitedUserId: z.string().min(1),
   invitedUserEmail: z.string().email(),
@@ -58,6 +61,18 @@ export const guestsInviteResultSchema = z.object({
     detail: z.string().min(1),
   }),
 });
+
+export const guestsInviteBlockedResultSchema = z.object({
+  outcome: z.literal('blockedConflict'),
+  conflict: recipientConflictSchema.extend({
+    action: z.literal('guests.invite'),
+  }),
+});
+
+export const guestsInviteResultSchema = z.discriminatedUnion('outcome', [
+  guestsInviteSuccessResultSchema,
+  guestsInviteBlockedResultSchema,
+]);
 
 export const guestsUpdateCompanyPayloadSchema = z
   .object({
@@ -81,6 +96,8 @@ export type GuestsSearchPayload = z.infer<typeof guestsSearchPayloadSchema>;
 export type GuestSearchItem = z.infer<typeof guestSearchItemSchema>;
 export type GuestsSearchResult = z.infer<typeof guestsSearchResultSchema>;
 export type GuestsInvitePayload = z.infer<typeof guestsInvitePayloadSchema>;
+export type GuestsInviteSuccessResult = z.infer<typeof guestsInviteSuccessResultSchema>;
+export type GuestsInviteBlockedResult = z.infer<typeof guestsInviteBlockedResultSchema>;
 export type GuestsInviteResult = z.infer<typeof guestsInviteResultSchema>;
 export type GuestsUpdateCompanyPayload = z.infer<typeof guestsUpdateCompanyPayloadSchema>;
 export type GuestsUpdateCompanyResult = z.infer<typeof guestsUpdateCompanyResultSchema>;
