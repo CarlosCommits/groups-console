@@ -4,6 +4,7 @@ import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connec
 import type { RecipientConflictRecord } from '@/shared/contracts/conflicts';
 import type { GraphConnectionStatus, TenantConfig } from '@/shared/contracts/graph';
 import type {
+  GuestSearchItem,
   GuestsInvitePayload,
   GuestsInviteResult,
   GuestsSearchPayload,
@@ -17,6 +18,7 @@ import {
   fetchGraphMe,
   fetchGraphOrganization,
   findGraphGuestByEmail,
+  getGraphGuestById,
   inviteGraphGuest,
   searchGraphGuests,
   updateGraphGuestCompany,
@@ -182,6 +184,13 @@ export class GraphSessionManager {
     return await this.runExclusive(async () => {
       const { accessToken } = await this.acquireGraphToken();
       return await findGraphGuestByEmail(accessToken, email);
+    });
+  }
+
+  async getGuestById(guestObjectId: string): Promise<GuestSearchItem> {
+    return await this.runExclusive(async () => {
+      const { accessToken } = await this.acquireGraphToken();
+      return await getGraphGuestById(accessToken, guestObjectId);
     });
   }
 

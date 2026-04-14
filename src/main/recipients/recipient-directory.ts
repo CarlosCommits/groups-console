@@ -68,7 +68,7 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
           source: 'graph' as const,
           stableKey: guest.stableKey,
           recipientType: 'guestUser' as const,
-          membershipSupport: 'graphDeferred' as const,
+          membershipSupport: 'graphBridgeable' as const,
           objectId: guest.objectId,
           exchangeIdentity: null,
           primaryEmail: guest.primaryEmail,

@@ -3,15 +3,17 @@ import {
   type ExchangeConnectPayload,
   type ExchangeConnectionStatus,
   exchangeListGroupsResultSchema,
+  guestMembershipTargetResultSchema,
   groupsGetMembersResultSchema,
   groupsAddMembersResultSchema,
   groupsRemoveMembersResultSchema,
   type ExchangeListGroupsPayload,
   type ExchangeListGroupsResult,
-  type GroupsAddMembersPayload,
+  type GuestMembershipTargetResult,
   type GroupsAddMembersResult,
   type GroupsGetMembersPayload,
   type GroupsGetMembersResult,
+  type ResolvedGroupsAddMembersPayload,
   type GroupsRemoveMembersPayload,
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
@@ -156,7 +158,7 @@ export class ExchangeSessionManager {
     });
   }
 
-  async addMembers(payload: GroupsAddMembersPayload): Promise<GroupsAddMembersResult> {
+  async addMembers(payload: ResolvedGroupsAddMembersPayload): Promise<GroupsAddMembersResult> {
     return await this.runExclusive(async () => {
       if (!this.host) {
         throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
@@ -193,6 +195,24 @@ export class ExchangeSessionManager {
       const result = recipientConflictLookupResultSchema.parse(rawResult);
 
       return result.records;
+    });
+  }
+
+  async resolveGuestMailUserByObjectId(
+    objectId: string,
+    primaryEmail: string | null,
+  ): Promise<GuestMembershipTargetResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('resolveGuestMailUser', {
+        objectId,
+        primaryEmail,
+      });
+
+      return guestMembershipTargetResultSchema.parse(rawResult);
     });
   }
 

@@ -40,6 +40,7 @@ import {
   type ExchangeCapabilities,
   type ExchangeConnectionStatus,
   type ExchangeListGroupsResult,
+  type GroupMemberSelectionRef,
   type GroupMemberWriteRef,
   type GroupsAddMembersResult,
   type GroupsGetMembersResult,
@@ -174,7 +175,7 @@ const radAppApi = {
     },
     async addMembers(
       group: ExchangeGroupRef,
-      members: GroupMemberWriteRef[],
+      members: GroupMemberSelectionRef[],
     ): Promise<GroupsAddMembersResult> {
       const request = createCommandRequest('groups.addMembers', {
         group,

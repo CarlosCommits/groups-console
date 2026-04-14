@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { inviteGraphGuest, searchGraphGuests, updateGraphGuestCompany } from './graph-client';
+import { getGraphGuestById, inviteGraphGuest, searchGraphGuests, updateGraphGuestCompany } from './graph-client';
 
 describe('graph-client', () => {
   const originalFetch = global.fetch;
@@ -168,5 +168,52 @@ describe('graph-client', () => {
     });
 
     expect(result.verification.companyApplied).toBe(true);
+  });
+
+  it('reads a guest by object id', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          id: 'guest-1',
+          displayName: 'Guest Example',
+          userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          mail: null,
+          otherMails: ['guest@example.com'],
+          companyName: null,
+          externalUserState: 'Accepted',
+          userType: 'Guest',
+        }),
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await getGraphGuestById('token', 'guest-1');
+
+    expect(result.objectId).toBe('guest-1');
+    expect(result.primaryEmail).toBe('guest@example.com');
+  });
+
+  it('rejects non-guest users in guest-by-id lookup', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          id: 'user-1',
+          displayName: 'Member Example',
+          userPrincipalName: 'member@example.com',
+          mail: 'member@example.com',
+          otherMails: ['member@example.com'],
+          companyName: null,
+          externalUserState: null,
+          userType: 'Member',
+        }),
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(getGraphGuestById('token', 'user-1')).rejects.toThrow(
+      "Graph object 'user-1' is not a guest user.",
+    );
   });
 });

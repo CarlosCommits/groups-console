@@ -104,9 +104,6 @@ function Invoke-RadAppRemoveGroupMembers {
         $memberKey = if ($recipientObjectId) {
             "objectId:$recipientObjectId"
         }
-        elseif ($recipientPrimaryEmail) {
-            "primaryEmail:$($recipientPrimaryEmail.ToLowerInvariant())"
-        }
         else {
             "exchangeIdentity:$($normalizedMember.exchangeIdentity.ToLowerInvariant())"
         }
@@ -122,12 +119,7 @@ function Invoke-RadAppRemoveGroupMembers {
 
         $isCurrentMember = $false
         foreach ($existingMember in $existingMembers) {
-            if ([string]$existingMember.Identity -eq $normalizedMember.exchangeIdentity) {
-                $isCurrentMember = $true
-                break
-            }
-
-            if ($recipientPrimaryEmail -and $existingMember.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and [string]$existingMember.PrimarySmtpAddress -eq $recipientPrimaryEmail) {
+            if (Test-RadAppRecipientIdentityMatch -LeftRecipient $existingMember -RightMember $normalizedMember) {
                 $isCurrentMember = $true
                 break
             }
@@ -176,12 +168,7 @@ function Invoke-RadAppRemoveGroupMembers {
         foreach ($removedMember in $removedMembers) {
             $stillPresent = $false
             foreach ($verifiedMember in $verifiedMembers) {
-                if ([string]$verifiedMember.Identity -eq $removedMember.exchangeIdentity) {
-                    $stillPresent = $true
-                    break
-                }
-
-                if ($removedMember.primaryEmail -and $verifiedMember.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and [string]$verifiedMember.PrimarySmtpAddress -eq $removedMember.primaryEmail) {
+                if (Test-RadAppRecipientIdentityMatch -LeftRecipient $verifiedMember -RightMember $removedMember) {
                     $stillPresent = $true
                     break
                 }
@@ -228,4 +215,27 @@ function Invoke-RadAppRemoveGroupMembers {
             detail = "Verified $verifiedRemoved removed member(s); $verificationFailedCount member(s) could not be confirmed."
         }
     }
+}
+
+function Test-RadAppRecipientIdentityMatch {
+    param(
+        [Parameter(Mandatory = $true)]
+        $LeftRecipient,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$RightMember
+    )
+
+    $leftObjectId = $null
+    if ($LeftRecipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $LeftRecipient.ExternalDirectoryObjectId) {
+        $leftObjectId = [string]$LeftRecipient.ExternalDirectoryObjectId
+    }
+    elseif ($LeftRecipient.PSObject.Properties.Name -contains 'Guid' -and $LeftRecipient.Guid) {
+        $leftObjectId = [string]$LeftRecipient.Guid
+    }
+
+    if ($leftObjectId -and $RightMember.objectId -and $leftObjectId -eq [string]$RightMember.objectId) {
+        return $true
+    }
+
+    return [string]$LeftRecipient.Identity -eq [string]$RightMember.exchangeIdentity
 }
