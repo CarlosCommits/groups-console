@@ -66,15 +66,9 @@ Current reality:
 
 ### 2. Guest/contact overlap-safe backend enforcement
 
-**Status:** missing
+**Status:** completed
 
-The plans explicitly call out guest/contact overlap and SMTP conflict handling, but the current backend does not yet enforce those cross-system checks consistently.
-
-Current gaps:
-
-- `contacts.create` only checks Exchange contact existence, not overlapping Graph guest users with the same email
-- `guests.invite` does not yet preflight for overlapping Exchange contacts/mail contacts before invitation
-- there is no single backend conflict service that explains dual representations of the same external email across Exchange and Graph
+The backend now enforces overlap-safe preflight for `contacts.create` and `guests.invite`, including typed conflict outcomes and an asymmetric coexistence rule that allows guest invite over an existing contact while still blocking contact creation over an existing guest.
 
 Related plan references:
 
@@ -83,17 +77,17 @@ Related plan references:
 
 ### 3. Guest-aware membership execution path
 
-**Status:** partially missing
+**Status:** completed
 
-We now have a Graph-backed guest search path, but guest membership writes are still intentionally deferred at the resolution layer.
+Guest membership is now resolved through a Graph-objectId → Exchange-`GuestMailUser` bridge before the Exchange add-members write executes.
 
 Current reality:
 
-- `src/main/recipients/resolve-recipient-for-membership.ts` returns `graphDeferred` for guest candidates
-- membership write commands still operate only on Exchange-direct member refs
-- no backend bridge exists yet to turn a selected Graph guest into a safe Exchange membership target
+- `src/main/recipients/resolve-recipient-for-membership.ts` resolves `graphGuest` selections into Exchange membership targets instead of returning `graphDeferred`
+- `groups.addMembers` now accepts selected principal refs and resolves them in the main process before Exchange write execution
+- the backend validates guest object IDs as GUIDs and rechecks Graph guest type before Exchange resolution
 
-This is the main remaining backend gap before the membership workflows can fully support guests in practice.
+This closes the main backend guest-membership gap that previously blocked practical guest group-write support.
 
 ### 4. Contact/guest read-detail surfaces
 

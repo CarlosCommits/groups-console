@@ -37,7 +37,7 @@ Every entity in app state must carry:
 
 1. check for existing guest by email
 2. check for Exchange-side contact/recipient overlap
-3. decide whether operation is blocked, merged, or requires manual remediation
+3. allow coexistence only when the Exchange-side overlap is contact-shaped; otherwise block with explicit remediation
 
 ### Before adding group members
 
@@ -61,6 +61,12 @@ When an external email already exists as both a contact-shaped object and a gues
 1. present both records with type and source
 2. explain which object is valid for the requested action
 3. block destructive assumptions
+
+More specifically for the current implemented flows:
+
+- `contacts.create` is blocked when a guest already exists for the target email
+- `guests.invite` is allowed when the existing Exchange overlap is a contact, but remains blocked for other Exchange recipient types
+- membership writes preserve the selected principal and must not collapse contact/guest coexistence by SMTP equality alone
 
 ## User-facing behavior
 
