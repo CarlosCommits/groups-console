@@ -95,6 +95,14 @@ Two-system workflows must explicitly define failure modes. Example: create guest
 - treat it as separate visible steps, or
 - define compensating/manual-remediation guidance
 
+## Guest membership bridge rule
+
+For guest membership writes, the selected Graph guest is resolved by durable Graph identity first and then mapped to an Exchange-visible `GuestMailUser` target before the Exchange write occurs.
+
+- Graph guest selection is not converted by SMTP overlap alone
+- Exchange remains the only backend that writes DL/MESG membership
+- if contact and guest coexist for the same external email, the app preserves the selected principal instead of choosing whichever Exchange object owns the SMTP fields
+
 ## Data mapping rules
 
 - normalize every returned object into app DTOs

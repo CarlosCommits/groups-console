@@ -153,8 +153,8 @@ These are operation-time authorization concerns. The app must handle them as run
 The following permission-related areas are not yet in scope and should not be assumed to be implemented:
 
 - Report and export backend: `reports.generateMembershipMatrix` is not yet implemented; its permission requirements will be documented when the backend is built.
-- Guest-aware membership execution path: guest candidates currently return `graphDeferred` at the resolution layer; the bridge from Graph guest to Exchange membership target is not yet complete.
-- Guest/contact overlap-safe enforcement: cross-system conflict checks are not yet consistently enforced in `contacts.create` and `guests.invite`.
+- Guest-aware membership execution path is now implemented; remaining permission work is limited to documenting report/export and richer detail-read requirements as they are built.
+- Guest/contact overlap-safe enforcement is now implemented for `contacts.create` and `guests.invite`; remaining work is deeper runtime error classification and remediation taxonomy, not basic preflight enforcement.
 - Contact and guest detail read surfaces: dedicated `contacts.getDetails` and `guests.getDetails` commands are not yet implemented.
 - Internal user company sourcing alignment: current implementation sources internal user company from Exchange `Get-User` data; the plan calls for Graph `user.companyName` as the source. This is a consistency gap, not a permission gap.
 - Exact scope or role introspection: the app does not currently inspect token claims or query RBAC assignments. If this becomes important, it would require additional Graph or Exchange API calls that are not yet designed.
