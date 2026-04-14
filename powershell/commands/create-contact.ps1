@@ -52,6 +52,7 @@ function Invoke-RadAppCreateContact {
     $appliedCompany = if ($contact.Company) { [string]$contact.Company } else { $null }
 
     return @{
+        outcome = 'created'
         contact = @{
             exchangeIdentity = [string]$mailContact.Identity
             objectId = $objectId

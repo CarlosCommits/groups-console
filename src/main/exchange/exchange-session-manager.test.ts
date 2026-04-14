@@ -124,6 +124,7 @@ describe('ExchangeSessionManager', () => {
           connectedAtUtc: '2026-04-01T10:00:00.000Z',
         })
         .mockResolvedValueOnce({
+          outcome: 'created',
           contact: {
             exchangeIdentity: 'jane@example.com',
             objectId: null,
@@ -147,6 +148,11 @@ describe('ExchangeSessionManager', () => {
       email: 'jane@example.com',
       companyName: 'Example Corp',
     });
+
+    expect(result.outcome).toBe('created');
+    if (result.outcome !== 'created') {
+      throw new Error('Expected Exchange session manager to return a created contact result.');
+    }
 
     expect(result.contact.companyName).toBe('Example Corp');
   });

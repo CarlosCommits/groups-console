@@ -84,6 +84,11 @@ describe('graph-client', () => {
 
     const result = await inviteGraphGuest('token', { email: 'guest@example.com' }, 'https://example.com/complete');
 
+    expect(result.outcome).toBe('invited');
+    if (result.outcome !== 'invited') {
+      throw new Error('Expected inviteGraphGuest to return an invited result.');
+    }
+
     expect(result.invitationId).toBe('invite-1');
     expect(result.verification.foundGuest).toBe(false);
   });
@@ -129,6 +134,11 @@ describe('graph-client', () => {
       { email: 'guest@example.com', companyName: 'Guest Co' },
       'https://example.com/complete',
     );
+
+    expect(result.outcome).toBe('invited');
+    if (result.outcome !== 'invited') {
+      throw new Error('Expected inviteGraphGuest to return an invited result.');
+    }
 
     expect(result.invitationId).toBe('invite-1');
     expect(result.companyUpdate.updated).toBe(false);
