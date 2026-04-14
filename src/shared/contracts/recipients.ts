@@ -5,6 +5,7 @@ export const recipientSearchTypeSchema = z.enum([
   'mailbox',
   'mailContact',
   'mailUser',
+  'guestMailUser',
   'distributionList',
   'mailEnabledSecurityGroup',
   'guestUser',
@@ -12,6 +13,7 @@ export const recipientSearchTypeSchema = z.enum([
 ]);
 export const recipientMembershipSupportSchema = z.enum([
   'exchangeDirect',
+  'graphBridgeable',
   'graphDeferred',
   'unsupported',
 ]);

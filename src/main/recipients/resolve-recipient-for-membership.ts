@@ -1,5 +1,9 @@
-import type { GroupMemberWriteRef } from '@/shared/contracts/exchange';
-import type { RecipientSearchItem } from '@/shared/contracts/recipients';
+import type { GroupMemberSelectionRef, GroupMemberWriteRef } from '@/shared/contracts/exchange';
+
+import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import { exchangeSessionManager } from '@/main/exchange/exchange-session-manager';
+import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
+import { graphSessionManager } from '@/main/graph/graph-session-manager';
 
 export type MembershipRecipientResolution =
   | {
@@ -15,10 +19,10 @@ export type MembershipRecipientResolution =
       reason: string;
     };
 
-export function resolveRecipientForMembership(
-  candidate: RecipientSearchItem,
-): MembershipRecipientResolution {
-  if (candidate.membershipSupport === 'exchangeDirect' && candidate.exchangeIdentity) {
+export async function resolveRecipientForMembership(
+  candidate: GroupMemberSelectionRef,
+): Promise<MembershipRecipientResolution> {
+  if (candidate.kind === 'exchangeRecipient') {
     return {
       kind: 'exchangeDirect',
       member: {
@@ -29,15 +33,60 @@ export function resolveRecipientForMembership(
     };
   }
 
-  if (candidate.membershipSupport === 'graphDeferred') {
+  const [exchangeStatus, graphStatus] = await Promise.all([
+    getExchangeConnectionStatus(),
+    getGraphConnectionStatus(),
+  ]);
+
+  if (exchangeStatus.state !== 'connected') {
     return {
       kind: 'graphDeferred',
-      reason: 'Guest membership support requires the future Graph-backed recipient resolver.',
+      reason: 'Exchange Online must be connected before a guest can be resolved for membership.',
     };
   }
 
-  return {
-    kind: 'unsupported',
-    reason: 'This recipient type is not currently supported for direct membership writes.',
-  };
+  if (graphStatus.state !== 'connected') {
+    return {
+      kind: 'graphDeferred',
+      reason: 'Microsoft Graph must be connected before a guest can be resolved for membership.',
+    };
+  }
+
+  if (graphStatus.exchangeAlignment !== 'matched') {
+    return {
+      kind: 'graphDeferred',
+      reason:
+        graphStatus.exchangeAlignment === 'mismatched'
+          ? 'Microsoft Graph must match the current Exchange tenant before a guest can be resolved for membership.'
+          : 'The app must verify Microsoft Graph and Exchange tenant alignment before a guest can be resolved for membership.',
+    };
+  }
+
+  try {
+    const guest = await graphSessionManager.getGuestById(candidate.objectId);
+    const target = await exchangeSessionManager.resolveGuestMailUserByObjectId(
+      guest.objectId,
+      guest.primaryEmail,
+    );
+
+    if (!target.resolved || !target.member) {
+      return {
+        kind: 'graphDeferred',
+        reason: target.detail,
+      };
+    }
+
+    return {
+      kind: 'exchangeDirect',
+      member: target.member,
+    };
+  } catch (error) {
+    return {
+      kind: 'graphDeferred',
+      reason:
+        error instanceof Error
+          ? error.message
+          : 'The selected guest could not be resolved for Exchange membership.',
+    };
+  }
 }

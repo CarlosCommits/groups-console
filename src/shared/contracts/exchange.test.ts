@@ -7,6 +7,7 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
+  guestMembershipTargetResultSchema,
   groupsAddMembersPayloadSchema,
   groupsAddMembersResultSchema,
   groupsRemoveMembersPayloadSchema,
@@ -62,9 +63,11 @@ describe('exchange contracts', () => {
         },
         members: [
           {
+            kind: 'exchangeRecipient',
             exchangeIdentity: 'jane@example.com',
             objectId: null,
             primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example',
           },
         ],
         verify: true,
@@ -80,14 +83,35 @@ describe('exchange contracts', () => {
         },
         members: [
           {
-            exchangeIdentity: 'jane@example.com',
-            objectId: null,
+            kind: 'graphGuest',
+            objectId: '00000000-0000-0000-0000-000000000001',
             primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example Guest',
           },
           {
-            exchangeIdentity: 'jane@example.com',
-            objectId: null,
+            kind: 'graphGuest',
+            objectId: '00000000-0000-0000-0000-000000000001',
             primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example Guest',
+          },
+        ],
+        verify: true,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      groupsAddMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        members: [
+          {
+            kind: 'graphGuest',
+            objectId: 'guest-1',
+            primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example Guest',
           },
         ],
         verify: true,
@@ -223,10 +247,19 @@ describe('exchange contracts', () => {
           recipientType: 'mailbox',
           recipientTypeDetails: 'UserMailbox',
         },
+        {
+          objectId: 'guest-1',
+          exchangeIdentity: 'Guest_abc123',
+          displayName: 'Guest Example',
+          primaryEmail: 'guest@example.com',
+          alias: null,
+          recipientType: 'guestMailUser',
+          recipientTypeDetails: 'GuestMailUser',
+        },
       ],
     });
 
-    expect(result.items[0]?.recipientType).toBe('mailbox');
+    expect(result.items[1]?.recipientType).toBe('guestMailUser');
   });
 
   it('accepts an add-members result payload', () => {
@@ -299,5 +332,19 @@ describe('exchange contracts', () => {
     });
 
     expect(result.summary.removed).toBe(1);
+  });
+
+  it('accepts a guest membership target response payload', () => {
+    const result = guestMembershipTargetResultSchema.parse({
+      resolved: true,
+      member: {
+        exchangeIdentity: 'Guest_abc123',
+        objectId: 'guest-1',
+        primaryEmail: 'guest@example.com',
+      },
+      detail: 'Resolved the selected guest to an Exchange GuestMailUser.',
+    });
+
+    expect(result.resolved).toBe(true);
   });
 });

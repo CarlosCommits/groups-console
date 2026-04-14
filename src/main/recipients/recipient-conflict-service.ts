@@ -191,40 +191,34 @@ export async function checkRecipientConflicts<TAction extends RecipientConflictA
   }
 
   if (action === 'guests.invite') {
-    if (exchangeRecords.length > 0 && guestRecord) {
-      return buildConflict({
-        action,
-        category: 'guestContactOverlap',
-        targetEmail: normalizedEmail,
-        message:
-          'This email already exists in both Exchange and Microsoft Graph, so the app cannot safely invite another guest representation.',
-        guidance:
-          'Review the overlapping Exchange and Graph records and resolve the duplicate identity before inviting a guest.',
-        records: [...exchangeRecords, guestRecord],
-      });
-    }
+    const hasOnlyContactOverlap =
+      exchangeRecords.length > 0 && exchangeRecords.every((record) => record.recipientType === 'mailContact');
 
     if (guestRecord) {
       return buildConflict({
         action,
-        category: 'emailAlreadyOwned',
+        category: exchangeRecords.length > 0 ? 'guestContactOverlap' : 'emailAlreadyOwned',
         targetEmail: normalizedEmail,
-        message: 'A Microsoft Graph guest user already exists for this email address.',
+        message:
+          exchangeRecords.length > 0
+            ? 'A Microsoft Graph guest user already exists for this email address, and Exchange also has a separate recipient with the same email.'
+            : 'A Microsoft Graph guest user already exists for this email address.',
         guidance:
-          'Use the existing guest user instead of sending another invitation for the same email address.',
-        records: [guestRecord],
+          exchangeRecords.length > 0
+            ? 'Use the existing guest user instead of sending another invitation. If needed, treat the Exchange recipient and guest as separate principals in later membership workflows.'
+            : 'Use the existing guest user instead of sending another invitation for the same email address.',
+        records: exchangeRecords.length > 0 ? [...exchangeRecords, guestRecord] : [guestRecord],
       });
     }
 
-    if (exchangeRecords.length > 0) {
+    if (exchangeRecords.length > 0 && !hasOnlyContactOverlap) {
       return buildConflict({
         action,
-        category: 'guestContactOverlap',
+        category: 'emailAlreadyOwned',
         targetEmail: normalizedEmail,
-        message:
-          'An Exchange recipient already exists for this email, so inviting a guest would create a conflicting cross-system identity.',
+        message: 'An existing Exchange recipient already owns this email address.',
         guidance:
-          'Review the existing Exchange recipient and decide whether to reuse it or remediate the overlap before inviting a guest.',
+          'Guest invitation is only allowed over an existing contact. Reuse or remediate the existing Exchange recipient before inviting a guest for this email.',
         records: exchangeRecords,
       });
     }
