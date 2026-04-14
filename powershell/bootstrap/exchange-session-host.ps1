@@ -12,6 +12,28 @@
 $ErrorActionPreference = 'Stop'
 $script:RadAppExchangeConnectionContext = $null
 
+function ConvertTo-RadAppHashtable {
+    param(
+        [Parameter(Mandatory = $false)]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return @{}
+    }
+
+    if ($Value -is [hashtable]) {
+        return $Value
+    }
+
+    $result = @{}
+    foreach ($property in $Value.PSObject.Properties) {
+        $result[$property.Name] = $property.Value
+    }
+
+    return $result
+}
+
 while (($line = [Console]::In.ReadLine()) -ne $null) {
     if ([string]::IsNullOrWhiteSpace($line)) {
         continue
@@ -20,10 +42,15 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
     $requestId = 'unknown-request'
 
     try {
-        $request = $line | ConvertFrom-Json -AsHashtable
+        $request = $line | ConvertFrom-Json
         $requestId = [string]$request.requestId
         $command = [string]$request.command
-        $payload = if ($request.ContainsKey('payload')) { $request.payload } else { @{} }
+        $payload = if ($request.PSObject.Properties.Name -contains 'payload') {
+            ConvertTo-RadAppHashtable $request.payload
+        }
+        else {
+            @{}
+        }
 
         switch ($command) {
             'connect' {

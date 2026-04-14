@@ -137,6 +137,37 @@ describe('startExchangeSessionHost', () => {
     await expect(requestPromise).resolves.toEqual({ state: 'disconnected' });
   });
 
+  it('rejects pending requests when the host emits an unknown-request error', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', () => {
+        child.stdout.write(
+          `${JSON.stringify({ requestId: 'unknown-request', success: false, error: { message: 'Bootstrap parse failed.' } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('connect', { userPrincipalName: 'admin@example.com' });
+
+    await requestWritten;
+
+    await expect(requestPromise).rejects.toThrow('Bootstrap parse failed.');
+  });
+
   it('writes listGroups requests through the host protocol', async () => {
     Object.defineProperty(process, 'platform', {
       value: 'win32',

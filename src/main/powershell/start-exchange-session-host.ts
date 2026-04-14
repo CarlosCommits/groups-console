@@ -137,6 +137,16 @@ function createHostController(
     const pending = pendingRequests.get(parsed.requestId);
 
     if (!pending) {
+      if (!parsed.success && parsed.requestId === 'unknown-request') {
+        const message = parsed.error?.message ?? 'Exchange session host bootstrap failed.';
+
+        for (const pendingRequest of pendingRequests.values()) {
+          pendingRequest.reject(new Error(message));
+        }
+
+        pendingRequests.clear();
+      }
+
       return;
     }
 
