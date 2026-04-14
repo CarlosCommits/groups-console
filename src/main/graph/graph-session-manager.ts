@@ -1,6 +1,7 @@
 import type { AccountInfo, IPublicClientApplication } from '@azure/msal-node';
 
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import type { RecipientConflictRecord } from '@/shared/contracts/conflicts';
 import type { GraphConnectionStatus, TenantConfig } from '@/shared/contracts/graph';
 import type {
   GuestsInvitePayload,
@@ -15,6 +16,7 @@ import { loadTenantConfig } from '../config/tenant-config';
 import {
   fetchGraphMe,
   fetchGraphOrganization,
+  findGraphGuestByEmail,
   inviteGraphGuest,
   searchGraphGuests,
   updateGraphGuestCompany,
@@ -173,6 +175,13 @@ export class GraphSessionManager {
     return await this.runExclusive(async () => {
       const { accessToken, config } = await this.acquireGraphToken();
       return await inviteGraphGuest(accessToken, payload, config.graph.inviteRedirectUrl);
+    });
+  }
+
+  async findGuestByEmail(email: string): Promise<RecipientConflictRecord | null> {
+    return await this.runExclusive(async () => {
+      const { accessToken } = await this.acquireGraphToken();
+      return await findGraphGuestByEmail(accessToken, email);
     });
   }
 
