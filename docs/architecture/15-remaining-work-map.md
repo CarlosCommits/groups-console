@@ -40,30 +40,29 @@ These items are in place and are not the focus of this document. They are listed
 - Directory workspace with search, contact create/update, and guest invite/update
 - Directory conflict rendering for blocked contact/guest overlap outcomes
 - Dashboard with truthful connection status
-- Reports screen in deferred-state presentation
+- Reports screen with live membership-matrix export flow
 
 ## Remaining work categories
 
 ### 1. Report and export backend
 
-**Status:** missing
+**Status:** completed
 
-The capability matrix marks export report support as in-scope for distribution lists and mail-enabled security groups. The IPC contract defines `reports.generateMembershipMatrix`. Neither the command implementation nor the report-side PowerShell command exists yet.
+The capability matrix marks export report support as in-scope for distribution lists and mail-enabled security groups. That path is now implemented end to end through Exchange-owned reads, JS-side XLSX generation, and a live Reports screen.
 
 Current reality:
 
-- `reports.generateMembershipMatrix` is listed in the command catalog in `06-ipc-contract.md` but is not present in the implemented `commandNameSchema` in `src/shared/contracts/command.ts`
-- `powershell/commands/export-report-data.ps1` is a one-line placeholder
-- there is no JS export pipeline or report orchestration command
-- the Reports screen in the renderer shows a deferred state rather than a functional export flow
+- `reports.generateMembershipMatrix` is implemented in the command surface and exposed through preload/IPC
+- `powershell/commands/export-report-data.ps1` now collects Exchange-owned group/member report data with progress events
+- the JS-side XLSX generation pipeline is implemented in the Electron main process
+- the renderer Reports screen now drives a live membership-matrix export flow with progress, success, and error states
+- report export no longer accepts a renderer-controlled output path; save-path selection stays in the main process
+- exported rows now populate `companyName` when Exchange can provide it for the supported recipient types
 
-What is needed:
+Follow-up that still remains outside this completed slice:
 
-- add `reports.generateMembershipMatrix` to the implemented command surface
-- implement the Exchange-side data collection for group and membership reads
-- implement the JS-side XLSX generation pipeline
-- wire the renderer Reports screen to the live command
-- add progress streaming for long report generation
+- richer report variants beyond the current membership matrix are still deferred
+- observability and audit coverage for report generation is still missing until the observability slice lands
 
 ### 2. Guest membership execution path
 
@@ -81,8 +80,8 @@ Current reality:
 
 Follow-up that still remains outside this completed slice:
 
-- report/export still needs to cover guest-backed membership reads once the report backend is built
 - richer guest/detail read flows are still missing separate detail commands
+- report export currently ships the membership matrix slice only; broader report families remain future work
 
 ### 3. Guest/contact overlap-safe validation and remediation
 
@@ -105,25 +104,21 @@ Follow-up that still remains outside this completed slice:
 
 ### 4. Richer contact and guest detail reads
 
-**Status:** partially missing
+**Status:** completed
 
-Search exists for both contacts and guests, but dedicated detail/read commands for individual entities are not implemented.
+Search still provides the summary picker surface, but dedicated detail/read commands for contacts and guests are now implemented and wired into the Directory workflow.
 
 Current reality:
 
-- `contacts.getDetails` does not exist in the command surface
-- `guests.getDetails` does not exist in the command surface
-- the capability matrix explicitly lists "Get details" as supported for Guest User; contact detail reads are still a richer workflow gap even though they are not called out as explicitly in the matrix
-- the renderer currently relies on search result data for display, which may not include all fields needed for detail views
+- `contacts.getDetails` is implemented as an Exchange-owned detail read keyed from the current Directory search result set
+- `guests.getDetails` is implemented as a Graph-owned detail read keyed from the current Directory search result set
+- the Directory screen now opens a dedicated detail dialog for `mailContact` and `guestUser` rows and fetches fresh detail data on demand
+- the detail-read path is protected against stale async dialog responses and does not trust raw renderer-supplied backend identifiers directly
 
-What is needed:
+Follow-up that still remains outside this completed slice:
 
-- implement `contacts.getDetails` to fetch full contact properties from Exchange
-- implement `guests.getDetails` to fetch full guest profile properties from Graph
-- add these commands to the `commandNameSchema`
-- wire detail views in the renderer to these commands
-
-This is not a blocker for basic workflows, but it is a real gap relative to the guest-user capability matrix entry and to richer admin workflows where operators need to inspect full entity details before acting.
+- mailbox/mailUser detail reads are still not implemented as part of the Directory details flow
+- a dedicated `contacts.search` route is still not implemented and remains optional so long as `recipients.search` is the intended shared picker
 
 ### 5. Observability, audit, and diagnostics
 
@@ -183,13 +178,13 @@ The capability matrix says mail contact list/search is supported. In practice th
 
 The remaining work items are interdependent. This order accounts for dependencies and risk.
 
-1. **Report and export backend** — now the highest-impact missing slice; completes the v1 parity feature set
-2. **Observability, audit, and diagnostics** — should be built alongside or immediately after reports so pilot workflows produce traceable logs and exportable diagnostics from the start
-3. **Richer contact and guest detail reads** — can be built in parallel with the report backend; not a blocker for core workflows but needed for full capability matrix coverage
-4. **Deeper permission and remediation classification** — grows incrementally as each remaining workflow is implemented; the error classification framework should be wired early and extended as new workflows land
+1. **Observability, audit, and diagnostics** — now the highest-impact missing slice; it should land next so the implemented workflows produce traceable logs and exportable diagnostics from the start
+2. **Deeper permission and remediation classification** — grows incrementally as each remaining workflow is implemented; the error classification framework should be wired early and extended as new workflows land
 
 Completed since the previous revision:
 
+- **Richer contact and guest detail reads** — shipped as Exchange-owned `contacts.getDetails`, Graph-owned `guests.getDetails`, and a Directory detail dialog backed by fresh on-demand reads
+- **Report and export backend** — shipped as Exchange-owned membership-matrix export with JS-side XLSX generation, progress streaming, and a live Reports screen
 - **Guest membership execution path** — shipped as Graph-objectId → Exchange `GuestMailUser` resolution with selected-principal preservation in group add flows
 - **Guest/contact overlap-safe conflict service** — shipped as typed cross-system preflight and renderer conflict remediation for `contacts.create` and `guests.invite`
 
@@ -198,7 +193,8 @@ Completed since the previous revision:
 - Every item listed as "missing" in this document has either been implemented or has a tracked follow-up with clear scope.
 - The guest membership path resolves guest candidates to Exchange membership targets instead of returning `graphDeferred`. **Completed.**
 - Contact creation and guest invitation both run cross-system overlap checks before proceeding. **Completed.**
-- The Reports screen is wired to a live export backend, not a deferred placeholder.
+- The Reports screen is wired to a live export backend, not a deferred placeholder. **Completed.**
+- Contact and guest detail reads are backed by dedicated commands rather than relying only on search-row summaries. **Completed.**
 - Structured logs are written for every mutation, and a diagnostics bundle can be exported without manual file hunting.
 - The permission matrix is updated as each new workflow is implemented.
 - No deferred backlog item from `12-backlog-and-commits.md` is treated as an immediate blocker unless it appears in the remaining work categories above.
