@@ -34,6 +34,12 @@ import {
   type RecipientsSearchPayload,
   type RecipientsSearchResult,
 } from '@/shared/contracts/recipients';
+import {
+  reportMembershipMatrixDataSchema,
+  type ReportMembershipMatrixData,
+  type ReportsGenerateMembershipMatrixPayload,
+} from '@/shared/contracts/reports';
+import type { ProgressEvent } from '@/shared/contracts/command';
 
 import { startExchangeSessionHost, type ExchangeSessionHost } from '@/main/powershell/start-exchange-session-host';
 
@@ -143,6 +149,21 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('searchRecipients', payload);
 
       return recipientsSearchResultSchema.parse(rawResult);
+    });
+  }
+
+  async exportReportData(
+    payload: ReportsGenerateMembershipMatrixPayload,
+    onProgress?: (event: ProgressEvent) => void,
+  ): Promise<ReportMembershipMatrixData> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('exportReportData', payload as Record<string, unknown>, onProgress);
+
+      return reportMembershipMatrixDataSchema.parse(rawResult);
     });
   }
 

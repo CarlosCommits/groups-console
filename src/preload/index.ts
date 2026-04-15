@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import { commandResponseSchema } from '@/shared/contracts/command';
+import { commandResponseSchema, progressEventSchema, type ProgressEvent } from '@/shared/contracts/command';
 import {
   contactsCreateResultSchema,
   contactsUpdateCompanyResultSchema,
@@ -47,9 +47,15 @@ import {
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
 import { sessionStatusSchema, type SessionStatusSchema } from '@/shared/contracts/session';
+import {
+  reportsGenerateMembershipMatrixResultSchema,
+  type ReportsGenerateMembershipMatrixPayload,
+  type ReportsGenerateMembershipMatrixResult,
+} from '@/shared/contracts/reports';
 import { createCommandRequest } from '@/shared/validation/create-command-request';
 
 const COMMAND_CHANNEL = 'radapp:command';
+const PROGRESS_CHANNEL = 'radapp:progress';
 
 const radAppApi = {
   session: {
@@ -269,6 +275,41 @@ const radAppApi = {
       }
 
       return contactsUpdateCompanyResultSchema.parse(response.data);
+    },
+  },
+  reports: {
+    async generateMembershipMatrix(
+      payload: ReportsGenerateMembershipMatrixPayload,
+      onProgress?: (event: ProgressEvent) => void,
+    ): Promise<ReportsGenerateMembershipMatrixResult> {
+      const request = createCommandRequest('reports.generateMembershipMatrix', payload);
+      const progressListener = (_event: Electron.IpcRendererEvent, rawProgress: unknown) => {
+        if (!onProgress) {
+          return;
+        }
+
+        const progress = progressEventSchema.parse(rawProgress);
+        if (progress.requestId !== request.requestId) {
+          return;
+        }
+
+        onProgress(progress);
+      };
+
+      ipcRenderer.on(PROGRESS_CHANNEL, progressListener);
+
+      try {
+        const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+        const response = commandResponseSchema.parse(rawResponse);
+
+        if (!response.success) {
+          throw new Error(response.error?.message ?? 'Unable to generate membership matrix report.');
+        }
+
+        return reportsGenerateMembershipMatrixResultSchema.parse(response.data);
+      } finally {
+        ipcRenderer.removeListener(PROGRESS_CHANNEL, progressListener);
+      }
     },
   },
   recipients: {

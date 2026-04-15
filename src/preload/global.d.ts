@@ -10,8 +10,10 @@ import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsRemoveMembersResult } from '@/shared/contracts/exchange';
 import type { GraphConnectionStatus } from '@/shared/contracts/graph';
 import type { GuestsInvitePayload, GuestsInviteResult, GuestsSearchPayload, GuestsSearchResult, GuestsUpdateCompanyPayload, GuestsUpdateCompanyResult } from '@/shared/contracts/guests';
+import type { ProgressEvent } from '@/shared/contracts/command';
 import type { RecipientsSearchPayload } from '@/shared/contracts/recipients';
 import type { RecipientsSearchResult } from '@/shared/contracts/recipients';
+import type { ReportsGenerateMembershipMatrixPayload, ReportsGenerateMembershipMatrixResult } from '@/shared/contracts/reports';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
@@ -53,6 +55,12 @@ declare global {
       contacts: {
         create: (payload: ContactsCreatePayload) => Promise<ContactsCreateResult>;
         updateCompany: (payload: ContactsUpdateCompanyPayload) => Promise<ContactsUpdateCompanyResult>;
+      };
+      reports: {
+        generateMembershipMatrix: (
+          payload: ReportsGenerateMembershipMatrixPayload,
+          onProgress?: (event: ProgressEvent) => void,
+        ) => Promise<ReportsGenerateMembershipMatrixResult>;
       };
       recipients: {
         search: (payload: RecipientsSearchPayload) => Promise<RecipientsSearchResult>;

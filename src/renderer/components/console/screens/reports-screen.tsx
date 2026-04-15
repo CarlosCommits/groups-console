@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   FileDown,
   ShieldCheck,
@@ -8,6 +8,8 @@ import {
   Clock,
   XCircle,
   Ban,
+  RefreshCw,
+  FolderOpen,
 } from "lucide-react";
 import {
   Table,
@@ -24,6 +26,15 @@ import {
   CardContent,
 } from "@/renderer/components/ui/card";
 import { Button } from "@/renderer/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/renderer/components/ui/select";
+import { Progress } from "@/renderer/components/ui/progress";
 import { StatusBadge } from "@/renderer/components/console";
 import { AppShell, PageHeader } from "@/renderer/components/console";
 import {
@@ -39,6 +50,11 @@ import {
   type CapabilityStatus,
 } from "@/renderer/components/console/reports-coverage";
 import type { ExchangeGroupListItem } from "@/shared/contracts/exchange";
+import type {
+  ReportGroupKind,
+  ReportsGenerateMembershipMatrixResult,
+} from "@/shared/contracts/reports";
+import type { ProgressEvent } from "@/shared/contracts/command";
 
 const STATUS_ICON_MAP: Record<CapabilityStatus, typeof CheckCircle> = {
   available: CheckCircle,
@@ -61,6 +77,14 @@ const STATUS_LABEL_MAP: Record<CapabilityStatus, string> = {
   unavailable: "Unavailable",
 };
 
+const KIND_LABELS: Record<ReportGroupKind, string> = {
+  all: "All Groups",
+  distributionList: "Distribution Lists",
+  mailEnabledSecurityGroup: "Security Groups",
+};
+
+type GenerationPhase = "idle" | "generating" | "success" | "error";
+
 export function ReportsScreen() {
   const { shell } = useApp();
   const capabilityRows = useMemo(() => deriveCapabilityRows(shell), [shell]);
@@ -72,6 +96,15 @@ export function ReportsScreen() {
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const [hasLoadedGroups, setHasLoadedGroups] = useState(false);
+
+  const [selectedKind, setSelectedKind] = useState<ReportGroupKind>("all");
+  const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
+  const [progressMessage, setProgressMessage] = useState<string>("");
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [generationResult, setGenerationResult] = useState<ReportsGenerateMembershipMatrixResult | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  const activeRequestIdRef = useRef(0);
 
   const loadGroups = useCallback(async () => {
     if (!exchangeConnected) {
@@ -131,12 +164,70 @@ export function ReportsScreen() {
       ? Math.round((coverage.available / coverage.total) * 100)
       : 0;
 
+  const handleGenerate = useCallback(async () => {
+    if (!exchangeConnected) return;
+
+    const requestId = activeRequestIdRef.current + 1;
+    activeRequestIdRef.current = requestId;
+    setGenerationPhase("generating");
+    setProgressMessage("Starting…");
+    setProgressPercent(0);
+    setGenerationResult(null);
+    setGenerationError(null);
+
+    try {
+      const result = await window.radApp.reports.generateMembershipMatrix(
+        { kind: selectedKind },
+        (event: ProgressEvent) => {
+          if (activeRequestIdRef.current !== requestId) return;
+          setProgressMessage(event.message);
+          if (event.percent !== undefined) {
+            setProgressPercent(event.percent);
+          }
+        },
+      );
+
+      if (activeRequestIdRef.current === requestId) {
+        setGenerationResult(result);
+        setGenerationPhase("success");
+      }
+    } catch (err) {
+      if (activeRequestIdRef.current === requestId) {
+        const message = err instanceof Error ? err.message : "Report generation failed.";
+        setGenerationError(message);
+        setGenerationPhase("error");
+      }
+    }
+  }, [exchangeConnected, selectedKind]);
+
+  const handleRetry = useCallback(() => {
+    setGenerationPhase("idle");
+    setGenerationError(null);
+    setProgressMessage("");
+    setProgressPercent(0);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    activeRequestIdRef.current += 1;
+    setGenerationPhase("idle");
+    setGenerationResult(null);
+    setGenerationError(null);
+    setProgressMessage("");
+    setProgressPercent(0);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      activeRequestIdRef.current += 1;
+    };
+  }, []);
+
   if (shell.isHydrating && !shell.session) {
     return (
       <AppShell>
         <PageHeader
           title="Reports"
-          description="Capability status and deferred surface inventory."
+          description="Capability status and export inventory."
         />
         <div className="flex items-center justify-center py-24">
           <Loader2 className="size-8 text-[var(--color-primary)] animate-spin mr-3" />
@@ -150,14 +241,39 @@ export function ReportsScreen() {
     <AppShell>
       <PageHeader
         title="Reports"
-        description="Capability status and deferred surface inventory."
+        description="Capability status and export inventory."
         actions={
           <div className="flex gap-2">
+            {generationPhase === "idle" && (
+              <Button
+                size="sm"
+                className="text-xs"
+                disabled={!exchangeConnected}
+                onClick={() => void handleGenerate()}
+              >
+                <FileDown className="size-3.5 mr-1.5" />
+                Generate Matrix
+              </Button>
+            )}
+            {generationPhase === "generating" && (
+              <Button size="sm" className="text-xs" variant="outline" disabled>
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                Generating…
+              </Button>
+            )}
+            {generationPhase === "success" && (
+              <Button size="sm" className="text-xs" variant="outline" onClick={handleReset}>
+                <RefreshCw className="size-3.5 mr-1.5" />
+                New Report
+              </Button>
+            )}
+            {generationPhase === "error" && (
+              <Button size="sm" className="text-xs" onClick={() => void handleGenerate()}>
+                <RefreshCw className="size-3.5 mr-1.5" />
+                Retry
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="text-xs" disabled>
-              <FileDown className="size-3.5 mr-1.5" />
-              Export CSV
-            </Button>
-            <Button size="sm" className="text-xs" disabled>
               <ShieldCheck className="size-3.5 mr-1.5" />
               Generate Audit
             </Button>
@@ -168,8 +284,17 @@ export function ReportsScreen() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card className={CONSOLE_SURFACE_CARD}>
           <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center text-slate-400">
-              <Ban className="size-5" />
+            <div className={cn(
+              "w-10 h-10 rounded flex items-center justify-center",
+              exchangeConnected
+                ? "bg-teal-50 text-[var(--color-primary)]"
+                : "bg-slate-100 text-slate-400",
+            )}>
+              {exchangeConnected ? (
+                <CheckCircle className="size-5" />
+              ) : (
+                <Ban className="size-5" />
+              )}
             </div>
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
@@ -177,10 +302,14 @@ export function ReportsScreen() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-[var(--color-foreground)]">
-                  Deferred
+                  {exchangeConnected ? "Available" : "Unavailable"}
                 </span>
-                <StatusBadge variant="neutral" size="sm" className="text-[10px]">
-                  No backend
+                <StatusBadge
+                  variant={exchangeConnected ? "success" : "error"}
+                  size="sm"
+                  className="text-[10px]"
+                >
+                  {exchangeConnected ? "Ready" : "No connection"}
                 </StatusBadge>
               </div>
             </div>
@@ -241,7 +370,7 @@ export function ReportsScreen() {
           <Card className={cn(CONSOLE_SURFACE_CARD, "overflow-hidden rounded-b-lg")}>
             <CardHeader className={CONSOLE_SURFACE_HEADER}>
               <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Capability & Deferred Status
+                Capability & Status
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -307,6 +436,139 @@ export function ReportsScreen() {
         </div>
 
         <div className="space-y-4">
+          <Card className={CONSOLE_SURFACE_CARD}>
+            <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
+              <CardTitle className="text-xs font-bold text-slate-800">
+                Membership Matrix
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              {generationPhase === "idle" && (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                      Group Kind
+                    </span>
+                    <Select
+                      value={selectedKind}
+                      onValueChange={(v) => setSelectedKind(v as ReportGroupKind)}
+                    >
+                      <SelectTrigger size="sm" className="w-full text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="all">{KIND_LABELS.all}</SelectItem>
+                          <SelectItem value="distributionList">{KIND_LABELS.distributionList}</SelectItem>
+                          <SelectItem value="mailEnabledSecurityGroup">{KIND_LABELS.mailEnabledSecurityGroup}</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full text-xs"
+                    disabled={!exchangeConnected}
+                    onClick={() => void handleGenerate()}
+                  >
+                    <FileDown className="size-3.5 mr-1.5" />
+                    Generate Matrix
+                  </Button>
+                  {!exchangeConnected && (
+                    <p className="text-[10px] text-slate-400 text-center">
+                      Connect to Exchange to generate reports.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {generationPhase === "generating" && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="size-4 text-[var(--color-primary)] animate-spin shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700">
+                      Generating…
+                    </span>
+                  </div>
+                  <Progress value={progressPercent} className="h-1.5" />
+                  <div className="flex justify-between text-[10px] text-slate-400">
+                    <span className="truncate mr-2">{progressMessage}</span>
+                    <span className="shrink-0 font-medium">{progressPercent}%</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Export is in progress. This view will update when the current request finishes.
+                  </p>
+                </div>
+              )}
+
+              {generationPhase === "success" && generationResult && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="size-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700">
+                      Report saved
+                    </span>
+                  </div>
+                  <div className="bg-emerald-50 rounded-md p-3 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="size-3.5 text-emerald-700 shrink-0" />
+                      <span className="text-[11px] font-medium text-emerald-800 truncate" title={generationResult.outputPath}>
+                        {generationResult.outputPath}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-emerald-600">
+                      {generationResult.summary.groupCount} groups · {generationResult.summary.recipientCount} recipients · {generationResult.summary.membershipCount} memberships
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={handleReset}
+                    >
+                      New Report
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {generationPhase === "error" && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="size-4 text-[var(--color-error)] shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-700">
+                        Generation failed
+                      </p>
+                      <p className="text-[11px] text-slate-500 break-words">
+                        {generationError}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => void handleGenerate()}
+                    >
+                      <RefreshCw className="size-3.5 mr-1.5" />
+                      Retry
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={handleRetry}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className={CONSOLE_SURFACE_CARD}>
             <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
               <CardTitle className="text-xs font-bold text-slate-800">

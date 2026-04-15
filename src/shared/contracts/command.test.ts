@@ -24,4 +24,18 @@ describe('command contracts', () => {
 
     expect(result.success).toBe(true);
   });
+
+  it('accepts the reports.generateMembershipMatrix command name', () => {
+    const result = commandRequestSchema.parse({
+      requestId: 'req-456',
+      command: 'reports.generateMembershipMatrix',
+      issuedAt: new Date().toISOString(),
+      payload: {
+        kind: 'all',
+        outputPath: 'C:/Reports/membership-matrix.xlsx',
+      },
+    });
+
+    expect(result.command).toBe('reports.generateMembershipMatrix');
+  });
 });
