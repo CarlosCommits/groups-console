@@ -108,7 +108,7 @@ describe("deriveCapabilityRows", () => {
     expect(rows.find((r) => r.id === "group-inventory")?.status).toBe("unavailable");
     expect(rows.find((r) => r.id === "guest-contact-workflows")?.status).toBe("unavailable");
     expect(rows.find((r) => r.id === "report-export")?.status).toBe("unavailable");
-    expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("deferred");
+    expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("unavailable");
   });
 
   it("marks bootstrap as available when all checks are ready", () => {
@@ -155,6 +155,7 @@ describe("deriveCapabilityRows", () => {
     const shell = makeShell({
       session: makeSession([
         { id: "powershell", label: "PowerShell", status: "ready", detail: "OK" },
+        { id: "logDirectory", label: "Log Directory", status: "ready", detail: "OK" },
       ]),
       exchangeCapabilities: makeCapabilities(),
       exchangeConnection: makeExchangeConnection("connected"),
@@ -162,7 +163,7 @@ describe("deriveCapabilityRows", () => {
     });
     const rows = deriveCapabilityRows(shell);
     expect(rows.find((r) => r.id === "report-export")?.status).toBe("available");
-    expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("deferred");
+    expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("partial");
   });
 
   it("includes user principal name in exchange detail when connected", () => {
