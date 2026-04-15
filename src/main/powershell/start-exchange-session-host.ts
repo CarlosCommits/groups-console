@@ -3,6 +3,7 @@ import { PassThrough, type Writable } from 'node:stream';
 import readline from 'node:readline';
 
 import { getRadAppPowerShellAssetRoot } from '@/main/app/paths';
+import { getCurrentOperationContext, writeOperationalLog } from '@/main/logging';
 import type { ProgressEvent } from '@/shared/contracts/command';
 
 export type ExchangeSessionHostCommand =
@@ -31,6 +32,7 @@ export type ExchangeSessionHost = {
     command: ExchangeSessionHostCommand,
     payload: Record<string, unknown>,
     onProgress?: (event: ProgressEvent) => void,
+    requestIdOverride?: string,
   ) => Promise<unknown>;
   dispose: () => Promise<void>;
 };
@@ -39,6 +41,9 @@ type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   onProgress?: (event: ProgressEvent) => void;
+  operationId: string;
+  ipcRequestId: string | null;
+  commandName: string;
 };
 
 type HostResponse = {
@@ -151,6 +156,20 @@ function createHostController(
 
       parsed = parsedMessage;
     } catch {
+      const pending = pendingRequests.values().next().value;
+      void writeOperationalLog({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        operationId: pending?.operationId ?? 'exchange-host',
+        ipcRequestId: pending?.ipcRequestId ?? null,
+        operationName: 'exchange.host.parse',
+        backendOwner: 'exchange',
+        tenantId: null,
+        result: 'failed',
+        safeErrorCode: 'exchange_host_parse_failed',
+        message: 'Received malformed JSON from Exchange session host.',
+        metadata: { line },
+      });
       return;
     }
 
@@ -195,6 +214,19 @@ function createHostController(
           stderr || 'Exchange session host exited before responding to all pending requests.',
         ),
       );
+
+      void writeOperationalLog({
+        timestamp: new Date().toISOString(),
+        level: stderr ? 'error' : 'warn',
+        operationId: pending.operationId,
+        ipcRequestId: pending.ipcRequestId,
+        operationName: `exchange.host.${pending.commandName}`,
+        backendOwner: 'exchange',
+        tenantId: null,
+        result: 'failed',
+        safeErrorCode: 'exchange_host_exit',
+        message: stderr || 'Exchange session host exited before responding to a pending request.',
+      });
     }
 
     pendingRequests.clear();
@@ -203,10 +235,19 @@ function createHostController(
 
   return {
     runtime,
-    request(command, payload, onProgress) {
+    request(command, payload, onProgress, requestIdOverride) {
       return new Promise((resolve, reject) => {
-        const requestId = crypto.randomUUID();
-        pendingRequests.set(requestId, { resolve, reject, onProgress });
+        const currentContext = getCurrentOperationContext();
+        const requestId =
+          requestIdOverride ?? currentContext?.operationId ?? crypto.randomUUID();
+        pendingRequests.set(requestId, {
+          resolve,
+          reject,
+          onProgress,
+          operationId: requestId,
+          ipcRequestId: currentContext?.ipcRequestId ?? null,
+          commandName: command,
+        });
 
         writeHostRequest(child.stdin, {
           requestId,
@@ -214,6 +255,18 @@ function createHostController(
           payload,
         }).catch((error: unknown) => {
           pendingRequests.delete(requestId);
+          void writeOperationalLog({
+            timestamp: new Date().toISOString(),
+            level: 'error',
+            operationId: requestId,
+            ipcRequestId: getCurrentOperationContext()?.ipcRequestId ?? null,
+            operationName: `exchange.host.${command}`,
+            backendOwner: 'exchange',
+            tenantId: null,
+            result: 'failed',
+            safeErrorCode: 'exchange_host_write_failed',
+            message: 'Failed to write request to Exchange session host.',
+          });
           reject(
             error instanceof Error ? error : new Error('Failed to write to Exchange session host.'),
           );

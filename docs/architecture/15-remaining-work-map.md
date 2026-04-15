@@ -122,25 +122,22 @@ Follow-up that still remains outside this completed slice:
 
 ### 5. Observability, audit, and diagnostics
 
-**Status:** missing
+**Status:** completed
 
-The observability plan in `08-observability.md` and the hardening epic in `12-backlog-and-commits.md` call for structured logs, audit events, and a diagnostics export. None of these are implemented yet.
+The observability plan in `08-observability.md` and the hardening epic in `12-backlog-and-commits.md` called for structured logs, audit events, and a diagnostics export. That slice is now implemented in the Electron main process and exposed through the app UI.
 
 Current reality:
 
-- there are no structured local logs in the main process
-- there are no audit events for mutations
-- there is no diagnostics bundle export capability
-- there is no secret or token redaction pipeline
-- the permission matrix in `14-permission-matrix.md` references logging authorization failures with correlation IDs, but the logging infrastructure to support that does not exist yet
+- the main process now writes structured local operational logs and a separate audit event stream
+- mutation workflows emit audit events with operation correlation, target metadata, and authoritative/non-authoritative results
+- a diagnostics bundle export command is implemented and exposed through Settings
+- the logging pipeline now applies redaction and exports sanitized diagnostics artifacts instead of raw log files
+- the app now carries correlation through IPC handling and the PowerShell-backed Exchange host path
 
-What is needed:
+Follow-up that still remains outside this completed slice:
 
-- implement structured JSON-lines logging in the main process with the minimum fields defined in `08-observability.md` (timestamp, level, correlation ID, operation name, backend owner, tenant ID, result, safe error code)
-- emit audit events for every mutation with actor, tenant, operation type, target, and result
-- implement a diagnostics bundle export that includes recent logs, app version, environment info, module/runtime checks, and anonymized last-error context
-- add secret and token redaction to the logging pipeline
-- funnel renderer logs through a controlled bridge rather than allowing independent renderer log writes
+- there is still no dedicated audit-log viewer in the renderer
+- renderer-origin breadcrumbs are still intentionally omitted; the current logging model remains main-process authoritative only
 
 ### 6. Deeper permission and remediation classification
 
@@ -178,11 +175,11 @@ The capability matrix says mail contact list/search is supported. In practice th
 
 The remaining work items are interdependent. This order accounts for dependencies and risk.
 
-1. **Observability, audit, and diagnostics** — now the highest-impact missing slice; it should land next so the implemented workflows produce traceable logs and exportable diagnostics from the start
-2. **Deeper permission and remediation classification** — grows incrementally as each remaining workflow is implemented; the error classification framework should be wired early and extended as new workflows land
+1. **Deeper permission and remediation classification** — now the highest-priority remaining slice; the error classification framework should be wired into the now-implemented workflows and extended as remaining gaps are closed
 
 Completed since the previous revision:
 
+- **Observability, audit, and diagnostics** — shipped as main-process structured logs, mutation audit events, diagnostics export, correlation propagation, and Settings-screen diagnostics export
 - **Richer contact and guest detail reads** — shipped as Exchange-owned `contacts.getDetails`, Graph-owned `guests.getDetails`, and a Directory detail dialog backed by fresh on-demand reads
 - **Report and export backend** — shipped as Exchange-owned membership-matrix export with JS-side XLSX generation, progress streaming, and a live Reports screen
 - **Guest membership execution path** — shipped as Graph-objectId → Exchange `GuestMailUser` resolution with selected-principal preservation in group add flows
@@ -195,7 +192,7 @@ Completed since the previous revision:
 - Contact creation and guest invitation both run cross-system overlap checks before proceeding. **Completed.**
 - The Reports screen is wired to a live export backend, not a deferred placeholder. **Completed.**
 - Contact and guest detail reads are backed by dedicated commands rather than relying only on search-row summaries. **Completed.**
-- Structured logs are written for every mutation, and a diagnostics bundle can be exported without manual file hunting.
+- Structured logs are written for every supported workflow, mutation audit events are captured, and a diagnostics bundle can be exported without manual file hunting. **Completed.**
 - The permission matrix is updated as each new workflow is implemented.
 - No deferred backlog item from `12-backlog-and-commits.md` is treated as an immediate blocker unless it appears in the remaining work categories above.
 - Internal user company sourcing is documented as a known consistency gap until it is aligned with the planned Graph source rule.

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Shield,
   Lock,
@@ -7,6 +8,7 @@ import {
   AlertTriangle,
   Plug,
   Unplug,
+  Download,
 } from "lucide-react";
 import { Switch } from "@/renderer/components/ui/switch";
 import { Button } from "@/renderer/components/ui/button";
@@ -123,10 +125,13 @@ export function SettingsScreen() {
 
   const security = session?.security;
   const powershellCheck = session?.checks.find((c) => c.id === "powershell");
+  const logDirectoryCheck = session?.checks.find((c) => c.id === "logDirectory");
 
   const graphConnected = graphConnection?.state === "connected";
   const exchangeConnected = exchangeConnection?.state === "connected";
   const isBusy = pendingAction !== null || isHydrating;
+  const [diagnosticsPending, setDiagnosticsPending] = useState(false);
+  const [diagnosticsMessage, setDiagnosticsMessage] = useState<string | null>(null);
 
   return (
     <AppShell>
@@ -306,6 +311,54 @@ export function SettingsScreen() {
                 <StatusBadge variant="neutral">—</StatusBadge>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[var(--color-outline-variant)]/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Download className="size-5 text-[var(--color-primary)]" />
+            <h2 className="text-sm font-extrabold font-headline">Diagnostics</h2>
+          </div>
+          <div className="space-y-3 text-sm text-[var(--color-outline)]">
+            <p>
+              Export a redacted diagnostics bundle with recent logs, session checks, and the latest error summary.
+            </p>
+            {logDirectoryCheck && (
+              <p className="text-xs text-slate-500">{logDirectoryCheck.detail}</p>
+            )}
+            {diagnosticsMessage && (
+              <p className="text-xs text-[var(--color-primary)]">{diagnosticsMessage}</p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={
+                diagnosticsPending ||
+                isHydrating ||
+                !window.radApp?.diagnostics ||
+                logDirectoryCheck?.status !== "ready"
+              }
+              onClick={() => {
+                void (async () => {
+                  setDiagnosticsPending(true);
+                  setDiagnosticsMessage(null);
+                  try {
+                    const result = await window.radApp.diagnostics.export();
+                    setDiagnosticsMessage(`Diagnostics exported to ${result.outputPath}.`);
+                  } catch (error) {
+                    setDiagnosticsMessage(
+                      error instanceof Error ? error.message : "Diagnostics export failed.",
+                    );
+                  } finally {
+                    setDiagnosticsPending(false);
+                  }
+                })();
+              }}
+            >
+              <Download className="size-3.5" />
+              {diagnosticsPending ? "Exporting…" : "Export diagnostics"}
+            </Button>
           </div>
         </div>
 
