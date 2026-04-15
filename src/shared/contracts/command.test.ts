@@ -38,4 +38,26 @@ describe('command contracts', () => {
 
     expect(result.command).toBe('reports.generateMembershipMatrix');
   });
+
+  it('accepts contact and guest detail command names', () => {
+    const contactRequest = commandRequestSchema.parse({
+      requestId: 'req-789',
+      command: 'contacts.getDetails',
+      issuedAt: new Date().toISOString(),
+      payload: {
+        stableKey: 'exchange:objectId:contact-1',
+      },
+    });
+    const guestRequest = commandRequestSchema.parse({
+      requestId: 'req-790',
+      command: 'guests.getDetails',
+      issuedAt: new Date().toISOString(),
+      payload: {
+        stableKey: 'graph:objectId:55e10b98-21dd-41f2-92bb-ebc888d66fc0',
+      },
+    });
+
+    expect(contactRequest.command).toBe('contacts.getDetails');
+    expect(guestRequest.command).toBe('guests.getDetails');
+  });
 });

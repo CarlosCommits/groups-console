@@ -2,8 +2,11 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import { commandResponseSchema, progressEventSchema, type ProgressEvent } from '@/shared/contracts/command';
 import {
+  contactsGetDetailsResultSchema,
   contactsCreateResultSchema,
   contactsUpdateCompanyResultSchema,
+  type ContactsGetDetailsPayload,
+  type ContactsGetDetailsResult,
   type ContactsCreatePayload,
   type ContactsCreateResult,
   type ContactsUpdateCompanyPayload,
@@ -14,8 +17,11 @@ import {
   type GraphConnectionStatus,
 } from '@/shared/contracts/graph';
 import {
+  guestsGetDetailsResultSchema,
   guestsInviteResultSchema,
   guestsSearchResultSchema,
+  type GuestsGetDetailsPayload,
+  type GuestsGetDetailsResult,
   type GuestsInvitePayload,
   type GuestsInviteResult,
   type GuestsSearchPayload,
@@ -239,6 +245,20 @@ const radAppApi = {
 
       return guestsInviteResultSchema.parse(response.data);
     },
+    async getDetails(payload: GuestsGetDetailsPayload): Promise<GuestsGetDetailsResult> {
+      const request = createCommandRequest(
+        'guests.getDetails' as Parameters<typeof createCommandRequest>[0],
+        payload,
+      );
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to read guest details.');
+      }
+
+      return guestsGetDetailsResultSchema.parse(response.data);
+    },
     async updateCompany(payload: GuestsUpdateCompanyPayload): Promise<GuestsUpdateCompanyResult> {
       const request = createCommandRequest('guests.updateCompany', payload);
       const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
@@ -252,6 +272,20 @@ const radAppApi = {
     },
   },
   contacts: {
+    async getDetails(payload: ContactsGetDetailsPayload): Promise<ContactsGetDetailsResult> {
+      const request = createCommandRequest(
+        'contacts.getDetails' as Parameters<typeof createCommandRequest>[0],
+        payload,
+      );
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to read contact details.');
+      }
+
+      return contactsGetDetailsResultSchema.parse(response.data);
+    },
     async create(payload: ContactsCreatePayload): Promise<ContactsCreateResult> {
       const request = createCommandRequest('contacts.create', payload);
       const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);

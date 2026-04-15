@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import type {
+  GuestDetails,
   GuestSearchItem,
   GuestsInvitePayload,
   GuestsInviteResult,
+  GuestsGetDetailsResult,
   GuestsSearchPayload,
   GuestsSearchResult,
   GuestsUpdateCompanyPayload,
@@ -35,6 +37,15 @@ const graphUserSchema = z.object({
   companyName: z.string().nullable().optional(),
   externalUserState: z.string().nullable().optional(),
   userType: z.string().nullable().optional(),
+  givenName: z.string().nullable().optional(),
+  surname: z.string().nullable().optional(),
+  jobTitle: z.string().nullable().optional(),
+  department: z.string().nullable().optional(),
+  mobilePhone: z.string().nullable().optional(),
+  officeLocation: z.string().nullable().optional(),
+  preferredLanguage: z.string().nullable().optional(),
+  createdDateTime: z.string().nullable().optional(),
+  accountEnabled: z.boolean().nullable().optional(),
 });
 
 const graphUsersResponseSchema = z.object({
@@ -141,6 +152,26 @@ export async function getGraphGuestById(
   }
 
   return mapGraphUserToGuestSearchItem(payload);
+}
+
+export async function getGraphGuestDetailsById(
+  accessToken: string,
+  guestUserId: string,
+): Promise<GuestsGetDetailsResult> {
+  const payload = graphUserSchema.parse(
+    await graphFetchJson(
+      `https://graph.microsoft.com/v1.0/users/${guestUserId}?$select=id,displayName,userPrincipalName,mail,otherMails,companyName,externalUserState,userType,givenName,surname,jobTitle,department,mobilePhone,officeLocation,preferredLanguage,createdDateTime,accountEnabled`,
+      accessToken,
+    ),
+  );
+
+  if (payload.userType !== 'Guest') {
+    throw new Error(`Graph object '${guestUserId}' is not a guest user.`);
+  }
+
+  return {
+    guest: mapGraphUserToGuestDetails(payload),
+  };
 }
 
 export async function findGraphGuestByEmail(
@@ -352,6 +383,23 @@ function mapGraphUserToGuestSearchItem(user: GraphUser): GuestSearchItem {
     userPrincipalName: user.userPrincipalName ?? null,
     companyName: user.companyName ?? null,
     externalUserState: normalizeExternalUserState(user.externalUserState),
+  };
+}
+
+function mapGraphUserToGuestDetails(user: GraphUser): GuestDetails {
+  const searchItem = mapGraphUserToGuestSearchItem(user);
+
+  return {
+    ...searchItem,
+    givenName: user.givenName ?? null,
+    surname: user.surname ?? null,
+    jobTitle: user.jobTitle ?? null,
+    department: user.department ?? null,
+    mobilePhone: user.mobilePhone ?? null,
+    officeLocation: user.officeLocation ?? null,
+    preferredLanguage: user.preferredLanguage ?? null,
+    createdDateTime: user.createdDateTime ?? null,
+    accountEnabled: user.accountEnabled ?? null,
   };
 }
 

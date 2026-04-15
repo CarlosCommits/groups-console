@@ -19,6 +19,34 @@ export const contactsCreatePayloadSchema = z
   })
   .strict();
 
+export const contactsGetDetailsPayloadSchema = z
+  .object({
+    stableKey: z.string().min(1),
+  })
+  .strict();
+
+export const contactDetailsSchema = contactRefSchema.extend({
+  displayName: z.string().min(1),
+  alias: z.string().nullable(),
+  companyName: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  title: z.string().nullable(),
+  department: z.string().nullable(),
+  phone: z.string().nullable(),
+  office: z.string().nullable(),
+  streetAddress: z.string().nullable(),
+  city: z.string().nullable(),
+  stateOrProvince: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  countryOrRegion: z.string().nullable(),
+  recipientTypeDetails: z.literal('MailContact'),
+});
+
+export const contactsGetDetailsResultSchema = z.object({
+  contact: contactDetailsSchema,
+});
+
 export const contactsCreateSuccessResultSchema = z.object({
   outcome: z.literal('created'),
   contact: contactRefSchema.extend({
@@ -63,7 +91,10 @@ export const contactsUpdateCompanyResultSchema = z.object({
 });
 
 export type ContactRef = z.infer<typeof contactRefSchema>;
+export type ContactDetails = z.infer<typeof contactDetailsSchema>;
 export type ContactsCreatePayload = z.infer<typeof contactsCreatePayloadSchema>;
+export type ContactsGetDetailsPayload = z.infer<typeof contactsGetDetailsPayloadSchema>;
+export type ContactsGetDetailsResult = z.infer<typeof contactsGetDetailsResultSchema>;
 export type ContactsCreateSuccessResult = z.infer<typeof contactsCreateSuccessResultSchema>;
 export type ContactsCreateBlockedResult = z.infer<typeof contactsCreateBlockedResultSchema>;
 export type ContactsCreateResult = z.infer<typeof contactsCreateResultSchema>;

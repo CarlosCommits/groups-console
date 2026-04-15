@@ -1,4 +1,9 @@
-import type { RecipientsSearchPayload, RecipientsSearchResult } from '@/shared/contracts/recipients';
+import type {
+  RecipientSearchItem,
+  RecipientSearchType,
+  RecipientsSearchPayload,
+  RecipientsSearchResult,
+} from '@/shared/contracts/recipients';
 
 import { searchExchangeRecipients } from '@/main/exchange/search-recipients';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
@@ -6,9 +11,19 @@ import { searchGuestUsers } from '@/main/graph/search-guest-users';
 
 export interface RecipientDirectoryProvider {
   searchRecipients(payload: RecipientsSearchPayload): Promise<RecipientsSearchResult>;
+  getCachedRecipientByStableKey(stableKey: string): RecipientSearchItem | null;
 }
 
 class AppRecipientDirectory implements RecipientDirectoryProvider {
+  private readonly detailCache = new Map<string, RecipientSearchItem>();
+
+  private withGuestType(
+    exchangeResult: RecipientsSearchResult,
+    exchangeTypes: RecipientSearchType[] | undefined,
+  ): RecipientSearchType[] {
+    return exchangeTypes ? [...exchangeTypes, 'guestUser'] : [...exchangeResult.appliedTypes, 'guestUser'];
+  }
+
   async searchRecipients(payload: RecipientsSearchPayload): Promise<RecipientsSearchResult> {
     const wantsGuestUsers = payload.types?.includes('guestUser') ?? false;
     const exchangeTypes = payload.types?.filter((type) => type !== 'guestUser');
@@ -30,31 +45,38 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
           });
 
     if (!wantsGuestUsers) {
+      this.cacheRecipients(exchangeResult.items);
       return exchangeResult;
     }
 
     const graphStatus = await getGraphConnectionStatus();
 
     if (graphStatus.state !== 'connected') {
-      return {
+      const result = {
         ...exchangeResult,
-        appliedTypes: exchangeTypes ? [...exchangeTypes, 'guestUser'] : [...exchangeResult.appliedTypes, 'guestUser'],
+        appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
-          graph: 'unavailable',
+          graph: 'unavailable' as const,
         },
       };
+
+      this.cacheRecipients(result.items);
+      return result;
     }
 
     if (graphStatus.exchangeAlignment === 'mismatched') {
-      return {
+      const result = {
         ...exchangeResult,
-        appliedTypes: exchangeTypes ? [...exchangeTypes, 'guestUser'] : [...exchangeResult.appliedTypes, 'guestUser'],
+        appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
-          graph: 'deferred',
+          graph: 'deferred' as const,
         },
       };
+
+      this.cacheRecipients(result.items);
+      return result;
     }
 
     try {
@@ -80,26 +102,43 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
         })),
       ].sort((left, right) => left.displayName.localeCompare(right.displayName));
 
-      return {
+      const result = {
         query: exchangeResult.query,
         appliedLimit: exchangeResult.appliedLimit,
-        appliedTypes: exchangeTypes ? [...exchangeTypes, 'guestUser'] : [...exchangeResult.appliedTypes, 'guestUser'],
+        appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
-          graph: 'searched',
+          graph: 'searched' as const,
         },
         items: mergedItems.slice(0, exchangeResult.appliedLimit),
       };
+
+      this.cacheRecipients(result.items);
+      return result;
     } catch {
-      return {
+      const result = {
         ...exchangeResult,
-        appliedTypes: exchangeTypes ? [...exchangeTypes, 'guestUser'] : [...exchangeResult.appliedTypes, 'guestUser'],
+        appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
-          graph: 'unavailable',
+          graph: 'unavailable' as const,
         },
       };
+
+      this.cacheRecipients(result.items);
+      return result;
     }
+  }
+
+  getCachedRecipientByStableKey(stableKey: string): RecipientSearchItem | null {
+    return this.detailCache.get(stableKey) ?? null;
+  }
+
+  private cacheRecipients(items: RecipientSearchItem[]): void {
+    this.detailCache.clear();
+    items.forEach((item) => {
+      this.detailCache.set(item.stableKey, item);
+    });
   }
 }
 

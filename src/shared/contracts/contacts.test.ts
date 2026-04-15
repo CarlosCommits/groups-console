@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  contactDetailsSchema,
   contactsCreatePayloadSchema,
   contactsCreateResultSchema,
   contactsCreateSuccessResultSchema,
+  contactsGetDetailsPayloadSchema,
+  contactsGetDetailsResultSchema,
   contactsUpdateCompanyPayloadSchema,
   contactsUpdateCompanyResultSchema,
 } from './contacts';
@@ -27,6 +30,12 @@ describe('contact contracts', () => {
       contactsUpdateCompanyPayloadSchema.parse({
         exchangeIdentity: 'jane@example.com',
         companyName: 'Example Corp',
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      contactsGetDetailsPayloadSchema.parse({
+        stableKey: 'exchange:objectId:contact-1',
       }),
     ).not.toThrow();
   });
@@ -93,5 +102,32 @@ describe('contact contracts', () => {
     }
     expect(blocked.conflict.category).toBe('guestContactOverlap');
     expect(updated.contact.companyName).toBe('New Company');
+  });
+
+  it('accepts contact detail payloads and results', () => {
+    const result = contactsGetDetailsResultSchema.parse({
+      contact: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'contact-1',
+        primaryEmail: 'jane@example.com',
+        displayName: 'Jane Example',
+        alias: 'jexample',
+        companyName: 'Example Corp',
+        firstName: 'Jane',
+        lastName: 'Example',
+        title: 'Director',
+        department: 'Operations',
+        phone: '+1 555-0100',
+        office: 'HQ-201',
+        streetAddress: '1 Example Way',
+        city: 'New York',
+        stateOrProvince: 'NY',
+        postalCode: '10001',
+        countryOrRegion: 'US',
+        recipientTypeDetails: 'MailContact',
+      },
+    });
+
+    expect(contactDetailsSchema.parse(result.contact).firstName).toBe('Jane');
   });
 });
