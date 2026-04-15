@@ -107,7 +107,7 @@ describe("deriveCapabilityRows", () => {
     expect(rows.find((r) => r.id === "graph-connection")?.status).toBe("unavailable");
     expect(rows.find((r) => r.id === "group-inventory")?.status).toBe("unavailable");
     expect(rows.find((r) => r.id === "guest-contact-workflows")?.status).toBe("unavailable");
-    expect(rows.find((r) => r.id === "report-export")?.status).toBe("deferred");
+    expect(rows.find((r) => r.id === "report-export")?.status).toBe("unavailable");
     expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("deferred");
   });
 
@@ -151,7 +151,7 @@ describe("deriveCapabilityRows", () => {
     expect(rows.find((r) => r.id === "guest-contact-workflows")?.status).toBe("available");
   });
 
-  it("always marks report-export and audit-observability as deferred", () => {
+  it("marks report-export as available when Exchange is connected", () => {
     const shell = makeShell({
       session: makeSession([
         { id: "powershell", label: "PowerShell", status: "ready", detail: "OK" },
@@ -161,7 +161,7 @@ describe("deriveCapabilityRows", () => {
       graphConnection: makeGraphConnection("connected"),
     });
     const rows = deriveCapabilityRows(shell);
-    expect(rows.find((r) => r.id === "report-export")?.status).toBe("deferred");
+    expect(rows.find((r) => r.id === "report-export")?.status).toBe("available");
     expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("deferred");
   });
 
