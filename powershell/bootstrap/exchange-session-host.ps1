@@ -10,9 +10,11 @@
 . "$PSScriptRoot\..\commands\search-recipients.ps1"
 . "$PSScriptRoot\..\commands\get-groups.ps1"
 . "$PSScriptRoot\..\commands\get-group-members.ps1"
+. "$PSScriptRoot\..\commands\export-report-data.ps1"
 
 $ErrorActionPreference = 'Stop'
 $script:RadAppExchangeConnectionContext = $null
+$script:RadAppCurrentRequestId = $null
 
 function ConvertTo-RadAppHashtable {
     param(
@@ -36,6 +38,33 @@ function ConvertTo-RadAppHashtable {
     return $result
 }
 
+function Write-RadAppProgress {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Phase,
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+        [Parameter(Mandatory = $false)]
+        [Nullable[int]]$Percent
+    )
+
+    if ([string]::IsNullOrWhiteSpace($script:RadAppCurrentRequestId)) {
+        return
+    }
+
+    $payload = @{
+        requestId = $script:RadAppCurrentRequestId
+        phase = $Phase
+        message = $Message
+    }
+
+    if ($null -ne $Percent) {
+        $payload.percent = $Percent
+    }
+
+    [Console]::Out.WriteLine(($payload | ConvertTo-Json -Compress -Depth 6))
+}
+
 while (($line = [Console]::In.ReadLine()) -ne $null) {
     if ([string]::IsNullOrWhiteSpace($line)) {
         continue
@@ -46,6 +75,7 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
     try {
         $request = $line | ConvertFrom-Json
         $requestId = [string]$request.requestId
+        $script:RadAppCurrentRequestId = $requestId
         $command = [string]$request.command
         $payload = if ($request.PSObject.Properties.Name -contains 'payload') {
             ConvertTo-RadAppHashtable $request.payload
@@ -91,6 +121,9 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             'getGroupMembers' {
                 $data = Invoke-RadAppGetGroupMembers -Payload $payload
             }
+            'exportReportData' {
+                $data = Invoke-RadAppExportReportData -Payload $payload
+            }
             'shutdown' {
                 $data = Invoke-RadAppDisconnectExchange
 
@@ -113,12 +146,15 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
         } | ConvertTo-Json -Compress -Depth 6
     }
     catch {
-        @{
+        @{ 
             requestId = $requestId
             success = $false
             error = @{
                 message = $_.Exception.Message
             }
         } | ConvertTo-Json -Compress -Depth 6
+    }
+    finally {
+        $script:RadAppCurrentRequestId = $null
     }
 }

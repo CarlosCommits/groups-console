@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 
 import {
   commandRequestSchema,
@@ -47,6 +47,10 @@ import {
   groupsRemoveMembersPayloadSchema,
   groupsRemoveMembersResultSchema,
 } from '@/shared/contracts/exchange';
+import {
+  reportsGenerateMembershipMatrixPayloadSchema,
+  reportsGenerateMembershipMatrixResultSchema,
+} from '@/shared/contracts/reports';
 import { addGroupMembers } from '@/main/exchange/add-group-members';
 import { createContact } from '@/main/exchange/create-contact';
 import { connectExchange } from '@/main/exchange/connect-exchange';
@@ -64,12 +68,14 @@ import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabiliti
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 import { getGroupMembers } from '@/main/exchange/get-group-members';
 import { listExchangeGroups } from '@/main/exchange/list-exchange-groups';
+import { generateMembershipMatrixReport } from '@/main/reports/generate-membership-matrix';
 import { recipientDirectory } from '@/main/recipients/recipient-directory';
 
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
 
 const COMMAND_CHANNEL = 'radapp:command';
+const PROGRESS_CHANNEL = 'radapp:progress';
 
 function createErrorResponse(requestId: string, error: CommandError): CommandResponse {
   return commandResponseSchema.parse({
@@ -80,7 +86,11 @@ function createErrorResponse(requestId: string, error: CommandError): CommandRes
   });
 }
 
-async function executeCommand(request: CommandRequest): Promise<CommandResponse> {
+async function executeCommand(
+  request: CommandRequest,
+  senderWindow: BrowserWindow | null,
+  emitProgress: (event: { phase: 'preflight' | 'executing' | 'verifying' | 'complete'; message: string; percent?: number }) => void,
+): Promise<CommandResponse> {
   switch (request.command) {
     case 'session.getStatus': {
       sessionGetStatusPayloadSchema.parse(request.payload);
@@ -175,6 +185,22 @@ async function executeCommand(request: CommandRequest): Promise<CommandResponse>
     case 'groups.removeMembers': {
       const payload = groupsRemoveMembersPayloadSchema.parse(request.payload);
       const result = groupsRemoveMembersResultSchema.parse(await removeGroupMembers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'reports.generateMembershipMatrix': {
+      const payload = reportsGenerateMembershipMatrixPayloadSchema.parse(request.payload);
+      const result = reportsGenerateMembershipMatrixResultSchema.parse(
+        await generateMembershipMatrixReport(payload, {
+          browserWindow: senderWindow,
+          emitProgress,
+        }),
+      );
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
@@ -307,7 +333,13 @@ export function registerIpcHandlers(): void {
 
     try {
       const request = commandRequestSchema.parse(rawRequest);
-      return await executeCommand(request);
+      const senderWindow = BrowserWindow.fromWebContents(event.sender);
+      return await executeCommand(request, senderWindow, (progress) => {
+        event.sender.send(PROGRESS_CHANNEL, {
+          requestId: request.requestId,
+          ...progress,
+        });
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown command failure.';
 

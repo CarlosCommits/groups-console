@@ -3,6 +3,7 @@ import { PassThrough, type Writable } from 'node:stream';
 import readline from 'node:readline';
 
 import { getRadAppPowerShellAssetRoot } from '@/main/app/paths';
+import type { ProgressEvent } from '@/shared/contracts/command';
 
 export type ExchangeSessionHostCommand =
   | 'connect'
@@ -13,6 +14,7 @@ export type ExchangeSessionHostCommand =
   | 'createContact'
   | 'updateContactCompany'
   | 'searchRecipients'
+  | 'exportReportData'
   | 'listGroups'
   | 'getGroupMembers'
   | 'addGroupMembers'
@@ -24,13 +26,18 @@ export type ExchangeSessionHost = {
     command: 'powershell.exe' | 'pwsh.exe';
     label: 'Windows PowerShell' | 'PowerShell';
   };
-  request: (command: ExchangeSessionHostCommand, payload: Record<string, unknown>) => Promise<unknown>;
+  request: (
+    command: ExchangeSessionHostCommand,
+    payload: Record<string, unknown>,
+    onProgress?: (event: ProgressEvent) => void,
+  ) => Promise<unknown>;
   dispose: () => Promise<void>;
 };
 
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
+  onProgress?: (event: ProgressEvent) => void;
 };
 
 type HostResponse = {
@@ -41,6 +48,8 @@ type HostResponse = {
     message: string;
   };
 };
+
+type HostProgress = ProgressEvent;
 
 const WINDOWS_CANDIDATES: Array<{
   command: 'powershell.exe' | 'pwsh.exe';
@@ -131,7 +140,15 @@ function createHostController(
     let parsed: HostResponse;
 
     try {
-      parsed = JSON.parse(line) as HostResponse;
+      const parsedMessage = JSON.parse(line) as HostResponse | HostProgress;
+
+      if ('phase' in parsedMessage && 'message' in parsedMessage) {
+        const pending = pendingRequests.get(parsedMessage.requestId);
+        pending?.onProgress?.(parsedMessage);
+        return;
+      }
+
+      parsed = parsedMessage;
     } catch {
       return;
     }
@@ -185,10 +202,10 @@ function createHostController(
 
   return {
     runtime,
-    request(command, payload) {
+    request(command, payload, onProgress) {
       return new Promise((resolve, reject) => {
         const requestId = crypto.randomUUID();
-        pendingRequests.set(requestId, { resolve, reject });
+        pendingRequests.set(requestId, { resolve, reject, onProgress });
 
         writeHostRequest(child.stdin, {
           requestId,
