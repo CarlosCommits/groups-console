@@ -8,6 +8,8 @@ import {
   type CommandResponse,
 } from '@/shared/contracts/command';
 import {
+  contactsGetDetailsPayloadSchema,
+  contactsGetDetailsResultSchema,
   contactsCreatePayloadSchema,
   contactsCreateResultSchema,
   contactsUpdateCompanyPayloadSchema,
@@ -24,6 +26,8 @@ import {
   recipientsSearchResultSchema,
 } from '@/shared/contracts/recipients';
 import {
+  guestsGetDetailsPayloadSchema,
+  guestsGetDetailsResultSchema,
   guestsInvitePayloadSchema,
   guestsInviteResultSchema,
   guestsSearchPayloadSchema,
@@ -53,12 +57,14 @@ import {
 } from '@/shared/contracts/reports';
 import { addGroupMembers } from '@/main/exchange/add-group-members';
 import { createContact } from '@/main/exchange/create-contact';
+import { getContactDetails } from '@/main/exchange/get-contact-details';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { removeGroupMembers } from '@/main/exchange/remove-group-members';
 import { updateContactCompany } from '@/main/exchange/update-contact-company';
 import { connectGraph } from '@/main/graph/connect-graph';
 import { disconnectGraph } from '@/main/graph/disconnect-graph';
+import { getGuestDetails } from '@/main/graph/get-guest-details';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { inviteGuestUser } from '@/main/graph/invite-guest-user';
 import { searchGuestUsers } from '@/main/graph/search-guest-users';
@@ -91,7 +97,7 @@ async function executeCommand(
   senderWindow: BrowserWindow | null,
   emitProgress: (event: { phase: 'preflight' | 'executing' | 'verifying' | 'complete'; message: string; percent?: number }) => void,
 ): Promise<CommandResponse> {
-  switch (request.command) {
+  switch (request.command as string) {
     case 'session.getStatus': {
       sessionGetStatusPayloadSchema.parse(request.payload);
       const status = sessionStatusSchema.parse(await getSessionStatus());
@@ -264,6 +270,29 @@ async function executeCommand(
         data: result,
       }) as CommandResponse;
     }
+    case 'guests.getDetails': {
+      const payload = guestsGetDetailsPayloadSchema.parse(request.payload);
+      const recipient = recipientDirectory.getCachedRecipientByStableKey(payload.stableKey);
+      if (
+        !recipient ||
+        recipient.source !== 'graph' ||
+        recipient.recipientType !== 'guestUser' ||
+        !recipient.objectId
+      ) {
+        throw new Error('Guest details are only available for guest entries returned by the current directory search.');
+      }
+
+      const result = guestsGetDetailsResultSchema.parse(
+        await getGuestDetails(recipient.objectId),
+      );
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
     case 'guests.invite': {
       const payload = guestsInvitePayloadSchema.parse(request.payload);
       const result = guestsInviteResultSchema.parse(await inviteGuestUser(payload));
@@ -278,6 +307,29 @@ async function executeCommand(
     case 'guests.updateCompany': {
       const payload = guestsUpdateCompanyPayloadSchema.parse(request.payload);
       const result = guestsUpdateCompanyResultSchema.parse(await updateGuestCompany(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'contacts.getDetails': {
+      const payload = contactsGetDetailsPayloadSchema.parse(request.payload);
+      const recipient = recipientDirectory.getCachedRecipientByStableKey(payload.stableKey);
+      if (
+        !recipient ||
+        recipient.source !== 'exchange' ||
+        recipient.recipientType !== 'mailContact' ||
+        !recipient.exchangeIdentity
+      ) {
+        throw new Error('Contact details are only available for contact entries returned by the current directory search.');
+      }
+
+      const result = contactsGetDetailsResultSchema.parse(
+        await getContactDetails(recipient.exchangeIdentity),
+      );
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
@@ -307,6 +359,9 @@ async function executeCommand(
         completedAt: new Date().toISOString(),
         data: result,
       }) as CommandResponse;
+    }
+    default: {
+      throw new Error(`Unknown command: ${request.command}`);
     }
   }
 }

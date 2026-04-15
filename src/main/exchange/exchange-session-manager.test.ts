@@ -204,6 +204,59 @@ describe('ExchangeSessionManager', () => {
     expect(result.contact.companyName).toBe('New Company');
   });
 
+  it('reads contact details through the live host', async () => {
+    const manager = new ExchangeSessionManager();
+
+    vi.mocked(startExchangeSessionHost).mockResolvedValue({
+      runtime: {
+        command: 'powershell.exe',
+        label: 'Windows PowerShell',
+      },
+      request: vi
+        .fn()
+        .mockResolvedValueOnce({
+          state: 'connected',
+          detail: 'Connected to Exchange Online.',
+          psVersion: '5.1.19041.1',
+          psEdition: 'Desktop',
+          userPrincipalName: 'admin@example.com',
+          connectionId: 'connection-1',
+          tenantId: 'tenant-1',
+          tokenStatus: 'Active',
+          tokenExpiryTimeUtc: '2026-04-01T12:00:00.000Z',
+          connectedAtUtc: '2026-04-01T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          contact: {
+            exchangeIdentity: 'jane@example.com',
+            objectId: 'contact-1',
+            primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example',
+            alias: 'jexample',
+            companyName: 'Example Corp',
+            firstName: 'Jane',
+            lastName: 'Example',
+            title: 'Director',
+            department: 'Operations',
+            phone: '+1 555-0100',
+            office: 'HQ-201',
+            streetAddress: '1 Example Way',
+            city: 'New York',
+            stateOrProvince: 'NY',
+            postalCode: '10001',
+            countryOrRegion: 'US',
+            recipientTypeDetails: 'MailContact',
+          },
+        }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await manager.connect({ userPrincipalName: 'admin@example.com' });
+    const result = await manager.getContactDetails('jane@example.com');
+
+    expect(result.contact.alias).toBe('jexample');
+  });
+
   it('searches recipients through the live host', async () => {
     const manager = new ExchangeSessionManager();
 

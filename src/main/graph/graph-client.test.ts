@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getGraphGuestById, inviteGraphGuest, searchGraphGuests, updateGraphGuestCompany } from './graph-client';
+import { getGraphGuestById, getGraphGuestDetailsById, inviteGraphGuest, searchGraphGuests, updateGraphGuestCompany } from './graph-client';
 
 describe('graph-client', () => {
   const originalFetch = global.fetch;
@@ -215,5 +215,40 @@ describe('graph-client', () => {
     await expect(getGraphGuestById('token', 'user-1')).rejects.toThrow(
       "Graph object 'user-1' is not a guest user.",
     );
+  });
+
+  it('reads richer guest details by object id', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          id: '00000000-0000-0000-0000-000000000002',
+          displayName: 'Guest Example',
+          userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          mail: null,
+          otherMails: ['guest@example.com'],
+          companyName: 'Guest Co',
+          externalUserState: 'Accepted',
+          userType: 'Guest',
+          givenName: 'Guest',
+          surname: 'Example',
+          jobTitle: 'Consultant',
+          department: 'Field',
+          mobilePhone: '+1 555-0101',
+          officeLocation: 'Remote',
+          preferredLanguage: 'en-US',
+          createdDateTime: '2026-04-14T12:00:00.000Z',
+          accountEnabled: true,
+        }),
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await getGraphGuestDetailsById(
+      'token',
+      '00000000-0000-0000-0000-000000000002',
+    );
+
+    expect(result.guest.jobTitle).toBe('Consultant');
   });
 });

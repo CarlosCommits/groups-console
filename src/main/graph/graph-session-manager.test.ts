@@ -14,6 +14,7 @@ vi.mock('./msal-public-client', () => ({
 vi.mock('./graph-client', () => ({
   fetchGraphOrganization: vi.fn(),
   fetchGraphMe: vi.fn(),
+  getGraphGuestDetailsById: vi.fn(),
   getGraphGuestById: vi.fn(),
   searchGraphGuests: vi.fn(),
   inviteGraphGuest: vi.fn(),
@@ -30,6 +31,7 @@ import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connec
 import {
   fetchGraphMe,
   fetchGraphOrganization,
+  getGraphGuestDetailsById,
   getGraphGuestById,
   inviteGraphGuest,
   searchGraphGuests,
@@ -357,5 +359,70 @@ describe('GraphSessionManager', () => {
     const result = await manager.getGuestById('guest-1');
 
     expect(result.objectId).toBe('guest-1');
+  });
+
+  it('reads richer guest details through the active session', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account: {
+        tenantId: 'tenant-configured',
+        username: 'admin@example.com',
+        name: 'Admin Example',
+      },
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(acquireSilentGraphToken).mockResolvedValue({
+      accessToken: 'token-2',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'connected',
+      detail: 'Connected to Exchange Online.',
+      runtime: null,
+      userPrincipalName: 'admin@example.com',
+      connectionId: 'conn-1',
+      tenantId: 'tenant-configured',
+      tokenStatus: 'Active',
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+    vi.mocked(getGraphGuestDetailsById).mockResolvedValue({
+      guest: {
+        stableKey: 'graph:objectId:00000000-0000-0000-0000-000000000002',
+        objectId: '00000000-0000-0000-0000-000000000002',
+        displayName: 'Guest Example',
+        primaryEmail: 'guest@example.com',
+        userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+        companyName: 'Guest Co',
+        externalUserState: 'Accepted',
+        givenName: 'Guest',
+        surname: 'Example',
+        jobTitle: 'Consultant',
+        department: 'Field',
+        mobilePhone: '+1 555-0101',
+        officeLocation: 'Remote',
+        preferredLanguage: 'en-US',
+        createdDateTime: '2026-04-14T12:00:00.000Z',
+        accountEnabled: true,
+      },
+    });
+
+    await manager.connect();
+    const result = await manager.getGuestDetails('00000000-0000-0000-0000-000000000002');
+
+    expect(result.guest.department).toBe('Field');
   });
 });

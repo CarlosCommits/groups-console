@@ -16,8 +16,10 @@ export const commandNameSchema = z.enum([
   'graph.getConnectionStatus',
   'graph.disconnect',
   'guests.search',
+  'guests.getDetails',
   'guests.invite',
   'guests.updateCompany',
+  'contacts.getDetails',
   'contacts.create',
   'contacts.updateCompany',
 ]);
