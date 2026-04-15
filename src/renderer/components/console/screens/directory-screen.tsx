@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plus,
   Edit,
@@ -49,10 +49,12 @@ import type {
 import type {
   ContactsCreateResult,
   ContactsUpdateCompanyResult,
+  ContactDetails,
 } from "@/shared/contracts/contacts";
 import type {
   GuestsInviteResult,
   GuestsUpdateCompanyResult,
+  GuestDetails,
 } from "@/shared/contracts/guests";
 
 type CreateMode = "contact" | "guest";
@@ -64,6 +66,10 @@ type CreateResult =
 type UpdateResult =
   | { mode: "contact"; data: ContactsUpdateCompanyResult }
   | { mode: "guest"; data: GuestsUpdateCompanyResult };
+
+type DetailResult =
+  | { mode: "contact"; data: ContactDetails }
+  | { mode: "guest"; data: GuestDetails };
 
 const TAB_TYPES: Record<string, RecipientSearchType[]> = {
   all: [
@@ -203,6 +209,10 @@ function canUpdateCompany(
   return false;
 }
 
+function canInspect(item: RecipientSearchItem): boolean {
+  return item.recipientType === "mailContact" || item.recipientType === "guestUser";
+}
+
 function getUpdateMode(
   item: RecipientSearchItem,
 ): "contact" | "guest" {
@@ -240,6 +250,13 @@ export function DirectoryScreen() {
   const [updatePending, setUpdatePending] = useState(false);
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
+  const [detailPending, setDetailPending] = useState(false);
+  const [detailResult, setDetailResult] = useState<DetailResult | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const detailRequestIdRef = useRef(0);
 
   const canCreateContact = exchangeConnected;
   const canCreateGuest = graphConnected && graphTenantMatched;
@@ -447,6 +464,52 @@ export function DirectoryScreen() {
     setUpdateError(null);
   };
 
+  const openDetailDialog = useCallback(async (item: RecipientSearchItem) => {
+    const requestId = detailRequestIdRef.current + 1;
+    detailRequestIdRef.current = requestId;
+
+    setDetailTarget(item);
+    setDetailPending(true);
+    setDetailResult(null);
+    setDetailError(null);
+    setDetailDialogOpen(true);
+
+    try {
+      if (item.recipientType === "mailContact") {
+        const result = await window.radApp.contacts.getDetails({
+          stableKey: item.stableKey,
+        });
+        if (detailRequestIdRef.current === requestId) {
+          setDetailResult({ mode: "contact", data: result.contact });
+        }
+      } else {
+        const result = await window.radApp.guests.getDetails({
+          stableKey: item.stableKey,
+        });
+        if (detailRequestIdRef.current === requestId) {
+          setDetailResult({ mode: "guest", data: result.guest });
+        }
+      }
+    } catch (err: unknown) {
+      if (detailRequestIdRef.current === requestId) {
+        setDetailError(err instanceof Error ? err.message : "Failed to load details.");
+      }
+    } finally {
+      if (detailRequestIdRef.current === requestId) {
+        setDetailPending(false);
+      }
+    }
+  }, []);
+
+  const handleDetailClose = useCallback(() => {
+    detailRequestIdRef.current += 1;
+    setDetailDialogOpen(false);
+    setDetailTarget(null);
+    setDetailPending(false);
+    setDetailResult(null);
+    setDetailError(null);
+  }, []);
+
   const tabs = [
     { label: "All", value: "all" },
     { label: "Contacts", value: "contacts" },
@@ -638,7 +701,7 @@ export function DirectoryScreen() {
                         <TableHead className="w-[14%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           Membership
                         </TableHead>
-                        <TableHead className="text-right w-10"></TableHead>
+                        <TableHead className="text-right w-20"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -687,20 +750,32 @@ export function DirectoryScreen() {
                                 item.membershipSupport}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn(
-                                  "size-6 transition-all p-1",
-                                  editable
-                                    ? "opacity-0 group-hover:opacity-100 hover:text-[var(--color-primary)]"
-                                    : "opacity-0 cursor-default",
+                              <div className="flex items-center justify-end gap-0.5">
+                                {canInspect(item) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-6 transition-all p-1 opacity-0 group-hover:opacity-100 hover:text-[var(--color-primary)]"
+                                    onClick={() => { void openDetailDialog(item); }}
+                                  >
+                                    <Info className="size-3" />
+                                  </Button>
                                 )}
-                                disabled={!editable}
-                                onClick={editable ? () => openUpdateDialog(item) : undefined}
-                              >
-                                <Edit className="size-3" />
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    "size-6 transition-all p-1",
+                                    editable
+                                      ? "opacity-0 group-hover:opacity-100 hover:text-[var(--color-primary)]"
+                                      : "opacity-0 cursor-default",
+                                  )}
+                                  disabled={!editable}
+                                  onClick={editable ? () => openUpdateDialog(item) : undefined}
+                                >
+                                  <Edit className="size-3" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -1134,6 +1209,299 @@ export function DirectoryScreen() {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => { if (!open) handleDetailClose(); }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {detailTarget
+                ? detailTarget.recipientType === "mailContact"
+                  ? "Contact Details"
+                  : "Guest Details"
+                : "Details"}
+            </DialogTitle>
+            <DialogDescription>
+              {detailTarget
+                ? `Inspecting ${detailTarget.displayName}`
+                : "Viewing directory entry details."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailPending ? (
+            <div className="flex-1 flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="size-8 text-[var(--color-primary)] mx-auto mb-4 animate-spin" />
+                <p className="text-sm text-slate-500">Loading details\u2026</p>
+              </div>
+            </div>
+          ) : detailError ? (
+            <div className="flex-1 flex items-center justify-center py-12">
+              <div className="text-center">
+                <AlertCircle className="size-10 text-[var(--color-error)] mx-auto mb-4" />
+                <h2 className="text-lg font-bold font-headline text-slate-700 mb-2">
+                  Failed to Load Details
+                </h2>
+                <p className="text-sm text-slate-500 max-w-sm mb-4">
+                  {detailError}
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (detailTarget) {
+                      void openDetailDialog(detailTarget);
+                    }
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : detailResult ? (
+            <div className="flex-1 overflow-y-auto space-y-3 py-2">
+              {detailResult.mode === "contact" ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
+                    <Avatar className="w-8 h-8 text-xs">
+                      <AvatarFallback className={avatarColorFor(detailTarget?.stableKey ?? "")}>
+                        {getInitials(detailResult.data.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800 truncate">
+                        {detailResult.data.displayName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
+                      </p>
+                    </div>
+                    <Badge className={cn("shrink-0", typeBadgeClass("mailContact"))}>
+                      CONTACT
+                    </Badge>
+                  </div>
+                  <div className="space-y-0">
+                    {detailResult.data.primaryEmail && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.primaryEmail}</span>
+                      </div>
+                    )}
+                    {detailResult.data.alias && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Alias</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.alias}</span>
+                      </div>
+                    )}
+                    {detailResult.data.companyName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Company</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.companyName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.firstName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">First Name</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.firstName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.lastName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last Name</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.lastName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.title && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Title</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.title}</span>
+                      </div>
+                    )}
+                    {detailResult.data.department && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.department}</span>
+                      </div>
+                    )}
+                    {detailResult.data.phone && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Phone</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.phone}</span>
+                      </div>
+                    )}
+                    {detailResult.data.office && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Office</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.office}</span>
+                      </div>
+                    )}
+                    {detailResult.data.streetAddress && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Street Address</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.streetAddress}</span>
+                      </div>
+                    )}
+                    {detailResult.data.city && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">City</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.city}</span>
+                      </div>
+                    )}
+                    {detailResult.data.stateOrProvince && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">State/Province</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.stateOrProvince}</span>
+                      </div>
+                    )}
+                    {detailResult.data.postalCode && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Postal Code</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.postalCode}</span>
+                      </div>
+                    )}
+                    {detailResult.data.countryOrRegion && (
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Country/Region</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.countryOrRegion}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
+                    <Avatar className="w-8 h-8 text-xs">
+                      <AvatarFallback className={avatarColorFor(detailTarget?.stableKey ?? "")}>
+                        {getInitials(detailResult.data.displayName ?? "")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800 truncate">
+                        {detailResult.data.displayName ?? "\u2014"}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {detailResult.data.primaryEmail ?? detailResult.data.userPrincipalName ?? "\u2014"}
+                      </p>
+                    </div>
+                    <Badge className={cn("shrink-0", typeBadgeClass("guestUser"))}>
+                      GUEST
+                    </Badge>
+                  </div>
+                  <div className="space-y-0">
+                    {detailResult.data.primaryEmail && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.primaryEmail}</span>
+                      </div>
+                    )}
+                    {detailResult.data.userPrincipalName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">UPN</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.userPrincipalName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.companyName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Company</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.companyName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.givenName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">First Name</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.givenName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.surname && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last Name</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.surname}</span>
+                      </div>
+                    )}
+                    {detailResult.data.jobTitle && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Job Title</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.jobTitle}</span>
+                      </div>
+                    )}
+                    {detailResult.data.department && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.department}</span>
+                      </div>
+                    )}
+                    {detailResult.data.mobilePhone && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Mobile Phone</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.mobilePhone}</span>
+                      </div>
+                    )}
+                    {detailResult.data.officeLocation && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Office Location</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.officeLocation}</span>
+                      </div>
+                    )}
+                    {detailResult.data.preferredLanguage && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Preferred Language</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.preferredLanguage}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-1.5 border-b border-slate-100">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</span>
+                      <span className={cn(
+                        "text-xs font-medium",
+                        detailResult.data.externalUserState === "Accepted"
+                          ? "text-emerald-700"
+                          : detailResult.data.externalUserState === "PendingAcceptance"
+                            ? "text-amber-700"
+                            : "text-slate-500",
+                      )}>
+                        {detailResult.data.externalUserState === "Accepted"
+                          ? "Accepted"
+                          : detailResult.data.externalUserState === "PendingAcceptance"
+                            ? "Pending Acceptance"
+                            : "Unknown"}
+                      </span>
+                    </div>
+                    {detailResult.data.accountEnabled !== null && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Account Enabled</span>
+                        <span className={cn(
+                          "text-xs font-medium",
+                          detailResult.data.accountEnabled ? "text-emerald-700" : "text-red-600",
+                        )}>
+                          {detailResult.data.accountEnabled ? "Yes" : "No"}
+                        </span>
+                      </div>
+                    )}
+                    {detailResult.data.createdDateTime && (
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created</span>
+                        <span className="text-xs text-slate-800">
+                          {new Date(detailResult.data.createdDateTime).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button size="sm" onClick={handleDetailClose}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

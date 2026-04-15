@@ -1,4 +1,4 @@
-import type { ContactsCreatePayload, ContactsCreateResult, ContactsUpdateCompanyPayload, ContactsUpdateCompanyResult } from '@/shared/contracts/contacts';
+import type { ContactsCreatePayload, ContactsCreateResult, ContactsGetDetailsPayload, ContactsGetDetailsResult, ContactsUpdateCompanyPayload, ContactsUpdateCompanyResult } from '@/shared/contracts/contacts';
 import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
 import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
 import type { ExchangeGroupRef } from '@/shared/contracts/exchange';
@@ -9,7 +9,7 @@ import type { GroupsAddMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsRemoveMembersResult } from '@/shared/contracts/exchange';
 import type { GraphConnectionStatus } from '@/shared/contracts/graph';
-import type { GuestsInvitePayload, GuestsInviteResult, GuestsSearchPayload, GuestsSearchResult, GuestsUpdateCompanyPayload, GuestsUpdateCompanyResult } from '@/shared/contracts/guests';
+import type { GuestsGetDetailsPayload, GuestsGetDetailsResult, GuestsInvitePayload, GuestsInviteResult, GuestsSearchPayload, GuestsSearchResult, GuestsUpdateCompanyPayload, GuestsUpdateCompanyResult } from '@/shared/contracts/guests';
 import type { ProgressEvent } from '@/shared/contracts/command';
 import type { RecipientsSearchPayload } from '@/shared/contracts/recipients';
 import type { RecipientsSearchResult } from '@/shared/contracts/recipients';
@@ -49,10 +49,12 @@ declare global {
       };
       guests: {
         search: (payload: GuestsSearchPayload) => Promise<GuestsSearchResult>;
+        getDetails: (payload: GuestsGetDetailsPayload) => Promise<GuestsGetDetailsResult>;
         invite: (payload: GuestsInvitePayload) => Promise<GuestsInviteResult>;
         updateCompany: (payload: GuestsUpdateCompanyPayload) => Promise<GuestsUpdateCompanyResult>;
       };
       contacts: {
+        getDetails: (payload: ContactsGetDetailsPayload) => Promise<ContactsGetDetailsResult>;
         create: (payload: ContactsCreatePayload) => Promise<ContactsCreateResult>;
         updateCompany: (payload: ContactsUpdateCompanyPayload) => Promise<ContactsUpdateCompanyResult>;
       };

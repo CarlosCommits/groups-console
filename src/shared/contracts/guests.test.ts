@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  guestDetailsSchema,
+  guestsGetDetailsPayloadSchema,
+  guestsGetDetailsResultSchema,
   guestsInvitePayloadSchema,
   guestsInviteResultSchema,
   guestsInviteSuccessResultSchema,
@@ -15,6 +18,7 @@ describe('guest contracts', () => {
     expect(() => guestsSearchPayloadSchema.parse({ query: 'ja', limit: 25 })).not.toThrow();
     expect(() => guestsSearchPayloadSchema.parse({ query: 'a' })).toThrow();
     expect(() => guestsSearchPayloadSchema.parse({ query: 'ja', extra: true })).toThrow();
+    expect(() => guestsGetDetailsPayloadSchema.parse({ stableKey: 'graph:objectId:55e10b98-21dd-41f2-92bb-ebc888d66fc0' })).not.toThrow();
   });
 
   it('accepts a guest search result payload', () => {
@@ -119,5 +123,30 @@ describe('guest contracts', () => {
     });
 
     expect(updateResult.verification.companyApplied).toBe(true);
+  });
+
+  it('accepts guest detail payloads and results', () => {
+    const result = guestsGetDetailsResultSchema.parse({
+      guest: {
+        stableKey: 'graph:objectId:55e10b98-21dd-41f2-92bb-ebc888d66fc0',
+        objectId: '55e10b98-21dd-41f2-92bb-ebc888d66fc0',
+        displayName: 'Guest Example',
+        primaryEmail: 'guest@example.com',
+        userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+        companyName: 'Guest Co',
+        externalUserState: 'Accepted',
+        givenName: 'Guest',
+        surname: 'Example',
+        jobTitle: 'Consultant',
+        department: 'Field',
+        mobilePhone: '+1 555-0101',
+        officeLocation: 'Remote',
+        preferredLanguage: 'en-US',
+        createdDateTime: '2026-04-14T12:00:00.000Z',
+        accountEnabled: true,
+      },
+    });
+
+    expect(guestDetailsSchema.parse(result.guest).jobTitle).toBe('Consultant');
   });
 });
