@@ -101,8 +101,11 @@ export function deriveCapabilityRows(shell: ShellState): CapabilityRow[] {
   rows.push({
     id: "audit-observability",
     surface: "Audit & Observability",
-    status: "deferred",
-    detail: "No audit backend or structured logging pipeline",
+    status: checks?.find((check) => check.id === "logDirectory")?.status === "ready" ? "partial" : "unavailable",
+    detail:
+      checks?.find((check) => check.id === "logDirectory")?.status === "ready"
+        ? "Structured logging and diagnostics export available; audit log viewer still deferred"
+        : "Requires writable log directory",
   });
 
   return rows;

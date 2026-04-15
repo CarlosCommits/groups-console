@@ -2,6 +2,11 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import { commandResponseSchema, progressEventSchema, type ProgressEvent } from '@/shared/contracts/command';
 import {
+  diagnosticsExportResultSchema,
+  type DiagnosticsExportPayload,
+  type DiagnosticsExportResult,
+} from '@/shared/contracts/diagnostics';
+import {
   contactsGetDetailsResultSchema,
   contactsCreateResultSchema,
   contactsUpdateCompanyResultSchema,
@@ -344,6 +349,19 @@ const radAppApi = {
       } finally {
         ipcRenderer.removeListener(PROGRESS_CHANNEL, progressListener);
       }
+    },
+  },
+  diagnostics: {
+    async export(payload: DiagnosticsExportPayload = {}): Promise<DiagnosticsExportResult> {
+      const request = createCommandRequest('diagnostics.export' as Parameters<typeof createCommandRequest>[0], payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw new Error(response.error?.message ?? 'Unable to export diagnostics.');
+      }
+
+      return diagnosticsExportResultSchema.parse(response.data);
     },
   },
   recipients: {
