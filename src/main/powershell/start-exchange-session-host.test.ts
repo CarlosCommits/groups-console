@@ -480,4 +480,52 @@ describe('startExchangeSessionHost', () => {
       },
     });
   });
+
+  it('forwards progress events before exportReportData completes', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const progressEvents: Array<{ phase: string; message: string; percent?: number }> = [];
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('exportReportData');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, phase: 'executing', message: 'Reading group members.', percent: 55 })}\n`,
+        );
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { appliedKind: 'all', generatedAt: '2026-04-14T12:00:00.000Z', groups: [], rows: [], summary: { groupCount: 0, recipientCount: 0, membershipCount: 0 } } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('exportReportData', { kind: 'all' }, (event) => {
+      progressEvents.push({ phase: event.phase, message: event.message, percent: event.percent });
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toMatchObject({
+      appliedKind: 'all',
+    });
+    expect(progressEvents).toEqual([
+      {
+        phase: 'executing',
+        message: 'Reading group members.',
+        percent: 55,
+      },
+    ]);
+  });
 });

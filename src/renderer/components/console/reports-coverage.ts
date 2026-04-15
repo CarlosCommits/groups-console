@@ -92,8 +92,10 @@ export function deriveCapabilityRows(shell: ShellState): CapabilityRow[] {
   rows.push({
     id: "report-export",
     surface: "Report & Export",
-    status: "deferred",
-    detail: "No reports.* IPC surface; export script is a placeholder",
+    status: exchangeConnected ? "available" : "unavailable",
+    detail: exchangeConnected
+      ? "Membership matrix export available"
+      : "Requires Exchange connection",
   });
 
   rows.push({

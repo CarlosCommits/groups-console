@@ -10,6 +10,7 @@ export const commandNameSchema = z.enum([
   'groups.getMembers',
   'groups.addMembers',
   'groups.removeMembers',
+  'reports.generateMembershipMatrix',
   'recipients.search',
   'graph.connect',
   'graph.getConnectionStatus',
