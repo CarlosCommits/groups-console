@@ -60,4 +60,15 @@ describe('command contracts', () => {
     expect(contactRequest.command).toBe('contacts.getDetails');
     expect(guestRequest.command).toBe('guests.getDetails');
   });
+
+  it('accepts the diagnostics.export command name', () => {
+    const request = commandRequestSchema.parse({
+      requestId: 'req-791',
+      command: 'diagnostics.export',
+      issuedAt: new Date().toISOString(),
+      payload: {},
+    });
+
+    expect(request.command).toBe('diagnostics.export');
+  });
 });
