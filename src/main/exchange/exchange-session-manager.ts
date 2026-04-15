@@ -18,8 +18,10 @@ import {
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
 import {
+  contactsGetDetailsResultSchema,
   contactsCreateResultSchema,
   contactsUpdateCompanyResultSchema,
+  type ContactsGetDetailsResult,
   type ContactsCreatePayload,
   type ContactsCreateResult,
   type ContactsUpdateCompanyPayload,
@@ -200,6 +202,21 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('createContact', payload as unknown as Record<string, unknown>);
 
       return contactsCreateResultSchema.parse(rawResult);
+    });
+  }
+
+  async getContactDetails(exchangeIdentity: string): Promise<ContactsGetDetailsResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request(
+        'getContactDetails' as Parameters<ExchangeSessionHost['request']>[0],
+        { exchangeIdentity },
+      );
+
+      return contactsGetDetailsResultSchema.parse(rawResult);
     });
   }
 

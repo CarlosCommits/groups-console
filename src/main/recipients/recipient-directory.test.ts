@@ -54,6 +54,7 @@ describe('recipientDirectory', () => {
     });
 
     expect(result.sourceStatus.graph).toBe('skipped');
+    expect(recipientDirectory.getCachedRecipientByStableKey('exchange:objectId:recipient-1')).toBeNull();
   });
 
   it('merges guest search results when guestUser is requested', async () => {
@@ -65,7 +66,22 @@ describe('recipientDirectory', () => {
         exchange: 'searched',
         graph: 'skipped',
       },
-      items: [],
+      items: [
+        {
+          source: 'exchange',
+          stableKey: 'exchange:objectId:recipient-1',
+          recipientType: 'mailContact',
+          membershipSupport: 'exchangeDirect',
+          objectId: 'recipient-1',
+          exchangeIdentity: 'contact-1',
+          primaryEmail: 'contact@example.com',
+          displayName: 'Contact Example',
+          alias: 'cexample',
+          recipientTypeDetails: 'MailContact',
+          companyName: 'Example Corp',
+          companySource: 'exchange',
+        },
+      ],
     });
     vi.mocked(getGraphConnectionStatus).mockResolvedValue({
       state: 'connected',
@@ -102,8 +118,9 @@ describe('recipientDirectory', () => {
     });
 
     expect(result.sourceStatus.graph).toBe('searched');
-    expect(result.items[0]?.source).toBe('graph');
-    expect(result.items[0]?.membershipSupport).toBe('graphBridgeable');
+    expect(result.items.some((item) => item.source === 'graph' && item.membershipSupport === 'graphBridgeable')).toBe(true);
+    expect(recipientDirectory.getCachedRecipientByStableKey('graph:objectId:guest-1')?.recipientType).toBe('guestUser');
+    expect(recipientDirectory.getCachedRecipientByStableKey('exchange:objectId:recipient-1')?.recipientType).toBe('mailContact');
   });
 
   it('defers Graph guests when tenant alignment mismatches Exchange', async () => {
@@ -139,5 +156,9 @@ describe('recipientDirectory', () => {
     expect(result.sourceStatus.graph).toBe('deferred');
     expect(result.items).toHaveLength(0);
     expect(searchGuestUsers).not.toHaveBeenCalled();
+  });
+
+  it('returns null for uncached stable keys', () => {
+    expect(recipientDirectory.getCachedRecipientByStableKey('missing:key')).toBeNull();
   });
 });

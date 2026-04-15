@@ -15,6 +15,12 @@ export const guestsSearchPayloadSchema = z
   })
   .strict();
 
+export const guestsGetDetailsPayloadSchema = z
+  .object({
+    stableKey: z.string().min(1),
+  })
+  .strict();
+
 export const guestSearchItemSchema = z.object({
   stableKey: z.string().min(1),
   objectId: z.string().min(1),
@@ -23,6 +29,22 @@ export const guestSearchItemSchema = z.object({
   userPrincipalName: z.string().nullable(),
   companyName: z.string().nullable(),
   externalUserState: guestExternalUserStateSchema,
+});
+
+export const guestDetailsSchema = guestSearchItemSchema.extend({
+  givenName: z.string().nullable(),
+  surname: z.string().nullable(),
+  jobTitle: z.string().nullable(),
+  department: z.string().nullable(),
+  mobilePhone: z.string().nullable(),
+  officeLocation: z.string().nullable(),
+  preferredLanguage: z.string().nullable(),
+  createdDateTime: z.string().datetime().nullable(),
+  accountEnabled: z.boolean().nullable(),
+});
+
+export const guestsGetDetailsResultSchema = z.object({
+  guest: guestDetailsSchema,
 });
 
 export const guestsSearchResultSchema = z.object({
@@ -94,7 +116,10 @@ export const guestsUpdateCompanyResultSchema = z.object({
 
 export type GuestsSearchPayload = z.infer<typeof guestsSearchPayloadSchema>;
 export type GuestSearchItem = z.infer<typeof guestSearchItemSchema>;
+export type GuestDetails = z.infer<typeof guestDetailsSchema>;
 export type GuestsSearchResult = z.infer<typeof guestsSearchResultSchema>;
+export type GuestsGetDetailsPayload = z.infer<typeof guestsGetDetailsPayloadSchema>;
+export type GuestsGetDetailsResult = z.infer<typeof guestsGetDetailsResultSchema>;
 export type GuestsInvitePayload = z.infer<typeof guestsInvitePayloadSchema>;
 export type GuestsInviteSuccessResult = z.infer<typeof guestsInviteSuccessResultSchema>;
 export type GuestsInviteBlockedResult = z.infer<typeof guestsInviteBlockedResultSchema>;
