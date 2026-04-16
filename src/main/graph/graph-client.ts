@@ -66,6 +66,48 @@ const graphInvitationResponseSchema = z.object({
 
 type GraphUser = z.infer<typeof graphUserSchema>;
 
+type GraphErrorResponse = {
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
+export class GraphRequestError extends Error {
+  readonly statusCode: number;
+  readonly backendCode?: string;
+  readonly details?: string;
+
+  constructor(input: {
+    message: string;
+    statusCode: number;
+    backendCode?: string;
+    details?: string;
+  }) {
+    super(input.message);
+    this.name = 'GraphRequestError';
+    this.statusCode = input.statusCode;
+    this.backendCode = input.backendCode;
+    this.details = input.details;
+  }
+}
+
+export class GraphConnectionError extends Error {
+  readonly backendCode: string;
+  readonly details?: string;
+
+  constructor(input: {
+    message: string;
+    backendCode: 'graph_transport_failure' | 'graph_token_unavailable' | 'graph_session_not_connected';
+    details?: string;
+  }) {
+    super(input.message);
+    this.name = 'GraphConnectionError';
+    this.backendCode = input.backendCode;
+    this.details = input.details;
+  }
+}
+
 export async function fetchGraphOrganization(
   accessToken: string,
 ): Promise<{ id: string; displayName: string | null }> {
@@ -414,19 +456,58 @@ async function graphFetchJson(
   accessToken: string,
   init?: RequestInit,
 ): Promise<unknown> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    throw new GraphConnectionError({
+      message: 'Microsoft Graph network request failed before a response was received.',
+      backendCode: 'graph_transport_failure',
+      details: error instanceof Error ? error.message : undefined,
+    });
+  }
 
   if (!response.ok) {
-    throw new Error(`Microsoft Graph request failed with ${response.status} ${response.statusText}.`);
+    const errorPayload = await readGraphErrorPayload(response);
+    const backendCode = errorPayload.error?.code;
+    const backendMessage = errorPayload.error?.message;
+    const suffix = backendMessage
+      ? `${backendCode ? ` (${backendCode})` : ''}: ${backendMessage}`
+      : '.';
+
+    throw new GraphRequestError({
+      message: `Microsoft Graph request failed with ${response.status} ${response.statusText}${suffix}`,
+      statusCode: response.status,
+      ...(backendCode ? { backendCode } : {}),
+      ...(backendMessage ? { details: backendMessage } : {}),
+    });
   }
 
   return (await response.json()) as unknown;
+}
+
+async function readGraphErrorPayload(response: Response): Promise<GraphErrorResponse> {
+  if (typeof response.json !== 'function') {
+    return {};
+  }
+
+  try {
+    const payload = (await response.json()) as GraphErrorResponse;
+    if (typeof payload === 'object' && payload !== null) {
+      return payload;
+    }
+  } catch {
+    return {};
+  }
+
+  return {};
 }
