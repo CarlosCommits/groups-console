@@ -141,23 +141,19 @@ Follow-up that still remains outside this completed slice:
 
 ### 6. Deeper permission and remediation classification
 
-**Status:** partially missing
+**Status:** completed
 
-The permission matrix in `14-permission-matrix.md` documents the current implemented surface and its prerequisites. Several workflows that will need permission classification are not yet implemented, and the deferred areas listed in that document need to be addressed as each workflow is built.
+The permission matrix in `14-permission-matrix.md` now maps to the live command surface and the runtime failure taxonomy is wired through IPC, preload, and the renderer.
 
 Current reality:
 
 - the permission matrix covers Exchange and Graph session prerequisites and the current command surface
-- it explicitly lists deferred areas: report backend permissions, guest membership execution permissions, overlap-safe enforcement permissions, detail read permissions, and scope/role introspection
-- the denial behavior and failure classification framework is defined but not yet wired into the running application
-- there is no runtime error classification that maps backend errors to the failure categories defined in `14-permission-matrix.md` (connection failure, authorization failure, preflight conflict, partial success, tenant mismatch)
-
-What is needed:
-
-- as each remaining workflow is implemented, add its permission and prerequisite requirements to the matrix
-- implement runtime error classification that maps backend errors to the defined failure categories
-- wire the renderer to surface authorization failures distinctly from connection failures, with actionable remediation guidance
-- do not attempt to pre-check Entra roles, Exchange RBAC, or token scope consent, as documented in `14-permission-matrix.md`
+- runtime IPC failures are now classified into the defined categories where applicable (`connectionFailure`, `authorizationFailure`, `tenantMismatch`, `unknownFailure`) instead of collapsing to generic `command_failed`
+- preload now preserves structured command failures so renderer consumers can distinguish authorization remediation from reconnect remediation
+- the shell, Directory, and Groups surfaces now render runtime remediation guidance distinctly from generic connection-copy fallbacks
+- composite `recipients.search` success paths now preserve per-source degradation detail, including classified Graph partial-failure metadata, so Directory and Groups can distinguish partial authorization, connection, and tenant-mismatch cases instead of showing only generic source availability text
+- typed `blockedConflict` outcomes for `contacts.create` and `guests.invite` remain separate preflight conflict success-path results, and per-item partial member-write results remain separate from top-level runtime failures
+- the app still does not attempt to pre-check Entra roles, Exchange RBAC, or token scope consent; those remain operation-time concerns by design
 
 ## Secondary consistency gaps
 
@@ -175,9 +171,9 @@ The capability matrix says mail contact list/search is supported. In practice th
 
 The remaining work items are interdependent. This order accounts for dependencies and risk.
 
-1. **Deeper permission and remediation classification** — now the highest-priority remaining slice; the error classification framework should be wired into the now-implemented workflows and extended as remaining gaps are closed
-
 Completed since the previous revision:
+
+- **Deeper permission and remediation classification** — shipped as classified runtime failures in IPC, typed preload propagation, renderer remediation presentation for shell, Directory, and Groups flows, and structured per-source degradation handling for composite recipient-search partial-success paths
 
 - **Observability, audit, and diagnostics** — shipped as main-process structured logs, mutation audit events, diagnostics export, correlation propagation, and Settings-screen diagnostics export
 - **Richer contact and guest detail reads** — shipped as Exchange-owned `contacts.getDetails`, Graph-owned `guests.getDetails`, and a Directory detail dialog backed by fresh on-demand reads
@@ -193,6 +189,6 @@ Completed since the previous revision:
 - The Reports screen is wired to a live export backend, not a deferred placeholder. **Completed.**
 - Contact and guest detail reads are backed by dedicated commands rather than relying only on search-row summaries. **Completed.**
 - Structured logs are written for every supported workflow, mutation audit events are captured, and a diagnostics bundle can be exported without manual file hunting. **Completed.**
-- The permission matrix is updated as each new workflow is implemented.
+- The permission matrix is updated as each new workflow is implemented. **Completed for the current command surface.**
 - No deferred backlog item from `12-backlog-and-commits.md` is treated as an immediate blocker unless it appears in the remaining work categories above.
 - Internal user company sourcing is documented as a known consistency gap until it is aligned with the planned Graph source rule.

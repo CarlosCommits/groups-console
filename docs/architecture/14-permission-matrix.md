@@ -110,7 +110,7 @@ When authentication succeeds but an operation is denied due to insufficient perm
 
 Authorization failures must not be silently retried. The app should:
 
-1. log the failure with correlation ID, operation name, and the backend error code
+1. log the failure with correlation ID, operation name, the classified safe error code, and backend error details when the backend exposes them
 2. present a human-readable message that identifies the operation and the likely cause
 3. suggest that the operator verify their role assignments or contact their tenant administrator
 4. not attempt the same operation again without explicit operator action
@@ -152,10 +152,9 @@ These are operation-time authorization concerns. The app must handle them as run
 
 The following permission-related areas are not yet in scope and should not be assumed to be implemented:
 
-- Report and export backend: `reports.generateMembershipMatrix` is not yet implemented; its permission requirements will be documented when the backend is built.
-- Guest-aware membership execution path is now implemented; remaining permission work is limited to documenting report/export and richer detail-read requirements as they are built.
-- Guest/contact overlap-safe enforcement is now implemented for `contacts.create` and `guests.invite`; remaining work is deeper runtime error classification and remediation taxonomy, not basic preflight enforcement.
-- Contact and guest detail read surfaces: dedicated `contacts.getDetails` and `guests.getDetails` commands are not yet implemented.
+- Current implemented runtime classification covers the live command surface for shell/session failures plus Directory and Groups runtime operations. Future workflows should extend the same taxonomy rather than inventing a new denial model.
+- Report/export variants beyond `reports.generateMembershipMatrix` remain out of scope until those backends exist.
+- Mailbox and mailUser detail-read workflows remain out of scope; only `contacts.getDetails` and `guests.getDetails` are currently implemented.
 - Internal user company sourcing alignment: current implementation sources internal user company from Exchange `Get-User` data; the plan calls for Graph `user.companyName` as the source. This is a consistency gap, not a permission gap.
 - Exact scope or role introspection: the app does not currently inspect token claims or query RBAC assignments. If this becomes important, it would require additional Graph or Exchange API calls that are not yet designed.
 
