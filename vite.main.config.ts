@@ -5,7 +5,7 @@ export default defineConfig({
   build: {
     sourcemap: true,
     rollupOptions: {
-      external: ['electron-squirrel-startup'],
+      external: ['electron-squirrel-startup', 'exceljs'],
     },
   },
   resolve: {
