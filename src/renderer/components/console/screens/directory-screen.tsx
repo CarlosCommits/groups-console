@@ -608,7 +608,7 @@ export function DirectoryScreen() {
 
           <div className="bg-white rounded-xl border border-[var(--color-outline-variant)]/20 overflow-hidden shadow-sm flex-1 flex flex-col min-h-0">
             <TableToolbar
-              searchPlaceholder="Search by name, email, or handle…"
+              searchPlaceholder="Search by name, email, or handle"
               onSearch={setSearchText}
               filters={
                 <>
