@@ -4,6 +4,7 @@
 . "$PSScriptRoot\..\commands\lookup-recipient-ownership.ps1"
 . "$PSScriptRoot\..\commands\resolve-guest-mail-user.ps1"
 . "$PSScriptRoot\..\commands\create-contact.ps1"
+. "$PSScriptRoot\..\commands\get-recipient-details.ps1"
 . "$PSScriptRoot\..\commands\get-contact-details.ps1"
 . "$PSScriptRoot\..\commands\update-contact-company.ps1"
 . "$PSScriptRoot\..\commands\add-group-member.ps1"
@@ -97,6 +98,9 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             }
             'createContact' {
                 $data = Invoke-RadAppCreateContact -Payload $payload
+            }
+            'getRecipientDetails' {
+                $data = Invoke-RadAppGetRecipientDetails -Payload $payload
             }
             'getContactDetails' {
                 $data = Invoke-RadAppGetContactDetails -Payload $payload

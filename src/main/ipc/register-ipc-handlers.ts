@@ -46,6 +46,8 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
+  exchangeRecipientGetDetailsPayloadSchema,
+  exchangeRecipientGetDetailsResultSchema,
   exchangeListGroupsPayloadSchema,
   exchangeListGroupsResultSchema,
   groupsAddMembersPayloadSchema,
@@ -62,6 +64,7 @@ import {
 import { addGroupMembers } from '@/main/exchange/add-group-members';
 import { createContact } from '@/main/exchange/create-contact';
 import { getContactDetails } from '@/main/exchange/get-contact-details';
+import { getExchangeRecipientDetails } from '@/main/exchange/get-recipient-details';
 import { connectExchange } from '@/main/exchange/connect-exchange';
 import { disconnectExchange } from '@/main/exchange/disconnect-exchange';
 import { removeGroupMembers } from '@/main/exchange/remove-group-members';
@@ -479,6 +482,31 @@ async function executeCommand(
     case 'exchange.listGroups': {
       const payload = exchangeListGroupsPayloadSchema.parse(request.payload);
       const result = exchangeListGroupsResultSchema.parse(await listExchangeGroups(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'exchange.getRecipientDetails': {
+      const payload = exchangeRecipientGetDetailsPayloadSchema.parse(request.payload);
+      const recipient = recipientDirectory.getCachedRecipientByStableKey(payload.stableKey);
+      if (
+        !recipient ||
+        recipient.source !== 'exchange' ||
+        (recipient.recipientType !== 'mailbox' && recipient.recipientType !== 'mailUser') ||
+        !recipient.exchangeIdentity
+      ) {
+        throw new Error(
+          'Exchange recipient details are only available for mailbox and mail user entries returned by the current directory search.',
+        );
+      }
+
+      const result = exchangeRecipientGetDetailsResultSchema.parse(
+        await getExchangeRecipientDetails(recipient.exchangeIdentity),
+      );
 
       return commandResponseSchema.parse({
         requestId: request.requestId,

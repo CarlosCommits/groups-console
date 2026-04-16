@@ -257,6 +257,112 @@ describe('ExchangeSessionManager', () => {
     expect(result.contact.alias).toBe('jexample');
   });
 
+  it('reads mailbox and mail user details through the live host', async () => {
+    const manager = new ExchangeSessionManager();
+
+    vi.mocked(startExchangeSessionHost).mockResolvedValue({
+      runtime: {
+        command: 'powershell.exe',
+        label: 'Windows PowerShell',
+      },
+      request: vi
+        .fn()
+        .mockResolvedValueOnce({
+          state: 'connected',
+          detail: 'Connected to Exchange Online.',
+          psVersion: '5.1.19041.1',
+          psEdition: 'Desktop',
+          userPrincipalName: 'admin@example.com',
+          connectionId: 'connection-1',
+          tenantId: 'tenant-1',
+          tokenStatus: 'Active',
+          tokenExpiryTimeUtc: '2026-04-01T12:00:00.000Z',
+          connectedAtUtc: '2026-04-01T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          recipient: {
+            exchangeIdentity: 'jane@example.com',
+            objectId: 'recipient-1',
+            primaryEmail: 'jane@example.com',
+            externalEmailAddress: null,
+            displayName: 'Jane Example',
+            alias: 'jexample',
+            companyName: 'Example Corp',
+            firstName: 'Jane',
+            lastName: 'Example',
+            title: 'Director',
+            department: 'Operations',
+            phone: '+1 555-0100',
+            office: 'HQ-201',
+            userPrincipalName: 'jane@example.com',
+            recipientType: 'mailbox',
+            recipientTypeDetails: 'UserMailbox',
+          },
+        }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await manager.connect({ userPrincipalName: 'admin@example.com' });
+    const result = await manager.getRecipientDetails('jane@example.com');
+
+    expect(result.recipient.recipientType).toBe('mailbox');
+    expect(result.recipient.userPrincipalName).toBe('jane@example.com');
+    expect(result.recipient.externalEmailAddress).toBeNull();
+  });
+
+  it('preserves distinct primary and external email addresses for mail users', async () => {
+    const manager = new ExchangeSessionManager();
+
+    vi.mocked(startExchangeSessionHost).mockResolvedValue({
+      runtime: {
+        command: 'powershell.exe',
+        label: 'Windows PowerShell',
+      },
+      request: vi
+        .fn()
+        .mockResolvedValueOnce({
+          state: 'connected',
+          detail: 'Connected to Exchange Online.',
+          psVersion: '5.1.19041.1',
+          psEdition: 'Desktop',
+          userPrincipalName: 'admin@example.com',
+          connectionId: 'connection-1',
+          tenantId: 'tenant-1',
+          tokenStatus: 'Active',
+          tokenExpiryTimeUtc: '2026-04-01T12:00:00.000Z',
+          connectedAtUtc: '2026-04-01T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          recipient: {
+            exchangeIdentity: 'jane.external@example.com',
+            objectId: 'recipient-2',
+            primaryEmail: 'jane@yourcompany.com',
+            externalEmailAddress: 'jane.personal@example.com',
+            displayName: 'Jane External',
+            alias: 'jexternal',
+            companyName: 'Example Corp',
+            firstName: 'Jane',
+            lastName: 'External',
+            title: 'Director',
+            department: 'Operations',
+            phone: '+1 555-0100',
+            office: 'HQ-201',
+            userPrincipalName: 'jane_external#EXT#@tenant.onmicrosoft.com',
+            recipientType: 'mailUser',
+            recipientTypeDetails: 'MailUser',
+          },
+        }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await manager.connect({ userPrincipalName: 'admin@example.com' });
+    const result = await manager.getRecipientDetails('jane.external@example.com');
+
+    expect(result.recipient.recipientType).toBe('mailUser');
+    expect(result.recipient.primaryEmail).toBe('jane@yourcompany.com');
+    expect(result.recipient.externalEmailAddress).toBe('jane.personal@example.com');
+  });
+
   it('searches recipients through the live host', async () => {
     const manager = new ExchangeSessionManager();
 

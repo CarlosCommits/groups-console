@@ -379,6 +379,45 @@ describe('startExchangeSessionHost', () => {
     });
   });
 
+  it('writes getRecipientDetails requests through the host protocol', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+
+    spawnMock.mockImplementation(() => {
+      queueMicrotask(() => {
+        child.emit('spawn');
+      });
+
+      return child;
+    });
+
+    const host = await startExchangeSessionHost();
+    const requestWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', (line: string) => {
+        const request = JSON.parse(line.trim()) as { requestId: string; command: string };
+        expect(request.command).toBe('getRecipientDetails');
+        child.stdout.write(
+          `${JSON.stringify({ requestId: request.requestId, success: true, data: { recipient: { exchangeIdentity: 'jane@example.com', objectId: 'recipient-1', primaryEmail: 'jane@example.com', displayName: 'Jane Example', alias: 'jexample', companyName: 'Example Corp', firstName: 'Jane', lastName: 'Example', title: 'Director', department: 'Operations', phone: '+1 555-0100', office: 'HQ-201', userPrincipalName: 'jane@example.com', recipientType: 'mailbox', recipientTypeDetails: 'UserMailbox' } } })}\n`,
+        );
+        resolve();
+      });
+    });
+    const requestPromise = host.request('getRecipientDetails', {
+      exchangeIdentity: 'jane@example.com',
+    });
+
+    await requestWritten;
+
+    await expect(requestPromise).resolves.toMatchObject({
+      recipient: {
+        recipientType: 'mailbox',
+      },
+    });
+  });
+
   it('writes addGroupMembers requests through the host protocol', async () => {
     Object.defineProperty(process, 'platform', {
       value: 'win32',

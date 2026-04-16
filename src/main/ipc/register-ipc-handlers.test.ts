@@ -60,18 +60,24 @@ vi.mock('@/main/exchange/create-contact', () => ({
   createContact: vi.fn(),
 }));
 
+vi.mock('@/main/exchange/get-recipient-details', () => ({
+  getExchangeRecipientDetails: vi.fn(),
+}));
+
 vi.mock('@/main/graph/invite-guest-user', () => ({
   inviteGuestUser: vi.fn(),
 }));
 
 vi.mock('@/main/recipients/recipient-directory', () => ({
   recipientDirectory: {
+    getCachedRecipientByStableKey: vi.fn(),
     searchRecipients: vi.fn(),
   },
 }));
 
 import { writeAuditEvent, writeOperationalLog } from '@/main/logging';
 import { createContact } from '@/main/exchange/create-contact';
+import { getExchangeRecipientDetails } from '@/main/exchange/get-recipient-details';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { inviteGuestUser } from '@/main/graph/invite-guest-user';
@@ -404,5 +410,172 @@ describe('registerIpcHandlers', () => {
         backendOwner: 'exchange',
       }),
     );
+  });
+
+  it('reads mailbox details through the exchange recipient detail route', async () => {
+    vi.mocked(recipientDirectory.getCachedRecipientByStableKey).mockReturnValue({
+      source: 'exchange',
+      stableKey: 'exchange:objectId:recipient-1',
+      recipientType: 'mailbox',
+      membershipSupport: 'exchangeDirect',
+      objectId: 'recipient-1',
+      exchangeIdentity: 'jane@example.com',
+      primaryEmail: 'jane@example.com',
+      displayName: 'Jane Example',
+      alias: 'jexample',
+      recipientTypeDetails: 'UserMailbox',
+      companyName: 'Example Corp',
+      companySource: 'exchange',
+    });
+    vi.mocked(getExchangeRecipientDetails).mockResolvedValue({
+      recipient: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+        externalEmailAddress: null,
+        displayName: 'Jane Example',
+        alias: 'jexample',
+        companyName: 'Example Corp',
+        firstName: 'Jane',
+        lastName: 'Example',
+        title: 'Director',
+        department: 'Operations',
+        phone: '+1 555-0100',
+        office: 'HQ-201',
+        userPrincipalName: 'jane@example.com',
+        recipientType: 'mailbox',
+        recipientTypeDetails: 'UserMailbox',
+      },
+    });
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-8',
+        command: 'exchange.getRecipientDetails',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          stableKey: 'exchange:objectId:recipient-1',
+        },
+      },
+    );
+
+    expect(response).toMatchObject({
+      success: true,
+      data: {
+        recipient: {
+          recipientType: 'mailbox',
+          externalEmailAddress: null,
+        },
+      },
+    });
+  });
+
+  it('returns distinct org and external email details for cached mail users', async () => {
+    vi.mocked(recipientDirectory.getCachedRecipientByStableKey).mockReturnValue({
+      source: 'exchange',
+      stableKey: 'exchange:objectId:recipient-2',
+      recipientType: 'mailUser',
+      membershipSupport: 'exchangeDirect',
+      objectId: 'recipient-2',
+      exchangeIdentity: 'jane.external@example.com',
+      primaryEmail: 'jane@yourcompany.com',
+      displayName: 'Jane External',
+      alias: 'jexternal',
+      recipientTypeDetails: 'MailUser',
+      companyName: 'Example Corp',
+      companySource: 'exchange',
+    });
+    vi.mocked(getExchangeRecipientDetails).mockResolvedValue({
+      recipient: {
+        exchangeIdentity: 'jane.external@example.com',
+        objectId: 'recipient-2',
+        primaryEmail: 'jane@yourcompany.com',
+        externalEmailAddress: 'jane.personal@example.com',
+        displayName: 'Jane External',
+        alias: 'jexternal',
+        companyName: 'Example Corp',
+        firstName: 'Jane',
+        lastName: 'External',
+        title: 'Director',
+        department: 'Operations',
+        phone: '+1 555-0100',
+        office: 'HQ-201',
+        userPrincipalName: 'jane_external#EXT#@tenant.onmicrosoft.com',
+        recipientType: 'mailUser',
+        recipientTypeDetails: 'MailUser',
+      },
+    });
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-10',
+        command: 'exchange.getRecipientDetails',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          stableKey: 'exchange:objectId:recipient-2',
+        },
+      },
+    );
+
+    expect(response).toMatchObject({
+      success: true,
+      data: {
+        recipient: {
+          recipientType: 'mailUser',
+          primaryEmail: 'jane@yourcompany.com',
+          externalEmailAddress: 'jane.personal@example.com',
+        },
+      },
+    });
+  });
+
+  it('rejects exchange recipient detail requests for unsupported cached recipient types', async () => {
+    vi.mocked(recipientDirectory.getCachedRecipientByStableKey).mockReturnValue({
+      source: 'exchange',
+      stableKey: 'exchange:objectId:contact-1',
+      recipientType: 'mailContact',
+      membershipSupport: 'exchangeDirect',
+      objectId: 'contact-1',
+      exchangeIdentity: 'contact@example.com',
+      primaryEmail: 'contact@example.com',
+      displayName: 'Contact Example',
+      alias: 'cexample',
+      recipientTypeDetails: 'MailContact',
+      companyName: 'Example Corp',
+      companySource: 'exchange',
+    });
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-9',
+        command: 'exchange.getRecipientDetails',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          stableKey: 'exchange:objectId:contact-1',
+        },
+      },
+    );
+
+    expect(response).toMatchObject({
+      success: false,
+      error: {
+        classification: {
+          backend: 'exchange',
+        },
+      },
+    });
+    expect(getExchangeRecipientDetails).not.toHaveBeenCalled();
   });
 });
