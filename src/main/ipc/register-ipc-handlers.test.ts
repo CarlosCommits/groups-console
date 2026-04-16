@@ -64,12 +64,19 @@ vi.mock('@/main/graph/invite-guest-user', () => ({
   inviteGuestUser: vi.fn(),
 }));
 
+vi.mock('@/main/recipients/recipient-directory', () => ({
+  recipientDirectory: {
+    searchRecipients: vi.fn(),
+  },
+}));
+
 import { writeAuditEvent, writeOperationalLog } from '@/main/logging';
 import { createContact } from '@/main/exchange/create-contact';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { inviteGuestUser } from '@/main/graph/invite-guest-user';
 import { getSessionStatus } from '@/main/ipc/handlers/get-session-status';
+import { recipientDirectory } from '@/main/recipients/recipient-directory';
 
 import { registerIpcHandlers } from './register-ipc-handlers';
 
@@ -282,6 +289,119 @@ describe('registerIpcHandlers', () => {
       expect.objectContaining({
         result: 'partial',
         authoritative: false,
+      }),
+    );
+  });
+
+  it('classifies graph 403 failures instead of returning command_failed', async () => {
+    vi.mocked(inviteGuestUser).mockRejectedValue(
+      Object.assign(new Error('Microsoft Graph request failed with 403 Forbidden.'), {
+        statusCode: 403,
+        backendCode: 'Authorization_RequestDenied',
+      }),
+    );
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-5',
+        command: 'guests.invite',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          email: 'guest@example.com',
+        },
+      },
+    );
+
+    expect(response).toMatchObject({
+      success: false,
+      error: {
+        code: 'graph_authorization_failure',
+        classification: {
+          category: 'authorizationFailure',
+          backendCode: 'Authorization_RequestDenied',
+        },
+      },
+    });
+    expect(writeOperationalLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeErrorCode: 'graph_authorization_failure',
+      }),
+    );
+  });
+
+  it('classifies exchange disconnect requirements as connection failures', async () => {
+    vi.mocked(createContact).mockRejectedValue(
+      new Error('Exchange session host is not running. Connect to Exchange Online first.'),
+    );
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-6',
+        command: 'contacts.create',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          firstName: 'Jane',
+          lastName: 'Example',
+          email: 'jane@example.com',
+          companyName: 'Example Corp',
+        },
+      },
+    );
+
+    expect(response).toMatchObject({
+      success: false,
+      error: {
+        code: 'exchange_connection_failure',
+        retryable: true,
+        classification: {
+          category: 'connectionFailure',
+        },
+      },
+    });
+  });
+
+  it('logs classified backend owners for composite search failures', async () => {
+    vi.mocked(recipientDirectory.searchRecipients).mockRejectedValue(
+      Object.assign(new Error('Exchange session host is not running. Connect to Exchange Online first.'), {
+        backendOwner: 'exchange',
+      }),
+    );
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-7',
+        command: 'recipients.search',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          query: 'ja',
+          types: ['mailbox', 'guestUser'],
+        },
+      },
+    );
+
+    expect(response).toMatchObject({
+      success: false,
+      error: {
+        classification: {
+          backend: 'exchange',
+        },
+      },
+    });
+    expect(writeOperationalLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backendOwner: 'exchange',
       }),
     );
   });

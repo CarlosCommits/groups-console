@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { commandRequestSchema, commandResponseSchema } from './command';
+import { runtimeCommandErrorSchema } from './runtime-errors';
 
 describe('command contracts', () => {
   it('accepts a session.getStatus request envelope', () => {
@@ -70,5 +71,46 @@ describe('command contracts', () => {
     });
 
     expect(request.command).toBe('diagnostics.export');
+  });
+
+  it('accepts a classified runtime failure response envelope', () => {
+    const response = commandResponseSchema.parse({
+      requestId: 'req-792',
+      success: false,
+      completedAt: new Date().toISOString(),
+      error: {
+        code: 'graph_authorization_failure',
+        message: 'Guest invitation was denied by Microsoft Graph.',
+        retryable: false,
+        details: 'Authorization_RequestDenied',
+        classification: {
+          category: 'authorizationFailure',
+          remediation: 'verifyPermissions',
+          backend: 'graph',
+          operation: 'guests.invite',
+          guidance: 'Verify Graph consent, tenant policy, and the operator role before retrying.',
+          statusCode: 403,
+          backendCode: 'Authorization_RequestDenied',
+        },
+      },
+    });
+
+    expect(response.error?.classification.category).toBe('authorizationFailure');
+  });
+
+  it('requires classified runtime failures to include guidance', () => {
+    expect(() =>
+      runtimeCommandErrorSchema.parse({
+        code: 'unknown_failure',
+        message: 'Something failed.',
+        retryable: false,
+        classification: {
+          category: 'unknownFailure',
+          remediation: 'retryFromFreshState',
+          backend: 'app',
+          operation: 'session.getStatus',
+        },
+      }),
+    ).toThrow();
   });
 });
