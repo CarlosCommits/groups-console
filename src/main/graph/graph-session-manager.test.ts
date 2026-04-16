@@ -12,6 +12,17 @@ vi.mock('./msal-public-client', () => ({
 }));
 
 vi.mock('./graph-client', () => ({
+  GraphConnectionError: class GraphConnectionError extends Error {
+    readonly backendCode: string;
+    readonly details?: string;
+
+    constructor(input: { message: string; backendCode: string; details?: string }) {
+      super(input.message);
+      this.name = 'GraphConnectionError';
+      this.backendCode = input.backendCode;
+      this.details = input.details;
+    }
+  },
   fetchGraphOrganization: vi.fn(),
   fetchGraphMe: vi.fn(),
   getGraphGuestDetailsById: vi.fn(),
@@ -176,6 +187,58 @@ describe('GraphSessionManager', () => {
 
     expect(result.query).toBe('ja');
     expect(searchGraphGuests).toHaveBeenCalledWith('token-2', { query: 'ja', limit: 25 });
+  });
+
+  it('preserves classified auth failures in graph connection status checks', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account: {
+        tenantId: 'tenant-configured',
+        username: 'admin@example.com',
+        name: 'Admin Example',
+      },
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(acquireSilentGraphToken).mockRejectedValueOnce(
+      Object.assign(new Error('Microsoft Graph request failed with 403 Forbidden.'), {
+        statusCode: 403,
+        backendCode: 'Authorization_RequestDenied',
+      }),
+    );
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'connected',
+      detail: 'Connected to Exchange Online.',
+      runtime: null,
+      userPrincipalName: 'admin@example.com',
+      connectionId: 'conn-1',
+      tenantId: 'tenant-configured',
+      tokenStatus: 'Active',
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+
+    await manager.connect();
+    const result = await manager.getConnectionStatus();
+
+    expect(result.state).toBe('error');
+    expect(result.failureClassification).toMatchObject({
+      category: 'authorizationFailure',
+      backend: 'graph',
+      backendCode: 'Authorization_RequestDenied',
+    });
   });
 
   it('invites a guest through the active session', async () => {

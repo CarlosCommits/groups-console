@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getGraphGuestById, getGraphGuestDetailsById, inviteGraphGuest, searchGraphGuests, updateGraphGuestCompany } from './graph-client';
+import {
+  GraphConnectionError,
+  GraphRequestError,
+  getGraphGuestById,
+  getGraphGuestDetailsById,
+  inviteGraphGuest,
+  searchGraphGuests,
+  updateGraphGuestCompany,
+} from './graph-client';
 
 describe('graph-client', () => {
   const originalFetch = global.fetch;
@@ -168,6 +176,36 @@ describe('graph-client', () => {
     });
 
     expect(result.verification.companyApplied).toBe(true);
+  });
+
+  it('preserves Graph status and backend code on failed requests', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      json: () =>
+        Promise.resolve({
+          error: {
+            code: 'Authorization_RequestDenied',
+            message: 'Insufficient privileges to complete the operation.',
+          },
+        }),
+    }) as typeof fetch;
+
+    await expect(getGraphGuestById('token', 'guest-1')).rejects.toMatchObject({
+      name: 'GraphRequestError',
+      statusCode: 403,
+      backendCode: 'Authorization_RequestDenied',
+    } satisfies Partial<GraphRequestError>);
+  });
+
+  it('preserves transport failures as Graph connection errors', async () => {
+    global.fetch = vi.fn().mockRejectedValueOnce(new TypeError('fetch failed')) as typeof fetch;
+
+    await expect(getGraphGuestById('token', 'guest-1')).rejects.toMatchObject({
+      name: 'GraphConnectionError',
+      backendCode: 'graph_transport_failure',
+    } satisfies Partial<GraphConnectionError>);
   });
 
   it('reads a guest by object id', async () => {
