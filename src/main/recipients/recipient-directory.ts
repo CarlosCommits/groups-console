@@ -1,5 +1,6 @@
 import type {
   RecipientSearchItem,
+  RecipientSearchSourceFailure,
   RecipientSearchType,
   RecipientsSearchPayload,
   RecipientsSearchResult,
@@ -8,6 +9,9 @@ import type {
 import { searchExchangeRecipients } from '@/main/exchange/search-recipients';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { searchGuestUsers } from '@/main/graph/search-guest-users';
+import type { BackendOwner } from '@/main/logging';
+
+import { classifyCommandError } from '@/main/ipc/classify-command-error';
 
 export interface RecipientDirectoryProvider {
   searchRecipients(payload: RecipientsSearchPayload): Promise<RecipientsSearchResult>;
@@ -42,6 +46,8 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
         : await searchExchangeRecipients({
             ...payload,
             ...(exchangeTypes && exchangeTypes.length > 0 ? { types: exchangeTypes } : {}),
+          }).catch((error: unknown) => {
+            throw withBackendOwner(error, 'exchange');
           });
 
     if (!wantsGuestUsers) {
@@ -52,12 +58,17 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
     const graphStatus = await getGraphConnectionStatus();
 
     if (graphStatus.state !== 'connected') {
+      const graphFailure = createGraphConnectionSourceFailure(graphStatus);
       const result = {
         ...exchangeResult,
         appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
           graph: 'unavailable' as const,
+        },
+        sourceFailures: {
+          ...(exchangeResult.sourceFailures ?? {}),
+          graph: graphFailure,
         },
       };
 
@@ -66,12 +77,17 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
     }
 
     if (graphStatus.exchangeAlignment === 'mismatched') {
+      const graphFailure = createGraphTenantMismatchSourceFailure();
       const result = {
         ...exchangeResult,
         appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
           graph: 'deferred' as const,
+        },
+        sourceFailures: {
+          ...(exchangeResult.sourceFailures ?? {}),
+          graph: graphFailure,
         },
       };
 
@@ -110,18 +126,27 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
           exchange: exchangeResult.sourceStatus.exchange,
           graph: 'searched' as const,
         },
+        ...(exchangeResult.sourceFailures ? { sourceFailures: exchangeResult.sourceFailures } : {}),
         items: mergedItems.slice(0, exchangeResult.appliedLimit),
       };
 
       this.cacheRecipients(result.items);
       return result;
-    } catch {
+    } catch (error) {
+      if (exchangeResult.items.length === 0 && exchangeResult.sourceStatus.exchange !== 'searched') {
+        throw withBackendOwner(error, 'graph');
+      }
+
       const result = {
         ...exchangeResult,
         appliedTypes: this.withGuestType(exchangeResult, exchangeTypes),
         sourceStatus: {
           exchange: exchangeResult.sourceStatus.exchange,
           graph: 'unavailable' as const,
+        },
+        sourceFailures: {
+          ...(exchangeResult.sourceFailures ?? {}),
+          graph: createGraphSourceFailure(error),
         },
       };
 
@@ -140,6 +165,68 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
       this.detailCache.set(item.stableKey, item);
     });
   }
+}
+
+function withBackendOwner(
+  error: unknown,
+  backendOwner: BackendOwner,
+): Error & { backendOwner: BackendOwner } {
+  const baseError = error instanceof Error ? error : new Error('Recipient directory search failed.');
+  return Object.assign(baseError, { backendOwner });
+}
+
+function createGraphConnectionSourceFailure(
+  graphStatus: Awaited<ReturnType<typeof getGraphConnectionStatus>>,
+): RecipientSearchSourceFailure {
+  const classified: {
+    message: string;
+    details?: string;
+    classification: RecipientSearchSourceFailure['classification'];
+  } = graphStatus.failureClassification
+    ? {
+        message: graphStatus.detail,
+        classification: graphStatus.failureClassification,
+      }
+    : classifyCommandError({
+        commandName: 'recipients.search',
+        backendOwner: 'graph',
+        error: new Error(graphStatus.detail),
+      });
+
+  return {
+    message: classified.message,
+    ...(classified.details ? { details: classified.details } : {}),
+    classification: classified.classification,
+  };
+}
+
+function createGraphTenantMismatchSourceFailure(): RecipientSearchSourceFailure {
+  return {
+    message:
+      'Microsoft Graph is connected, but the tenant does not match the current Exchange session.',
+    classification: {
+      category: 'tenantMismatch',
+      remediation: 'reconnectMatchedTenant',
+      backend: 'graph',
+      operation: 'recipients.search',
+      guidance:
+        'Reconnect Microsoft Graph and Exchange with the same tenant, then retry the operation.',
+    },
+  };
+}
+
+function createGraphSourceFailure(error: unknown): RecipientSearchSourceFailure {
+  const classified = classifyCommandError({
+    commandName: 'recipients.search',
+    backendOwner: 'graph',
+    error: withBackendOwner(error, 'graph'),
+  });
+
+  return {
+    message: classified.message,
+    ...(classified.details ? { details: classified.details } : {}),
+    classification: classified.classification,
+  };
 }
 
 export const recipientDirectory: RecipientDirectoryProvider = new AppRecipientDirectory();

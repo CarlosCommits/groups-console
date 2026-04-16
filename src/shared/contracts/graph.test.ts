@@ -23,6 +23,32 @@ describe('graph contracts', () => {
     expect(result.state).toBe('connected');
   });
 
+  it('accepts an error graph connection status with classification metadata', () => {
+    const result = graphConnectionStatusSchema.parse({
+      state: 'error',
+      detail: 'Microsoft Graph request failed with 403 Forbidden.',
+      authMethod: null,
+      configuredTenantId: 'tenant-configured',
+      tenantId: null,
+      tenantDisplayName: null,
+      accountUsername: null,
+      accountDisplayName: null,
+      tokenExpiresOnUtc: null,
+      exchangeAlignment: 'unknown',
+      failureClassification: {
+        category: 'authorizationFailure',
+        remediation: 'verifyPermissions',
+        backend: 'graph',
+        operation: 'graph.getConnectionStatus',
+        guidance: 'Verify Microsoft Graph admin consent before retrying.',
+        statusCode: 403,
+        backendCode: 'Authorization_RequestDenied',
+      },
+    });
+
+    expect(result.failureClassification?.category).toBe('authorizationFailure');
+  });
+
   it('accepts the tenant config shape', () => {
     const result = tenantConfigSchema.parse({
       tenantId: 'tenant-configured',

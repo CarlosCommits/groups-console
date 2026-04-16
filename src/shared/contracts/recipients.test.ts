@@ -29,6 +29,18 @@ describe('recipient search contracts', () => {
         exchange: 'searched',
         graph: 'deferred',
       },
+      sourceFailures: {
+        graph: {
+          message: 'Microsoft Graph is connected, but the tenant does not match the current Exchange session.',
+          classification: {
+            category: 'tenantMismatch',
+            remediation: 'reconnectMatchedTenant',
+            backend: 'graph',
+            operation: 'recipients.search',
+            guidance: 'Reconnect Microsoft Graph and Exchange with the same tenant, then retry the operation.',
+          },
+        },
+      },
       items: [
         {
           source: 'exchange',
@@ -48,5 +60,6 @@ describe('recipient search contracts', () => {
     });
 
     expect(result.items[0]?.recipientType).toBe('mailbox');
+    expect(result.sourceFailures?.graph?.classification.category).toBe('tenantMismatch');
   });
 });

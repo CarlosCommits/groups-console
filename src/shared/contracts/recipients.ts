@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { commandErrorClassificationSchema } from './runtime-errors';
+
 export const recipientSearchSourceSchema = z.enum(['exchange', 'graph']);
 export const recipientSearchTypeSchema = z.enum([
   'mailbox',
@@ -48,6 +50,14 @@ export const recipientSearchItemSchema = z.object({
   companySource: recipientCompanySourceSchema,
 });
 
+export const recipientSearchSourceFailureSchema = z
+  .object({
+    message: z.string().min(1),
+    details: z.string().min(1).optional(),
+    classification: commandErrorClassificationSchema,
+  })
+  .strict();
+
 export const recipientsSearchResultSchema = z.object({
   query: z.string().min(2),
   appliedLimit: z.number().int().min(1).max(100),
@@ -56,6 +66,12 @@ export const recipientsSearchResultSchema = z.object({
     exchange: recipientSearchSourceStatusSchema,
     graph: recipientSearchSourceStatusSchema,
   }),
+  sourceFailures: z
+    .object({
+      exchange: recipientSearchSourceFailureSchema.optional(),
+      graph: recipientSearchSourceFailureSchema.optional(),
+    })
+    .optional(),
   items: z.array(recipientSearchItemSchema),
 });
 
@@ -65,4 +81,5 @@ export type RecipientMembershipSupport = z.infer<typeof recipientMembershipSuppo
 export type RecipientSearchSourceStatus = z.infer<typeof recipientSearchSourceStatusSchema>;
 export type RecipientsSearchPayload = z.infer<typeof recipientsSearchPayloadSchema>;
 export type RecipientSearchItem = z.infer<typeof recipientSearchItemSchema>;
+export type RecipientSearchSourceFailure = z.infer<typeof recipientSearchSourceFailureSchema>;
 export type RecipientsSearchResult = z.infer<typeof recipientsSearchResultSchema>;
