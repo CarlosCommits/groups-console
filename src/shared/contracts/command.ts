@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { runtimeCommandErrorSchema } from './runtime-errors';
+
 export const commandNameSchema = z.enum([
   'session.getStatus',
   'exchange.getCapabilities',
@@ -32,12 +34,7 @@ export const commandRequestSchema = z.object({
   payload: z.record(z.unknown()),
 });
 
-export const commandErrorSchema = z.object({
-  code: z.string().min(1),
-  message: z.string().min(1),
-  retryable: z.boolean(),
-  details: z.string().optional(),
-});
+export const commandErrorSchema = runtimeCommandErrorSchema;
 
 export const commandResponseSchema = z.object({
   requestId: z.string().min(1),
