@@ -65,6 +65,8 @@ import {
 } from '@/shared/contracts/reports';
 import { createCommandRequest } from '@/shared/validation/create-command-request';
 
+import { createCommandFailure } from './command-failure';
+
 const COMMAND_CHANNEL = 'radapp:command';
 const PROGRESS_CHANNEL = 'radapp:progress';
 
@@ -76,7 +78,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to load application status.');
+        throw createCommandFailure(response.error, 'Unable to load application status.');
       }
 
       return sessionStatusSchema.parse(response.data);
@@ -89,7 +91,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to load Exchange capabilities.');
+        throw createCommandFailure(response.error, 'Unable to load Exchange capabilities.');
       }
 
       return exchangeCapabilitiesSchema.parse(response.data);
@@ -102,7 +104,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to connect to Exchange Online.');
+        throw createCommandFailure(response.error, 'Unable to connect to Exchange Online.');
       }
 
       return exchangeConnectionStatusSchema.parse(response.data);
@@ -113,7 +115,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to load Exchange connection status.');
+        throw createCommandFailure(response.error, 'Unable to load Exchange connection status.');
       }
 
       return exchangeConnectionStatusSchema.parse(response.data);
@@ -124,7 +126,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to disconnect from Exchange Online.');
+        throw createCommandFailure(response.error, 'Unable to disconnect from Exchange Online.');
       }
 
       return exchangeConnectionStatusSchema.parse(response.data);
@@ -137,7 +139,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to list Exchange groups.');
+        throw createCommandFailure(response.error, 'Unable to list Exchange groups.');
       }
 
       return exchangeListGroupsResultSchema.parse(response.data);
@@ -150,7 +152,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to connect to Microsoft Graph.');
+        throw createCommandFailure(response.error, 'Unable to connect to Microsoft Graph.');
       }
 
       return graphConnectionStatusSchema.parse(response.data);
@@ -161,7 +163,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to load Microsoft Graph connection status.');
+        throw createCommandFailure(response.error, 'Unable to load Microsoft Graph connection status.');
       }
 
       return graphConnectionStatusSchema.parse(response.data);
@@ -172,7 +174,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to disconnect from Microsoft Graph.');
+        throw createCommandFailure(response.error, 'Unable to disconnect from Microsoft Graph.');
       }
 
       return graphConnectionStatusSchema.parse(response.data);
@@ -185,7 +187,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to read group members.');
+        throw createCommandFailure(response.error, 'Unable to read group members.');
       }
 
       return groupsGetMembersResultSchema.parse(response.data);
@@ -203,7 +205,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to add group members.');
+        throw createCommandFailure(response.error, 'Unable to add group members.');
       }
 
       return groupsAddMembersResultSchema.parse(response.data);
@@ -221,7 +223,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to remove group members.');
+        throw createCommandFailure(response.error, 'Unable to remove group members.');
       }
 
       return groupsRemoveMembersResultSchema.parse(response.data);
@@ -234,7 +236,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to search guest users.');
+        throw createCommandFailure(response.error, 'Unable to search guest users.');
       }
 
       return guestsSearchResultSchema.parse(response.data);
@@ -245,7 +247,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to invite guest user.');
+        throw createCommandFailure(response.error, 'Unable to invite guest user.');
       }
 
       return guestsInviteResultSchema.parse(response.data);
@@ -259,7 +261,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to read guest details.');
+        throw createCommandFailure(response.error, 'Unable to read guest details.');
       }
 
       return guestsGetDetailsResultSchema.parse(response.data);
@@ -270,7 +272,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to update guest company.');
+        throw createCommandFailure(response.error, 'Unable to update guest company.');
       }
 
       return guestsUpdateCompanyResultSchema.parse(response.data);
@@ -286,7 +288,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to read contact details.');
+        throw createCommandFailure(response.error, 'Unable to read contact details.');
       }
 
       return contactsGetDetailsResultSchema.parse(response.data);
@@ -297,7 +299,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to create contact.');
+        throw createCommandFailure(response.error, 'Unable to create contact.');
       }
 
       return contactsCreateResultSchema.parse(response.data);
@@ -310,7 +312,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to update contact company.');
+        throw createCommandFailure(response.error, 'Unable to update contact company.');
       }
 
       return contactsUpdateCompanyResultSchema.parse(response.data);
@@ -342,7 +344,10 @@ const radAppApi = {
         const response = commandResponseSchema.parse(rawResponse);
 
         if (!response.success) {
-          throw new Error(response.error?.message ?? 'Unable to generate membership matrix report.');
+          throw createCommandFailure(
+            response.error,
+            'Unable to generate membership matrix report.',
+          );
         }
 
         return reportsGenerateMembershipMatrixResultSchema.parse(response.data);
@@ -358,7 +363,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to export diagnostics.');
+        throw createCommandFailure(response.error, 'Unable to export diagnostics.');
       }
 
       return diagnosticsExportResultSchema.parse(response.data);
@@ -371,7 +376,7 @@ const radAppApi = {
       const response = commandResponseSchema.parse(rawResponse);
 
       if (!response.success) {
-        throw new Error(response.error?.message ?? 'Unable to search recipients.');
+        throw createCommandFailure(response.error, 'Unable to search recipients.');
       }
 
       return recipientsSearchResultSchema.parse(response.data);

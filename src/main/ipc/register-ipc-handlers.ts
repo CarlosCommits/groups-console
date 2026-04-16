@@ -88,6 +88,7 @@ import {
 } from '@/main/logging';
 import { recipientDirectory } from '@/main/recipients/recipient-directory';
 
+import { classifyCommandError } from './classify-command-error';
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
 
@@ -725,10 +726,22 @@ export function registerIpcHandlers(): void {
         message: 'IPC sender was rejected by the application security policy.',
       });
 
+      const commandName =
+        requestRecord?.command && typeof requestRecord.command === 'string'
+          ? requestRecord.command
+          : 'unknown';
+
       return createErrorResponse(fallbackRequestId, {
         code: 'unauthorized_sender',
         message: 'IPC sender was rejected by the application security policy.',
         retryable: false,
+        classification: {
+          category: 'authorizationFailure',
+          remediation: 'contactAdministrator',
+          backend: 'app',
+          operation: commandName,
+          guidance: 'Use the trusted application window and contact an administrator if the policy block persists.',
+        },
       });
     }
 
@@ -796,22 +809,35 @@ export function registerIpcHandlers(): void {
         },
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown command failure.';
+      const commandName =
+        requestRecord?.command && typeof requestRecord.command === 'string'
+          ? requestRecord.command
+          : 'unknown';
+      const backendOwner =
+        requestRecord?.command && typeof requestRecord.command === 'string'
+          ? getBackendOwner(requestRecord.command)
+          : 'app';
+      const classifiedError = classifyCommandError({
+        commandName,
+        backendOwner,
+        error,
+      });
+      const classifiedBackendOwner = classifiedError.classification.backend;
 
       await logOperationEvent({
         operationId,
         ipcRequestId: fallbackRequestId,
-        commandName:
-          requestRecord?.command && typeof requestRecord.command === 'string'
-            ? requestRecord.command
-            : 'unknown',
-        backendOwner:
-          requestRecord?.command && typeof requestRecord.command === 'string'
-            ? getBackendOwner(requestRecord.command)
-            : 'app',
+        commandName,
+        backendOwner: classifiedBackendOwner,
         result: 'failed',
-        safeErrorCode: 'command_failed',
-        message,
+        safeErrorCode: classifiedError.code,
+        message: classifiedError.message,
+        metadata: {
+          category: classifiedError.classification.category,
+          remediation: classifiedError.classification.remediation,
+          backendCode: classifiedError.classification.backendCode ?? null,
+          statusCode: classifiedError.classification.statusCode ?? null,
+        },
       });
 
       if (parsedRequest) {
@@ -820,17 +846,11 @@ export function registerIpcHandlers(): void {
           operationId,
           null,
           'failed',
-          requestRecord?.command && typeof requestRecord.command === 'string'
-            ? getBackendOwner(requestRecord.command)
-            : 'app',
+          classifiedBackendOwner,
         );
       }
 
-      return createErrorResponse(fallbackRequestId, {
-        code: 'command_failed',
-        message,
-        retryable: false,
-      });
+      return createErrorResponse(fallbackRequestId, classifiedError);
     }
   });
 }
