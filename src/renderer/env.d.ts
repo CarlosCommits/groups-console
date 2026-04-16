@@ -6,6 +6,8 @@ import type {
     ExchangeConnectionStatus,
     ExchangeGroupRef,
     ExchangeListGroupsResult,
+    ExchangeRecipientGetDetailsPayload,
+    ExchangeRecipientGetDetailsResult,
     GroupMemberSelectionRef,
     GroupMemberWriteRef,
   GroupsAddMembersResult,
@@ -34,6 +36,9 @@ declare global {
         listGroups: (
           kind?: 'all' | 'distributionList' | 'mailEnabledSecurityGroup',
         ) => Promise<ExchangeListGroupsResult>;
+        getRecipientDetails: (
+          payload: ExchangeRecipientGetDetailsPayload,
+        ) => Promise<ExchangeRecipientGetDetailsResult>;
       };
       graph: {
         connect: () => Promise<GraphConnectionStatus>;
