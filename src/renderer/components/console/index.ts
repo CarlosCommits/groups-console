@@ -11,3 +11,5 @@ export type { ShellState, PendingAction, ActionErrors } from "./app-context";
 export { deriveShellReadiness, deriveAuthSetupStep } from "./shell-readiness";
 export type { ReadinessLevel, ShellReadinessSummary, AuthSetupStep } from "./shell-readiness";
 export { ShellAuthPanel } from "./shell-auth-panel";
+export { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
+export type { ClassifiedFailurePresentation, FailureSeverity } from "./command-failure-presenter";
