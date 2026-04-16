@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { commandErrorClassificationSchema } from './runtime-errors';
+
 export const graphConnectionStateSchema = z.enum(['connected', 'disconnected', 'error']);
 export const graphTenantAlignmentSchema = z.enum(['matched', 'mismatched', 'unknown']);
 export const graphAuthMethodSchema = z.enum(['interactiveBrowser']);
@@ -19,6 +21,7 @@ export const graphConnectionStatusSchema = z.object({
   accountDisplayName: z.string().nullable(),
   tokenExpiresOnUtc: z.string().nullable(),
   exchangeAlignment: graphTenantAlignmentSchema,
+  failureClassification: commandErrorClassificationSchema.optional(),
 });
 
 export const tenantConfigSchema = z.object({

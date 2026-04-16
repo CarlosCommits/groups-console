@@ -1,8 +1,10 @@
 import type { AccountInfo, IPublicClientApplication } from '@azure/msal-node';
 
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import { classifyCommandError } from '@/main/ipc/classify-command-error';
 import type { RecipientConflictRecord } from '@/shared/contracts/conflicts';
 import type { GraphConnectionStatus, TenantConfig } from '@/shared/contracts/graph';
+import type { CommandErrorClassification } from '@/shared/contracts/runtime-errors';
 import type {
   GuestsGetDetailsResult,
   GuestSearchItem,
@@ -18,6 +20,7 @@ import { loadTenantConfig } from '../config/tenant-config';
 import {
   fetchGraphMe,
   fetchGraphOrganization,
+  GraphConnectionError,
   findGraphGuestByEmail,
   getGraphGuestDetailsById,
   getGraphGuestById,
@@ -144,6 +147,7 @@ export class GraphSessionManager {
         return createGraphErrorStatus(
           config,
           error instanceof Error ? error.message : 'Graph session is unavailable.',
+          classifyGraphStatusFailure('graph.getConnectionStatus', error),
         );
       }
     });
@@ -225,14 +229,27 @@ export class GraphSessionManager {
 
   private async acquireGraphToken(): Promise<{ accessToken: string; config: TenantConfig }> {
     if (!this.session) {
-      throw new Error('Graph session is not connected.');
+      throw new GraphConnectionError({
+        message: 'Graph session is not connected.',
+        backendCode: 'graph_session_not_connected',
+      });
     }
 
-    const authResult = await acquireSilentGraphToken(
-      this.session.publicClient,
-      this.session.config,
-      this.session.account,
-    );
+    let authResult: Awaited<ReturnType<typeof acquireSilentGraphToken>>;
+
+    try {
+      authResult = await acquireSilentGraphToken(
+        this.session.publicClient,
+        this.session.config,
+        this.session.account,
+      );
+    } catch (error) {
+      throw new GraphConnectionError({
+        message: 'Graph token acquisition failed.',
+        backendCode: 'graph_token_unavailable',
+        details: error instanceof Error ? error.message : undefined,
+      });
+    }
 
     this.session.tokenExpiresOnUtc = authResult.expiresOn?.toISOString() ?? null;
 
@@ -277,12 +294,14 @@ function createGraphDisconnectedStatus(
     accountDisplayName: null,
     tokenExpiresOnUtc: null,
     exchangeAlignment: 'unknown',
+    failureClassification: classifyGraphStatusFailure('graph.getConnectionStatus', detail),
   };
 }
 
 function createGraphErrorStatus(
   config: TenantConfig | null,
   detail: string,
+  failureClassification?: CommandErrorClassification,
 ): GraphConnectionStatus {
   return {
     state: 'error',
@@ -295,7 +314,19 @@ function createGraphErrorStatus(
     accountDisplayName: null,
     tokenExpiresOnUtc: null,
     exchangeAlignment: 'unknown',
+    ...(failureClassification ? { failureClassification } : {}),
   };
+}
+
+function classifyGraphStatusFailure(
+  operation: 'graph.getConnectionStatus',
+  error: unknown,
+): CommandErrorClassification {
+  return classifyCommandError({
+    commandName: operation,
+    backendOwner: 'graph',
+    error,
+  }).classification;
 }
 
 async function tryLoadTenantConfig(): Promise<TenantConfig | null> {
