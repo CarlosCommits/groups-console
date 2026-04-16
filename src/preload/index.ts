@@ -43,7 +43,10 @@ import {
 import {
   exchangeCapabilitiesSchema,
   exchangeConnectionStatusSchema,
+  exchangeRecipientGetDetailsResultSchema,
   type ExchangeGroupRef,
+  type ExchangeRecipientGetDetailsPayload,
+  type ExchangeRecipientGetDetailsResult,
   exchangeListGroupsResultSchema,
   groupsAddMembersResultSchema,
   groupsGetMembersResultSchema,
@@ -143,6 +146,19 @@ const radAppApi = {
       }
 
       return exchangeListGroupsResultSchema.parse(response.data);
+    },
+    async getRecipientDetails(
+      payload: ExchangeRecipientGetDetailsPayload,
+    ): Promise<ExchangeRecipientGetDetailsResult> {
+      const request = createCommandRequest('exchange.getRecipientDetails', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw createCommandFailure(response.error, 'Unable to read Exchange recipient details.');
+      }
+
+      return exchangeRecipientGetDetailsResultSchema.parse(response.data);
     },
   },
   graph: {

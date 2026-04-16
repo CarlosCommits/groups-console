@@ -12,6 +12,7 @@ export type ExchangeSessionHostCommand =
   | 'disconnect'
   | 'lookupRecipientOwnership'
   | 'resolveGuestMailUser'
+  | 'getRecipientDetails'
   | 'createContact'
   | 'getContactDetails'
   | 'updateContactCompany'

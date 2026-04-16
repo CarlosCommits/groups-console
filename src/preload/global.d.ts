@@ -3,6 +3,7 @@ import type { ExchangeCapabilities } from '@/shared/contracts/exchange';
 import type { ExchangeConnectionStatus } from '@/shared/contracts/exchange';
 import type { ExchangeGroupRef } from '@/shared/contracts/exchange';
 import type { ExchangeListGroupsResult } from '@/shared/contracts/exchange';
+import type { ExchangeRecipientGetDetailsPayload, ExchangeRecipientGetDetailsResult } from '@/shared/contracts/exchange';
 import type { GroupMemberSelectionRef } from '@/shared/contracts/exchange';
 import type { GroupMemberWriteRef } from '@/shared/contracts/exchange';
 import type { GroupsAddMembersResult } from '@/shared/contracts/exchange';
@@ -31,6 +32,9 @@ declare global {
         listGroups: (
           kind?: 'all' | 'distributionList' | 'mailEnabledSecurityGroup',
         ) => Promise<ExchangeListGroupsResult>;
+        getRecipientDetails: (
+          payload: ExchangeRecipientGetDetailsPayload,
+        ) => Promise<ExchangeRecipientGetDetailsResult>;
       };
       graph: {
         connect: () => Promise<GraphConnectionStatus>;
