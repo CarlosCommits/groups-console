@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   WifiOff,
+  Info,
 } from "lucide-react";
 import {
   Table,
@@ -55,6 +56,14 @@ import {
 } from "@/renderer/components/ui/select";
 import { AppShell } from "@/renderer/components/console";
 import {
+  formatPresentedCommandFailure,
+  presentCommandFailure,
+} from "@/renderer/components/console/command-failure-presenter";
+import {
+  formatSourceDegradationNote,
+  presentSourceDegradation,
+} from "@/renderer/components/console/source-degradation-presenter";
+import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
@@ -72,6 +81,7 @@ import type {
 import type {
   RecipientSearchItem,
   RecipientSearchType,
+  RecipientsSearchResult,
 } from "@/shared/contracts/recipients";
 
 const GROUP_KIND_LABELS: Record<ExchangeGroupListItem["groupKind"], string> = {
@@ -222,6 +232,7 @@ export function GroupsScreen() {
   const [addSelectedKeys, setAddSelectedKeys] = useState<Set<string>>(new Set());
   const [addSearchLoading, setAddSearchLoading] = useState(false);
   const [addSearchError, setAddSearchError] = useState<string | null>(null);
+  const [addSearchResult, setAddSearchResult] = useState<RecipientsSearchResult | null>(null);
   const [addPending, setAddPending] = useState(false);
   const [addResult, setAddResult] = useState<GroupsAddMembersResult | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
@@ -239,8 +250,8 @@ export function GroupsScreen() {
       const result = await window.radApp.exchange.listGroups();
       setGroups(result.items);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load groups.";
-      setGroupsError(message);
+      const presented = presentCommandFailure(err, "Groups Error", "Failed to load groups.");
+      setGroupsError(formatPresentedCommandFailure(presented));
     } finally {
       setGroupsLoading(false);
     }
@@ -279,8 +290,8 @@ export function GroupsScreen() {
       const result = await window.radApp.groups.getMembers(ref);
       setMembers(result.items);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load members.";
-      setMembersError(message);
+      const presented = presentCommandFailure(err, "Members Error", "Failed to load members.");
+      setMembersError(formatPresentedCommandFailure(presented));
     } finally {
       setMembersLoading(false);
     }
@@ -348,6 +359,7 @@ export function GroupsScreen() {
     if (!addDialogOpen) return;
     if (addSearchQuery.trim().length < 2) {
       setAddCandidates([]);
+      setAddSearchResult(null);
       setAddSearchLoading(false);
       return;
     }
@@ -360,12 +372,18 @@ export function GroupsScreen() {
         .then((result) => {
           if (!cancelled) {
             setAddCandidates(result.items);
+            setAddSearchResult(result);
             setAddSearchLoading(false);
           }
         })
         .catch((err) => {
           if (!cancelled) {
-            setAddSearchError(err instanceof Error ? err.message : "Search failed.");
+            setAddSearchError(
+              formatPresentedCommandFailure(
+                presentCommandFailure(err, "Search Error", "Search failed."),
+              ),
+            );
+            setAddSearchResult(null);
             setAddSearchLoading(false);
           }
         });
@@ -397,11 +415,16 @@ export function GroupsScreen() {
     setAddSelectedKeys(new Set());
     setAddSearchLoading(false);
     setAddSearchError(null);
+    setAddSearchResult(null);
     setAddPending(false);
     setAddResult(null);
     setAddError(null);
     setAddDialogOpen(true);
   }, []);
+
+  const addDegradationNote = addSearchResult
+    ? presentSourceDegradation(addSearchResult.sourceStatus, addSearchResult.sourceFailures)
+    : null;
 
   const handleAddMembers = useCallback(async () => {
     if (!selectedGroup) return;
@@ -435,7 +458,11 @@ export function GroupsScreen() {
       setAddResult(result);
       await loadMembers();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add members.");
+      setAddError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Add Members Error", "Failed to add members."),
+        ),
+      );
     } finally {
       setAddPending(false);
     }
@@ -464,7 +491,11 @@ export function GroupsScreen() {
         await loadMembers();
       }
     } catch (err) {
-      setRemoveError(err instanceof Error ? err.message : "Failed to remove member.");
+      setRemoveError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Remove Member Error", "Failed to remove member."),
+        ),
+      );
     } finally {
       setRemovePending(false);
     }
@@ -961,6 +992,13 @@ export function GroupsScreen() {
                   disabled={addPending}
                 />
               </div>
+
+              {addDegradationNote && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
+                  <Info className="size-3.5 shrink-0" />
+                  <span>{formatSourceDegradationNote(addDegradationNote)}</span>
+                </div>
+              )}
 
               <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4">
                 {addSearchLoading && (
