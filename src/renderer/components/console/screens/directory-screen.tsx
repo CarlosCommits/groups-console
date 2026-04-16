@@ -40,6 +40,14 @@ import {
   TableFilterButton,
 } from "@/renderer/components/console";
 import { useApp } from "@/renderer/components/console/app-context";
+import {
+  formatPresentedCommandFailure,
+  presentCommandFailure,
+} from "@/renderer/components/console/command-failure-presenter";
+import {
+  formatSourceDegradationNote,
+  presentSourceDegradation,
+} from "@/renderer/components/console/source-degradation-presenter";
 import { cn } from "@/renderer/lib/utils";
 import type {
   RecipientsSearchResult,
@@ -166,25 +174,6 @@ function emailOrId(item: RecipientSearchItem): string {
   return item.primaryEmail ?? item.alias ?? item.exchangeIdentity ?? item.objectId ?? "\u2014";
 }
 
-function sourceStatusNote(
-  sourceStatus: RecipientsSearchResult["sourceStatus"],
-): string | null {
-  const notes: string[] = [];
-  if (
-    sourceStatus.exchange === "unavailable" ||
-    sourceStatus.exchange === "deferred"
-  ) {
-    notes.push(`Exchange ${sourceStatus.exchange}`);
-  }
-  if (
-    sourceStatus.graph === "unavailable" ||
-    sourceStatus.graph === "deferred"
-  ) {
-    notes.push(`Graph ${sourceStatus.graph}`);
-  }
-  return notes.length > 0 ? notes.join("; ") : null;
-}
-
 function canUpdateCompany(
   item: RecipientSearchItem,
   exchangeConnected: boolean,
@@ -309,7 +298,11 @@ export function DirectoryScreen() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Search failed.");
+          setError(
+            formatPresentedCommandFailure(
+              presentCommandFailure(err, "Search Error", "Search failed."),
+            ),
+          );
           setLoading(false);
         }
       });
@@ -330,7 +323,11 @@ export function DirectoryScreen() {
       setResults(result);
       setLoading(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Search failed.");
+      setError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Search Error", "Search failed."),
+        ),
+      );
       setLoading(false);
     }
   }, [effectiveQuery, activeTab]);
@@ -390,7 +387,11 @@ export function DirectoryScreen() {
         setCreateResult({ mode: "guest", data: result });
       }
     } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err.message : "Operation failed.");
+      setCreateError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Create Error", "Operation failed."),
+        ),
+      );
     } finally {
       setCreatePending(false);
     }
@@ -448,7 +449,11 @@ export function DirectoryScreen() {
         setUpdateResult({ mode: "guest", data: result });
       }
     } catch (err: unknown) {
-      setUpdateError(err instanceof Error ? err.message : "Operation failed.");
+      setUpdateError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Update Error", "Operation failed."),
+        ),
+      );
     } finally {
       setUpdatePending(false);
     }
@@ -492,7 +497,11 @@ export function DirectoryScreen() {
       }
     } catch (err: unknown) {
       if (detailRequestIdRef.current === requestId) {
-        setDetailError(err instanceof Error ? err.message : "Failed to load details.");
+        setDetailError(
+          formatPresentedCommandFailure(
+            presentCommandFailure(err, "Detail Error", "Failed to load details."),
+          ),
+        );
       }
     } finally {
       if (detailRequestIdRef.current === requestId) {
@@ -531,7 +540,9 @@ export function DirectoryScreen() {
         : "Connect to Microsoft Graph with a matching tenant to search for guest users."
       : "Connect to Exchange Online to search the directory.";
 
-  const statusNote = results ? sourceStatusNote(results.sourceStatus) : null;
+  const degradationNote = results
+    ? presentSourceDegradation(results.sourceStatus, results.sourceFailures)
+    : null;
 
   const createFormValid =
     createMode === "contact"
@@ -662,20 +673,20 @@ export function DirectoryScreen() {
                     No recipients matched &ldquo;{effectiveQuery.trim()}&rdquo;.
                     Try a different search term or change the filter tab.
                   </p>
-                  {statusNote && (
+                  {degradationNote && (
                     <p className="mt-3 text-xs text-amber-700">
-                      Partial results only &mdash; {statusNote}
+                      Partial results only &mdash; {formatSourceDegradationNote(degradationNote)}
                     </p>
                   )}
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col min-h-0">
-                {statusNote && (
+                {degradationNote && (
                   <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
                     <Info className="size-3.5 shrink-0" />
                     <span>
-                      Partial results &mdash; {statusNote}
+                      Partial results &mdash; {formatSourceDegradationNote(degradationNote)}
                     </span>
                   </div>
                 )}

@@ -10,6 +10,7 @@ import {
 import type { SessionStatusSchema } from "@/shared/contracts/session";
 import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
+import { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
 
 type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
 
@@ -168,15 +169,18 @@ export function AppProvider({ children }: AppProviderProps) {
         loadError: null,
       });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load application state.";
+      const presented = presentCommandFailure(
+        err,
+        "Shell State Error",
+        "Failed to load application state.",
+      );
       setShell({
         session: null,
         exchangeCapabilities: null,
         graphConnection: null,
         exchangeConnection: null,
         isHydrating: false,
-        loadError: message,
+        loadError: formatPresentedCommandFailure(presented),
       });
     }
   }, []);
@@ -201,8 +205,8 @@ export function AppProvider({ children }: AppProviderProps) {
         setActionErrors((prev) => ({ ...prev, graph: result.detail }));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Graph connect failed.";
-      setActionErrors((prev) => ({ ...prev, graph: message }));
+      const presented = presentCommandFailure(err, "Graph Connect Error", "Graph connect failed.");
+      setActionErrors((prev) => ({ ...prev, graph: formatPresentedCommandFailure(presented) }));
     } finally {
       setPendingAction(null);
       await refreshShellState();
@@ -225,8 +229,8 @@ export function AppProvider({ children }: AppProviderProps) {
         setActionErrors((prev) => ({ ...prev, graph: result.detail }));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Graph disconnect failed.";
-      setActionErrors((prev) => ({ ...prev, graph: message }));
+      const presented = presentCommandFailure(err, "Graph Disconnect Error", "Graph disconnect failed.");
+      setActionErrors((prev) => ({ ...prev, graph: formatPresentedCommandFailure(presented) }));
     } finally {
       setPendingAction(null);
       await refreshShellState();
@@ -249,8 +253,8 @@ export function AppProvider({ children }: AppProviderProps) {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Exchange connect failed.";
-      setActionErrors((prev) => ({ ...prev, exchange: message }));
+      const presented = presentCommandFailure(err, "Exchange Connect Error", "Exchange connect failed.");
+      setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
     } finally {
       setPendingAction(null);
       await refreshShellState();
@@ -273,8 +277,8 @@ export function AppProvider({ children }: AppProviderProps) {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Exchange disconnect failed.";
-      setActionErrors((prev) => ({ ...prev, exchange: message }));
+      const presented = presentCommandFailure(err, "Exchange Disconnect Error", "Exchange disconnect failed.");
+      setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
     } finally {
       setPendingAction(null);
       await refreshShellState();
