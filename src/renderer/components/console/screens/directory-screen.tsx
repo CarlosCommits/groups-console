@@ -60,6 +60,9 @@ import type {
   ContactDetails,
 } from "@/shared/contracts/contacts";
 import type {
+  ExchangeRecipientDetails,
+} from "@/shared/contracts/exchange";
+import type {
   GuestsInviteResult,
   GuestsUpdateCompanyResult,
   GuestDetails,
@@ -77,7 +80,8 @@ type UpdateResult =
 
 type DetailResult =
   | { mode: "contact"; data: ContactDetails }
-  | { mode: "guest"; data: GuestDetails };
+  | { mode: "guest"; data: GuestDetails }
+  | { mode: "exchangeRecipient"; data: ExchangeRecipientDetails };
 
 const TAB_TYPES: Record<string, RecipientSearchType[]> = {
   all: [
@@ -199,7 +203,12 @@ function canUpdateCompany(
 }
 
 function canInspect(item: RecipientSearchItem): boolean {
-  return item.recipientType === "mailContact" || item.recipientType === "guestUser";
+  return (
+    item.recipientType === "mailContact" ||
+    item.recipientType === "guestUser" ||
+    item.recipientType === "mailbox" ||
+    item.recipientType === "mailUser"
+  );
 }
 
 function getUpdateMode(
@@ -487,12 +496,19 @@ export function DirectoryScreen() {
         if (detailRequestIdRef.current === requestId) {
           setDetailResult({ mode: "contact", data: result.contact });
         }
-      } else {
+      } else if (item.recipientType === "guestUser") {
         const result = await window.radApp.guests.getDetails({
           stableKey: item.stableKey,
         });
         if (detailRequestIdRef.current === requestId) {
           setDetailResult({ mode: "guest", data: result.guest });
+        }
+      } else if (item.recipientType === "mailbox" || item.recipientType === "mailUser") {
+        const result = await window.radApp.exchange.getRecipientDetails({
+          stableKey: item.stableKey,
+        });
+        if (detailRequestIdRef.current === requestId) {
+          setDetailResult({ mode: "exchangeRecipient", data: result.recipient });
         }
       }
     } catch (err: unknown) {
@@ -592,7 +608,7 @@ export function DirectoryScreen() {
 
           <div className="bg-white rounded-xl border border-[var(--color-outline-variant)]/20 overflow-hidden shadow-sm flex-1 flex flex-col min-h-0">
             <TableToolbar
-              searchPlaceholder="Search by name, email, or handle\u2026"
+              searchPlaceholder="Search by name, email, or handle…"
               onSearch={setSearchText}
               filters={
                 <>
@@ -1234,7 +1250,11 @@ export function DirectoryScreen() {
               {detailTarget
                 ? detailTarget.recipientType === "mailContact"
                   ? "Contact Details"
-                  : "Guest Details"
+                  : detailTarget.recipientType === "guestUser"
+                    ? "Guest Details"
+                    : detailTarget.recipientType === "mailbox"
+                      ? "Mailbox Details"
+                      : "Mail User Details"
                 : "Details"}
             </DialogTitle>
             <DialogDescription>
@@ -1382,7 +1402,7 @@ export function DirectoryScreen() {
                     )}
                   </div>
                 </>
-              ) : (
+              ) : detailResult.mode === "guest" ? (
                 <>
                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
                     <Avatar className="w-8 h-8 text-xs">
@@ -1501,6 +1521,101 @@ export function DirectoryScreen() {
                             day: "numeric",
                           })}
                         </span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
+                    <Avatar className="w-8 h-8 text-xs">
+                      <AvatarFallback className={avatarColorFor(detailTarget?.stableKey ?? "")}>
+                        {getInitials(detailResult.data.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800 truncate">
+                        {detailResult.data.displayName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
+                      </p>
+                    </div>
+                    <Badge className={cn("shrink-0", typeBadgeClass(detailResult.data.recipientType))}>
+                      {TYPE_LABELS[detailResult.data.recipientType]}
+                    </Badge>
+                  </div>
+                  <div className="space-y-0">
+                    {detailResult.data.primaryEmail && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.primaryEmail}</span>
+                      </div>
+                    )}
+                    {detailResult.data.alias && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Alias</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.alias}</span>
+                      </div>
+                    )}
+                    {detailResult.data.userPrincipalName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">UPN</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.userPrincipalName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.externalEmailAddress && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">External Target</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.externalEmailAddress}</span>
+                      </div>
+                    )}
+                    {detailResult.data.companyName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Company</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.companyName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.firstName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">First Name</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.firstName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.lastName && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last Name</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.lastName}</span>
+                      </div>
+                    )}
+                    {detailResult.data.title && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Title</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.title}</span>
+                      </div>
+                    )}
+                    {detailResult.data.department && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.department}</span>
+                      </div>
+                    )}
+                    {detailResult.data.phone && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Phone</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.phone}</span>
+                      </div>
+                    )}
+                    {detailResult.data.office && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Office</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.office}</span>
+                      </div>
+                    )}
+                    {detailResult.data.recipientTypeDetails && (
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type Details</span>
+                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.recipientTypeDetails}</span>
                       </div>
                     )}
                   </div>

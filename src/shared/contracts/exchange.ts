@@ -19,6 +19,12 @@ export const exchangeListGroupsPayloadSchema = z
     kind: z.enum(['all', 'distributionList', 'mailEnabledSecurityGroup']).optional(),
   })
   .strict();
+export const exchangeRecipientDetailTypeSchema = z.enum(['mailbox', 'mailUser']);
+export const exchangeRecipientGetDetailsPayloadSchema = z
+  .object({
+    stableKey: z.string().min(1),
+  })
+  .strict();
 export const exchangeGroupRefSchema = z
   .object({
     exchangeIdentity: z.string().min(1),
@@ -211,6 +217,31 @@ export const exchangeListGroupsResultSchema = z.object({
   items: z.array(exchangeGroupListItemSchema),
 });
 
+export const exchangeRecipientDetailsSchema = z
+  .object({
+    exchangeIdentity: z.string().min(1),
+    objectId: z.string().nullable(),
+    primaryEmail: z.string().nullable(),
+    externalEmailAddress: z.string().nullable(),
+    displayName: z.string().min(1),
+    alias: z.string().nullable(),
+    companyName: z.string().nullable(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    title: z.string().nullable(),
+    department: z.string().nullable(),
+    phone: z.string().nullable(),
+    office: z.string().nullable(),
+    userPrincipalName: z.string().nullable(),
+    recipientType: exchangeRecipientDetailTypeSchema,
+    recipientTypeDetails: z.string().min(1),
+  })
+  .strict();
+
+export const exchangeRecipientGetDetailsResultSchema = z.object({
+  recipient: exchangeRecipientDetailsSchema,
+});
+
 export const groupMemberListItemSchema = z.object({
   objectId: z.string().nullable(),
   exchangeIdentity: z.string().min(1),
@@ -280,9 +311,13 @@ export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema
 export type ExchangeConnectionState = z.infer<typeof exchangeConnectionStateSchema>;
 export type ExchangeConnectionStatus = z.infer<typeof exchangeConnectionStatusSchema>;
 export type ExchangeListGroupsPayload = z.infer<typeof exchangeListGroupsPayloadSchema>;
+export type ExchangeRecipientDetailType = z.infer<typeof exchangeRecipientDetailTypeSchema>;
+export type ExchangeRecipientGetDetailsPayload = z.infer<typeof exchangeRecipientGetDetailsPayloadSchema>;
 export type ExchangeGroupRef = z.infer<typeof exchangeGroupRefSchema>;
 export type ExchangeGroupListItem = z.infer<typeof exchangeGroupListItemSchema>;
 export type ExchangeListGroupsResult = z.infer<typeof exchangeListGroupsResultSchema>;
+export type ExchangeRecipientDetails = z.infer<typeof exchangeRecipientDetailsSchema>;
+export type ExchangeRecipientGetDetailsResult = z.infer<typeof exchangeRecipientGetDetailsResultSchema>;
 export type GroupsGetMembersPayload = z.infer<typeof groupsGetMembersPayloadSchema>;
 export type GroupMemberListItem = z.infer<typeof groupMemberListItemSchema>;
 export type GroupsGetMembersResult = z.infer<typeof groupsGetMembersResultSchema>;

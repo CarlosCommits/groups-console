@@ -6,6 +6,8 @@ import {
   exchangeConnectionStatusSchema,
   exchangeDisconnectPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
+  exchangeRecipientGetDetailsPayloadSchema,
+  exchangeRecipientGetDetailsResultSchema,
   exchangeGetCapabilitiesPayloadSchema,
   guestMembershipTargetResultSchema,
   groupsAddMembersPayloadSchema,
@@ -38,6 +40,21 @@ describe('exchange contracts', () => {
     expect(() => exchangeListGroupsPayloadSchema.parse({})).not.toThrow();
     expect(() => exchangeListGroupsPayloadSchema.parse({ kind: 'distributionList' })).not.toThrow();
     expect(() => exchangeListGroupsPayloadSchema.parse({ extra: true })).toThrow();
+  });
+
+  it('accepts strict recipient detail payloads', () => {
+    expect(() =>
+      exchangeRecipientGetDetailsPayloadSchema.parse({
+        stableKey: 'exchange:objectId:recipient-1',
+      }),
+    ).not.toThrow();
+    expect(() => exchangeRecipientGetDetailsPayloadSchema.parse({})).toThrow();
+    expect(() =>
+      exchangeRecipientGetDetailsPayloadSchema.parse({
+        stableKey: 'exchange:objectId:recipient-1',
+        extra: true,
+      }),
+    ).toThrow();
   });
 
   it('accepts strict group member payloads', () => {
@@ -228,6 +245,57 @@ describe('exchange contracts', () => {
     });
 
     expect(result.items[0]?.groupKind).toBe('distributionList');
+  });
+
+  it('accepts an exchange recipient details result payload', () => {
+    const result = exchangeRecipientGetDetailsResultSchema.parse({
+      recipient: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+        externalEmailAddress: null,
+        displayName: 'Jane Example',
+        alias: 'jexample',
+        companyName: 'Example Corp',
+        firstName: 'Jane',
+        lastName: 'Example',
+        title: 'Director',
+        department: 'Operations',
+        phone: '+1 555-0100',
+        office: 'HQ-201',
+        userPrincipalName: 'jane@example.com',
+        recipientType: 'mailbox',
+        recipientTypeDetails: 'UserMailbox',
+      },
+    });
+
+    expect(result.recipient.recipientType).toBe('mailbox');
+  });
+
+  it('accepts a mail user recipient details result with a distinct external email target', () => {
+    const result = exchangeRecipientGetDetailsResultSchema.parse({
+      recipient: {
+        exchangeIdentity: 'jane.external@example.com',
+        objectId: 'recipient-2',
+        primaryEmail: 'jane@yourcompany.com',
+        externalEmailAddress: 'jane@gmail.com',
+        displayName: 'Jane External',
+        alias: 'jexternal',
+        companyName: 'Example Corp',
+        firstName: 'Jane',
+        lastName: 'External',
+        title: null,
+        department: null,
+        phone: null,
+        office: null,
+        userPrincipalName: 'jane_external#EXT#@tenant.onmicrosoft.com',
+        recipientType: 'mailUser',
+        recipientTypeDetails: 'MailUser',
+      },
+    });
+
+    expect(result.recipient.primaryEmail).toBe('jane@yourcompany.com');
+    expect(result.recipient.externalEmailAddress).toBe('jane@gmail.com');
   });
 
   it('accepts a group members result payload', () => {

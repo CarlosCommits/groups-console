@@ -1,5 +1,6 @@
 import {
   exchangeConnectionStatusSchema,
+  exchangeRecipientGetDetailsResultSchema,
   type ExchangeConnectPayload,
   type ExchangeConnectionStatus,
   exchangeListGroupsResultSchema,
@@ -9,6 +10,7 @@ import {
   groupsRemoveMembersResultSchema,
   type ExchangeListGroupsPayload,
   type ExchangeListGroupsResult,
+  type ExchangeRecipientGetDetailsResult,
   type GuestMembershipTargetResult,
   type GroupsAddMembersResult,
   type GroupsGetMembersPayload,
@@ -217,6 +219,21 @@ export class ExchangeSessionManager {
       );
 
       return contactsGetDetailsResultSchema.parse(rawResult);
+    });
+  }
+
+  async getRecipientDetails(exchangeIdentity: string): Promise<ExchangeRecipientGetDetailsResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request(
+        'getRecipientDetails' as Parameters<ExchangeSessionHost['request']>[0],
+        { exchangeIdentity },
+      );
+
+      return exchangeRecipientGetDetailsResultSchema.parse(rawResult);
     });
   }
 
