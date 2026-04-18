@@ -8,6 +8,10 @@ import {
   type CommandResponse,
 } from '@/shared/contracts/command';
 import {
+  auditListEventsPayloadSchema,
+  auditListEventsResultSchema,
+} from '@/shared/contracts/audit';
+import {
   diagnosticsExportPayloadSchema,
   diagnosticsExportResultSchema,
 } from '@/shared/contracts/diagnostics';
@@ -85,6 +89,7 @@ import { generateMembershipMatrixReport } from '@/main/reports/generate-membersh
 import { exportDiagnostics } from '@/main/ipc/handlers/export-diagnostics';
 import {
   runWithOperationContext,
+  readAuditEvents,
   writeAuditEvent,
   writeOperationalLog,
   type BackendOwner,
@@ -422,6 +427,17 @@ async function executeCommand(
   emitProgress: (event: { phase: 'preflight' | 'executing' | 'verifying' | 'complete'; message: string; percent?: number }) => void,
 ): Promise<CommandResponse> {
   switch (request.command as string) {
+    case 'audit.listEvents': {
+      const payload = auditListEventsPayloadSchema.parse(request.payload);
+      const result = auditListEventsResultSchema.parse(await readAuditEvents(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
     case 'session.getStatus': {
       sessionGetStatusPayloadSchema.parse(request.payload);
       const status = sessionStatusSchema.parse(await getSessionStatus());
