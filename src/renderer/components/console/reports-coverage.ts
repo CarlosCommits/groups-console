@@ -101,10 +101,10 @@ export function deriveCapabilityRows(shell: ShellState): CapabilityRow[] {
   rows.push({
     id: "audit-observability",
     surface: "Audit & Observability",
-    status: checks?.find((check) => check.id === "logDirectory")?.status === "ready" ? "partial" : "unavailable",
+    status: checks?.find((check) => check.id === "logDirectory")?.status === "ready" ? "available" : "unavailable",
     detail:
       checks?.find((check) => check.id === "logDirectory")?.status === "ready"
-        ? "Structured logging and diagnostics export available; audit log viewer still deferred"
+        ? "Structured logging, diagnostics export, and audit log viewer available"
         : "Requires writable log directory",
   });
 
