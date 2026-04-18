@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 
+import type { AuditListEventsPayload, AuditListEventsResult } from '@/shared/contracts/audit';
 import type { ContactsCreatePayload, ContactsCreateResult, ContactsGetDetailsPayload, ContactsGetDetailsResult, ContactsUpdateCompanyPayload, ContactsUpdateCompanyResult } from '@/shared/contracts/contacts';
 import type {
     ExchangeCapabilities,
@@ -72,6 +73,9 @@ declare global {
           payload: ReportsGenerateMembershipMatrixPayload,
           onProgress?: (event: ProgressEvent) => void,
         ) => Promise<ReportsGenerateMembershipMatrixResult>;
+      };
+      audit: {
+        listEvents: (payload: AuditListEventsPayload) => Promise<AuditListEventsResult>;
       };
       diagnostics: {
         export: (payload?: DiagnosticsExportPayload) => Promise<DiagnosticsExportResult>;

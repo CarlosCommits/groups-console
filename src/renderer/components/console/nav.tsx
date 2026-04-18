@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Users,
   FolderSearch,
+  ShieldCheck,
   BarChart3,
   Settings,
   type LucideIcon,
@@ -9,7 +10,7 @@ import {
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "./app-context";
 
-type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
+type Screen = "dashboard" | "groups" | "directory" | "audit" | "reports" | "settings";
 
 export interface NavItemProps {
   screen: Screen;
@@ -52,6 +53,7 @@ const navItems: { screen: Screen; icon: LucideIcon; label: string }[] = [
   { screen: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { screen: "groups", icon: Users, label: "Groups" },
   { screen: "directory", icon: FolderSearch, label: "Directory" },
+  { screen: "audit", icon: ShieldCheck, label: "Audit" },
   { screen: "reports", icon: BarChart3, label: "Reports" },
   { screen: "settings", icon: Settings, label: "Settings" },
 ];

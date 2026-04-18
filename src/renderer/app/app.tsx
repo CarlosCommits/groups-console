@@ -3,6 +3,7 @@ import {
   DashboardScreen,
   GroupsScreen,
   DirectoryScreen,
+  AuditScreen,
   ReportsScreen,
   SettingsScreen,
 } from "@/renderer/components/console/screens";
@@ -19,6 +20,8 @@ function AppContent() {
         return <GroupsScreen />;
       case "directory":
         return <DirectoryScreen />;
+      case "audit":
+        return <AuditScreen />;
       case "reports":
         return <ReportsScreen />;
       case "settings":
