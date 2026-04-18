@@ -14,6 +14,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('@/main/logging', () => ({
+  readAuditEvents: vi.fn(),
   runWithOperationContext: vi.fn(async (_context, callback: () => Promise<unknown>) => await callback()),
   writeAuditEvent: vi.fn(),
   writeOperationalLog: vi.fn(),
@@ -75,7 +76,7 @@ vi.mock('@/main/recipients/recipient-directory', () => ({
   },
 }));
 
-import { writeAuditEvent, writeOperationalLog } from '@/main/logging';
+import { readAuditEvents, writeAuditEvent, writeOperationalLog } from '@/main/logging';
 import { createContact } from '@/main/exchange/create-contact';
 import { getExchangeRecipientDetails } from '@/main/exchange/get-recipient-details';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
@@ -111,6 +112,58 @@ describe('registerIpcHandlers', () => {
     expect(response.success).toBe(false);
     const operationIds = vi.mocked(writeOperationalLog).mock.calls.map((call) => call[0].operationId);
     expect(new Set(operationIds).size).toBe(1);
+  });
+
+  it('returns audit events through the audit list route', async () => {
+    vi.mocked(readAuditEvents).mockResolvedValue({
+      items: [
+        {
+          timestamp: '2026-04-17T12:00:00.000Z',
+          operationId: 'op-1',
+          ipcRequestId: 'req-1',
+          actorUpn: 'admin@example.com',
+          tenantId: 'tenant-1',
+          operationType: 'groups.addMembers',
+          targetObjectType: 'distributionList',
+          targetObjectId: 'group-1',
+          summary: 'Attempted to add 2 members.',
+          result: 'succeeded',
+          authoritative: true,
+        },
+      ],
+      nextCursor: null,
+    });
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-audit',
+        command: 'audit.listEvents',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          scope: { kind: 'all' },
+        },
+      },
+    );
+
+    expect(readAuditEvents).toHaveBeenCalledWith({
+      scope: { kind: 'all' },
+    });
+    expect(response).toMatchObject({
+      success: true,
+      data: {
+        items: [
+          {
+            operationId: 'op-1',
+            result: 'succeeded',
+          },
+        ],
+        nextCursor: null,
+      },
+    });
   });
 
   it('does not fail a successful command when operational logging throws', async () => {
