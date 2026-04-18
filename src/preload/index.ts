@@ -2,6 +2,11 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import { commandResponseSchema, progressEventSchema, type ProgressEvent } from '@/shared/contracts/command';
 import {
+  auditListEventsResultSchema,
+  type AuditListEventsPayload,
+  type AuditListEventsResult,
+} from '@/shared/contracts/audit';
+import {
   diagnosticsExportResultSchema,
   type DiagnosticsExportPayload,
   type DiagnosticsExportResult,
@@ -85,6 +90,19 @@ const radAppApi = {
       }
 
       return sessionStatusSchema.parse(response.data);
+    },
+  },
+  audit: {
+    async listEvents(payload: AuditListEventsPayload): Promise<AuditListEventsResult> {
+      const request = createCommandRequest('audit.listEvents', payload);
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw createCommandFailure(response.error, 'Unable to load audit events.');
+      }
+
+      return auditListEventsResultSchema.parse(response.data);
     },
   },
   exchange: {
