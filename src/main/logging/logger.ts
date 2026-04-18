@@ -2,6 +2,12 @@ import { appendFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promise
 import path from 'node:path';
 
 import { getRadAppLogDirectory } from '@/main/app/paths';
+import {
+  auditEventItemSchema,
+  type AuditEventItem,
+  type AuditListEventsPayload,
+  type AuditListEventsResult,
+} from '@/shared/contracts/audit';
 
 import type { AuditEvent } from './audit-event';
 import type { OperationalLogEntry } from './log-entry';
@@ -20,6 +26,24 @@ export async function writeOperationalLog(entry: OperationalLogEntry): Promise<v
 
 export async function writeAuditEvent(event: AuditEvent): Promise<void> {
   await writeJsonLine('audit', event);
+}
+
+export async function readAuditEvents(
+  payload: AuditListEventsPayload,
+): Promise<AuditListEventsResult> {
+  const allEvents = await readAllAuditEvents(getRadAppLogDirectory());
+  const filteredEvents = allEvents.filter((event) => matchesAuditPayload(event, payload));
+  filteredEvents.sort(compareAuditEvents);
+
+  const startIndex = getAuditStartIndex(filteredEvents, payload.cursor);
+  const pageSize = payload.pageSize ?? 50;
+  const items = filteredEvents.slice(startIndex, startIndex + pageSize);
+  const hasMore = startIndex + pageSize < filteredEvents.length;
+
+  return {
+    items,
+    nextCursor: hasMore && items.length > 0 ? encodeAuditCursor(items[items.length - 1]!) : null,
+  };
 }
 
 export async function exportDiagnosticsArtifacts(outputDirectory: string): Promise<number> {
@@ -141,4 +165,145 @@ function sanitizeLogRecordForDiagnostics(
         ? 'User cancelled diagnostics export.'
         : record.safeErrorCode ?? record.result ?? 'See local logs for full details.',
   };
+}
+
+async function readAllAuditEvents(logDirectory: string): Promise<AuditEventItem[]> {
+  try {
+    const entries = await readdir(logDirectory, { withFileTypes: true });
+    const filePaths = entries
+      .filter((entry) => entry.isFile() && entry.name.startsWith('audit-') && entry.name.endsWith('.jsonl'))
+      .map((entry) => path.join(logDirectory, entry.name));
+
+    const batches = await Promise.all(filePaths.map(async (filePath) => await readAuditFile(filePath)));
+    return batches.flat();
+  } catch {
+    return [];
+  }
+}
+
+async function readAuditFile(filePath: string): Promise<AuditEventItem[]> {
+  try {
+    const contents = await readFile(filePath, 'utf8');
+    return contents
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .flatMap((line) => {
+        try {
+          const parsed = JSON.parse(line) as unknown;
+          const result = auditEventItemSchema.safeParse(parsed);
+          return result.success ? [result.data] : [];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+function matchesAuditPayload(event: AuditEventItem, payload: AuditListEventsPayload): boolean {
+  if (payload.scope.kind === 'targetObject') {
+    if (event.targetObjectId !== payload.scope.targetObjectId) {
+      return false;
+    }
+
+    if (
+      payload.scope.targetObjectTypes &&
+      payload.scope.targetObjectTypes.length > 0 &&
+      !payload.scope.targetObjectTypes.includes(event.targetObjectType)
+    ) {
+      return false;
+    }
+  }
+
+  if (payload.operationType && event.operationType !== payload.operationType) {
+    return false;
+  }
+
+  if (payload.result && event.result !== payload.result) {
+    return false;
+  }
+
+  if (payload.query) {
+    const query = payload.query.toLowerCase();
+    const haystack = [
+      event.operationId,
+      event.operationType,
+      event.summary,
+      event.actorUpn ?? '',
+      event.targetObjectType,
+      event.targetObjectId ?? '',
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function compareAuditEvents(left: AuditEventItem, right: AuditEventItem): number {
+  const timestampDelta = new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime();
+  if (timestampDelta !== 0) {
+    return timestampDelta;
+  }
+
+  return right.operationId.localeCompare(left.operationId);
+}
+
+function getAuditStartIndex(items: AuditEventItem[], cursor: string | undefined): number {
+  if (!cursor) {
+    return 0;
+  }
+
+  const decoded = decodeAuditCursor(cursor);
+  if (!decoded) {
+    return 0;
+  }
+
+  const firstItemAfterCursor = items.findIndex((item) => compareAuditCursor(item, decoded) > 0);
+  return firstItemAfterCursor >= 0 ? firstItemAfterCursor : items.length;
+}
+
+function compareAuditCursor(
+  item: AuditEventItem,
+  cursor: { timestamp: string; operationId: string },
+): number {
+  const timestampDelta = new Date(cursor.timestamp).getTime() - new Date(item.timestamp).getTime();
+  if (timestampDelta !== 0) {
+    return timestampDelta;
+  }
+
+  return cursor.operationId.localeCompare(item.operationId);
+}
+
+function encodeAuditCursor(item: AuditEventItem): string {
+  return Buffer.from(
+    JSON.stringify({ timestamp: item.timestamp, operationId: item.operationId }),
+    'utf8',
+  ).toString('base64url');
+}
+
+function decodeAuditCursor(cursor: string): { timestamp: string; operationId: string } | null {
+  try {
+    const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
+      timestamp?: unknown;
+      operationId?: unknown;
+    };
+
+    if (typeof decoded.timestamp !== 'string' || typeof decoded.operationId !== 'string') {
+      return null;
+    }
+
+    return {
+      timestamp: decoded.timestamp,
+      operationId: decoded.operationId,
+    };
+  } catch {
+    return null;
+  }
 }
