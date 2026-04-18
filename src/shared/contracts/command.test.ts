@@ -15,6 +15,19 @@ describe('command contracts', () => {
     expect(result.command).toBe('session.getStatus');
   });
 
+  it('accepts the audit.listEvents command name', () => {
+    const result = commandRequestSchema.parse({
+      requestId: 'req-audit',
+      command: 'audit.listEvents',
+      issuedAt: new Date().toISOString(),
+      payload: {
+        scope: { kind: 'all' },
+      },
+    });
+
+    expect(result.command).toBe('audit.listEvents');
+  });
+
   it('accepts a successful response envelope', () => {
     const result = commandResponseSchema.parse({
       requestId: 'req-123',
