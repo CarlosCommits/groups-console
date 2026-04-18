@@ -15,6 +15,7 @@ import type { ProgressEvent } from '@/shared/contracts/command';
 import type { DiagnosticsExportPayload, DiagnosticsExportResult } from '@/shared/contracts/diagnostics';
 import type { RecipientsSearchPayload } from '@/shared/contracts/recipients';
 import type { RecipientsSearchResult } from '@/shared/contracts/recipients';
+import type { AuditListEventsPayload, AuditListEventsResult } from '@/shared/contracts/audit';
 import type { ReportsGenerateMembershipMatrixPayload, ReportsGenerateMembershipMatrixResult } from '@/shared/contracts/reports';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
 
@@ -68,6 +69,9 @@ declare global {
           payload: ReportsGenerateMembershipMatrixPayload,
           onProgress?: (event: ProgressEvent) => void,
         ) => Promise<ReportsGenerateMembershipMatrixResult>;
+      };
+      audit: {
+        listEvents: (payload: AuditListEventsPayload) => Promise<AuditListEventsResult>;
       };
       diagnostics: {
         export: (payload?: DiagnosticsExportPayload) => Promise<DiagnosticsExportResult>;
