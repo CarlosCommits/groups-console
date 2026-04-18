@@ -163,7 +163,7 @@ describe("deriveCapabilityRows", () => {
     });
     const rows = deriveCapabilityRows(shell);
     expect(rows.find((r) => r.id === "report-export")?.status).toBe("available");
-    expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("partial");
+    expect(rows.find((r) => r.id === "audit-observability")?.status).toBe("available");
   });
 
   it("includes user principal name in exchange detail when connected", () => {

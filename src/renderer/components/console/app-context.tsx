@@ -12,7 +12,7 @@ import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/co
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 import { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
 
-type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
+type Screen = "dashboard" | "groups" | "directory" | "audit" | "reports" | "settings";
 
 export type PendingAction =
   | "graphConnect"
