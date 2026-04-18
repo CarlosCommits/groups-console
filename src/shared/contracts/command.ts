@@ -4,6 +4,7 @@ import { runtimeCommandErrorSchema } from './runtime-errors';
 
 export const commandNameSchema = z.enum([
   'session.getStatus',
+  'audit.listEvents',
   'exchange.getCapabilities',
   'exchange.connect',
   'exchange.getConnectionStatus',
