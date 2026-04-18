@@ -80,7 +80,6 @@ Current reality:
 
 Follow-up that still remains outside this completed slice:
 
-- richer guest/detail read flows are still missing separate detail commands
 - report export currently ships the membership matrix slice only; broader report families remain future work
 
 ### 3. Guest/contact overlap-safe validation and remediation
@@ -106,18 +105,19 @@ Follow-up that still remains outside this completed slice:
 
 **Status:** completed
 
-Search still provides the summary picker surface, but dedicated detail/read commands for contacts and guests are now implemented and wired into the Directory workflow.
+Search still provides the summary picker surface, but dedicated detail/read commands for Exchange contacts, Graph guests, and Exchange mailbox/mailUser recipients are now implemented and wired into the Directory workflow.
 
 Current reality:
 
 - `contacts.getDetails` is implemented as an Exchange-owned detail read keyed from the current Directory search result set
 - `guests.getDetails` is implemented as a Graph-owned detail read keyed from the current Directory search result set
-- the Directory screen now opens a dedicated detail dialog for `mailContact` and `guestUser` rows and fetches fresh detail data on demand
+- `exchange.getRecipientDetails` is implemented as an Exchange-owned detail read keyed from the current Directory search result set for `mailbox` and `mailUser` rows
+- the Directory screen now opens a dedicated detail dialog for `mailContact`, `guestUser`, `mailbox`, and `mailUser` rows and fetches fresh detail data on demand
 - the detail-read path is protected against stale async dialog responses and does not trust raw renderer-supplied backend identifiers directly
+- mailbox and mailUser detail reads now preserve the org-facing Exchange address as `primaryEmail` and expose a distinct normalized external target for mail-user recipients when present
 
 Follow-up that still remains outside this completed slice:
 
-- mailbox/mailUser detail reads are still not implemented as part of the Directory details flow
 - a dedicated `contacts.search` route is still not implemented and remains optional so long as `recipients.search` is the intended shared picker
 
 ### 5. Observability, audit, and diagnostics
@@ -133,10 +133,10 @@ Current reality:
 - a diagnostics bundle export command is implemented and exposed through Settings
 - the logging pipeline now applies redaction and exports sanitized diagnostics artifacts instead of raw log files
 - the app now carries correlation through IPC handling and the PowerShell-backed Exchange host path
+- a dedicated renderer audit-log viewer now exists as a top-level Audit screen, and the Groups workspace now exposes a group-scoped audit tab backed by the same audit read path
 
 Follow-up that still remains outside this completed slice:
 
-- there is still no dedicated audit-log viewer in the renderer
 - renderer-origin breadcrumbs are still intentionally omitted; the current logging model remains main-process authoritative only
 
 ### 6. Deeper permission and remediation classification
@@ -175,8 +175,8 @@ Completed since the previous revision:
 
 - **Deeper permission and remediation classification** — shipped as classified runtime failures in IPC, typed preload propagation, renderer remediation presentation for shell, Directory, and Groups flows, and structured per-source degradation handling for composite recipient-search partial-success paths
 
-- **Observability, audit, and diagnostics** — shipped as main-process structured logs, mutation audit events, diagnostics export, correlation propagation, and Settings-screen diagnostics export
-- **Richer contact and guest detail reads** — shipped as Exchange-owned `contacts.getDetails`, Graph-owned `guests.getDetails`, and a Directory detail dialog backed by fresh on-demand reads
+- **Observability, audit, and diagnostics** — shipped as main-process structured logs, mutation audit events, diagnostics export, correlation propagation, a top-level Audit screen, and a group-scoped Groups audit tab
+- **Richer contact and guest detail reads** — shipped as Exchange-owned `contacts.getDetails`, Graph-owned `guests.getDetails`, Exchange-owned `exchange.getRecipientDetails` for `mailbox`/`mailUser`, and a Directory detail dialog backed by fresh on-demand reads
 - **Report and export backend** — shipped as Exchange-owned membership-matrix export with JS-side XLSX generation, progress streaming, and a live Reports screen
 - **Guest membership execution path** — shipped as Graph-objectId → Exchange `GuestMailUser` resolution with selected-principal preservation in group add flows
 - **Guest/contact overlap-safe conflict service** — shipped as typed cross-system preflight and renderer conflict remediation for `contacts.create` and `guests.invite`
@@ -187,8 +187,9 @@ Completed since the previous revision:
 - The guest membership path resolves guest candidates to Exchange membership targets instead of returning `graphDeferred`. **Completed.**
 - Contact creation and guest invitation both run cross-system overlap checks before proceeding. **Completed.**
 - The Reports screen is wired to a live export backend, not a deferred placeholder. **Completed.**
-- Contact and guest detail reads are backed by dedicated commands rather than relying only on search-row summaries. **Completed.**
+- Contact, guest, mailbox, and mailUser detail reads are backed by dedicated commands rather than relying only on search-row summaries. **Completed.**
 - Structured logs are written for every supported workflow, mutation audit events are captured, and a diagnostics bundle can be exported without manual file hunting. **Completed.**
+- A dedicated audit viewer is available both globally and in the Groups workspace. **Completed.**
 - The permission matrix is updated as each new workflow is implemented. **Completed for the current command surface.**
 - No deferred backlog item from `12-backlog-and-commits.md` is treated as an immediate blocker unless it appears in the remaining work categories above.
 - Internal user company sourcing is documented as a known consistency gap until it is aligned with the planned Graph source rule.
