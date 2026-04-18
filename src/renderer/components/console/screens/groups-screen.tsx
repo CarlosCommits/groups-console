@@ -67,6 +67,7 @@ import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
+import { AuditEventsPanel } from "@/renderer/components/console/audit-events-panel";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
 import type {
@@ -309,8 +310,20 @@ export function GroupsScreen() {
         g.displayName.toLowerCase().includes(lower) ||
         (g.primaryEmail ?? "").toLowerCase().includes(lower) ||
         (g.alias ?? "").toLowerCase().includes(lower),
-    );
+      );
   }, [groups, groupFilter]);
+
+  const auditScope = useMemo(
+    () =>
+      selectedGroup
+        ? {
+            kind: "targetObject" as const,
+            targetObjectId: selectedGroup.exchangeIdentity,
+            targetObjectTypes: [selectedGroup.groupKind],
+          }
+        : null,
+    [selectedGroup],
+  );
 
   useEffect(() => {
     if (filteredGroups.length === 0) {
@@ -905,19 +918,19 @@ export function GroupsScreen() {
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="audit-logs" className="mt-0 flex-1 overflow-hidden px-6 py-4">
-                    <Card className={CONSOLE_SURFACE_CARD}>
-                      <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
-                        <CardTitle className="text-sm font-bold text-slate-800">
-                          Recent Audit Entries
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-3">
-                        <div className="flex items-center justify-center py-8">
-                          <span className="text-sm text-slate-400">Audit logs are not yet available.</span>
+                  <TabsContent value="audit-logs" className="mt-0 flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar h-full">
+                      {selectedGroup && auditScope ? (
+                        <AuditEventsPanel
+                          mode="embedded"
+                          scope={auditScope}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center py-16">
+                          <span className="text-sm text-slate-400">Select a group to view audit logs.</span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      )}
+                    </div>
                   </TabsContent>
                 </Tabs>
               </>
