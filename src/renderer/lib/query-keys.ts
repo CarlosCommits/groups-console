@@ -1,5 +1,6 @@
 import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
+import type { SystemLogScope } from "@/shared/contracts/system-logs";
 
 const QUERY_NAMESPACE = "console";
 const DISCONNECTED_CONNECTION_SCOPE = "disconnected";
@@ -42,6 +43,22 @@ export function getGraphConnectionIdentity(
   ].join(":");
 }
 
+export function getSystemLogScopeKey(scope: SystemLogScope) {
+  if (scope.kind === "all") {
+    return "all";
+  }
+
+  const targetObjectTypes = [...(scope.targetObjectTypes ?? [])]
+    .sort((left, right) => left.localeCompare(right))
+    .map((targetObjectType) => encodeURIComponent(targetObjectType));
+
+  return [
+    "targetObject",
+    encodeURIComponent(scope.targetObjectId),
+    targetObjectTypes.length > 0 ? targetObjectTypes.join(",") : "all-types",
+  ].join(":");
+}
+
 export const queryKeys = {
   all() {
     return [QUERY_NAMESPACE] as const;
@@ -79,6 +96,14 @@ export const queryKeys = {
 
   graphRoot(connectionIdentity?: string | null) {
     return queryKeys.scoped("graph", connectionIdentity);
+  },
+
+  systemLogsRoot() {
+    return [QUERY_NAMESPACE, "systemLogs"] as const;
+  },
+
+  systemLogsList(scopeKey: string) {
+    return [...queryKeys.systemLogsRoot(), "list", scopeKey] as const;
   },
 
   recipientsSearchRoot(connectionIdentity?: string | null) {
