@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Edit,
@@ -48,9 +49,22 @@ import {
   formatSourceDegradationNote,
   presentSourceDegradation,
 } from "@/renderer/components/console/source-degradation-presenter";
+import { useRecipientsSearchQuery } from "@/renderer/hooks/use-recipients-search";
+import {
+  removeContactDetailsQuery,
+  useContactDetailsQuery,
+} from "@/renderer/hooks/use-contact-details";
+import {
+  removeGuestDetailsQuery,
+  useGuestDetailsQuery,
+} from "@/renderer/hooks/use-guest-details";
+import { useExchangeRecipientDetailsQuery } from "@/renderer/hooks/use-exchange-recipient-details";
+import {
+  getExchangeConnectionIdentity,
+  getGraphConnectionIdentity,
+} from "@/renderer/lib/query-keys";
 import { cn } from "@/renderer/lib/utils";
 import type {
-  RecipientsSearchResult,
   RecipientSearchItem,
   RecipientSearchType,
 } from "@/shared/contracts/recipients";
@@ -220,6 +234,7 @@ function getUpdateMode(
 
 export function DirectoryScreen() {
   const { shell } = useApp();
+  const queryClient = useQueryClient();
   const exchangeConnected = shell.exchangeConnection?.state === "connected";
   const graphConnected = shell.graphConnection?.state === "connected";
   const graphTenantMatched = shell.graphConnection?.exchangeAlignment === "matched";
@@ -227,9 +242,6 @@ export function DirectoryScreen() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [effectiveQuery, setEffectiveQuery] = useState("");
-  const [results, setResults] = useState<RecipientsSearchResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("contact");
@@ -251,10 +263,6 @@ export function DirectoryScreen() {
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
-  const [detailPending, setDetailPending] = useState(false);
-  const [detailResult, setDetailResult] = useState<DetailResult | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const detailRequestIdRef = useRef(0);
 
   const canCreateContact = exchangeConnected;
   const canCreateGuest = graphConnected && graphTenantMatched;
@@ -274,72 +282,116 @@ export function DirectoryScreen() {
     return !exchangeConnected;
   }, [activeTab, exchangeConnected, graphConnected, graphTenantMatched]);
 
-  useEffect(() => {
-    if (isGated) {
-      setResults(null);
-      setLoading(false);
-      setError(null);
-      return;
+  const searchTypes = useMemo(() => TAB_TYPES[activeTab] ?? TAB_TYPES.all, [activeTab]);
+  const exchangeConnectionIdentity = getExchangeConnectionIdentity(shell.exchangeConnection);
+  const graphConnectionIdentity = getGraphConnectionIdentity(shell.graphConnection);
+  const searchConnectionIdentity = useMemo(() => {
+    if (activeTab === "guests") {
+      return graphConnectionIdentity;
     }
 
-    const trimmed = effectiveQuery.trim();
-    if (trimmed.length < 2) {
-      setResults(null);
-      setLoading(false);
-      setError(null);
-      return;
+    if (activeTab === "all") {
+      return `${exchangeConnectionIdentity}|${graphConnectionIdentity}`;
     }
 
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+    return exchangeConnectionIdentity;
+  }, [activeTab, exchangeConnectionIdentity, graphConnectionIdentity]);
 
-    const types = TAB_TYPES[activeTab] ?? TAB_TYPES.all;
-    const payload = { query: trimmed, types };
+  const searchQuery = useRecipientsSearchQuery(
+    searchConnectionIdentity,
+    isGated ? "" : effectiveQuery,
+    isGated ? [] : searchTypes,
+    !isGated,
+  );
 
-    window.radApp.recipients
-      .search(payload)
-      .then((result) => {
-        if (!cancelled) {
-          setResults(result);
-          setLoading(false);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(
-            formatPresentedCommandFailure(
-              presentCommandFailure(err, "Search Error", "Search failed."),
-            ),
-          );
-          setLoading(false);
-        }
-      });
+  const results = searchQuery.results;
+  const loading = searchQuery.isLoading;
+  const error = searchQuery.error;
 
-    return () => {
-      cancelled = true;
+  const refreshSearch = useCallback(() => {
+    void searchQuery.refetch();
+  }, [searchQuery]);
+
+  const contactDetailsQuery = useContactDetailsQuery(
+    shell.exchangeConnection,
+    detailTarget?.recipientType === "mailContact" ? detailTarget.stableKey : undefined,
+    detailDialogOpen && detailTarget?.recipientType === "mailContact",
+  );
+
+  const guestDetailsQuery = useGuestDetailsQuery(
+    shell.graphConnection,
+    detailTarget?.recipientType === "guestUser" ? detailTarget.stableKey : undefined,
+    detailDialogOpen && detailTarget?.recipientType === "guestUser",
+  );
+
+  const exchangeRecipientDetailsQuery = useExchangeRecipientDetailsQuery(
+    shell.exchangeConnection,
+    detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"
+      ? detailTarget.stableKey
+      : undefined,
+    detailDialogOpen &&
+      (detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"),
+  );
+
+  const activeDetailState = useMemo(() => {
+    if (detailTarget?.recipientType === "mailContact") {
+      return {
+        pending: contactDetailsQuery.isLoading,
+        error: contactDetailsQuery.error,
+        result: contactDetailsQuery.contact
+          ? ({ mode: "contact", data: contactDetailsQuery.contact } satisfies DetailResult)
+          : null,
+        refetch: contactDetailsQuery.refetch,
+      };
+    }
+
+    if (detailTarget?.recipientType === "guestUser") {
+      return {
+        pending: guestDetailsQuery.isLoading,
+        error: guestDetailsQuery.error,
+        result: guestDetailsQuery.guest
+          ? ({ mode: "guest", data: guestDetailsQuery.guest } satisfies DetailResult)
+          : null,
+        refetch: guestDetailsQuery.refetch,
+      };
+    }
+
+    if (detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser") {
+      return {
+        pending: exchangeRecipientDetailsQuery.isLoading,
+        error: exchangeRecipientDetailsQuery.error,
+        result: exchangeRecipientDetailsQuery.recipient
+          ? ({ mode: "exchangeRecipient", data: exchangeRecipientDetailsQuery.recipient } satisfies DetailResult)
+          : null,
+        refetch: exchangeRecipientDetailsQuery.refetch,
+      };
+    }
+
+    return {
+      pending: false,
+      error: null,
+      result: null,
+      refetch: async () => undefined,
     };
-  }, [effectiveQuery, activeTab, isGated]);
+  }, [
+    contactDetailsQuery.contact,
+    contactDetailsQuery.error,
+    contactDetailsQuery.isLoading,
+    contactDetailsQuery.refetch,
+    detailTarget?.recipientType,
+    exchangeRecipientDetailsQuery.error,
+    exchangeRecipientDetailsQuery.isLoading,
+    exchangeRecipientDetailsQuery.recipient,
+    exchangeRecipientDetailsQuery.refetch,
+    guestDetailsQuery.error,
+    guestDetailsQuery.guest,
+    guestDetailsQuery.isLoading,
+    guestDetailsQuery.refetch,
+  ]);
 
-  const refreshSearch = useCallback(async () => {
-    const query = effectiveQuery.trim();
-    if (query.length < 2) return;
-    const types = TAB_TYPES[activeTab] ?? TAB_TYPES.all;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await window.radApp.recipients.search({ query, types });
-      setResults(result);
-      setLoading(false);
-    } catch (err: unknown) {
-      setError(
-        formatPresentedCommandFailure(
-          presentCommandFailure(err, "Search Error", "Search failed."),
-        ),
-      );
-      setLoading(false);
-    }
-  }, [effectiveQuery, activeTab]);
+  const detailPending = activeDetailState.pending;
+  const detailError = activeDetailState.error;
+  const detailResult = activeDetailState.result;
 
   const openCreateDialog = useCallback(() => {
     let mode: CreateMode = "contact";
@@ -470,6 +522,13 @@ export function DirectoryScreen() {
 
   const handleUpdateClose = () => {
     if (updateResult) {
+      if (updateTarget) {
+        if (updateResult.mode === "contact") {
+          removeContactDetailsQuery(queryClient, shell.exchangeConnection, updateTarget.stableKey);
+        } else {
+          removeGuestDetailsQuery(queryClient, shell.graphConnection, updateTarget.stableKey);
+        }
+      }
       void refreshSearch();
     }
     setUpdateDialogOpen(false);
@@ -478,61 +537,14 @@ export function DirectoryScreen() {
     setUpdateError(null);
   };
 
-  const openDetailDialog = useCallback(async (item: RecipientSearchItem) => {
-    const requestId = detailRequestIdRef.current + 1;
-    detailRequestIdRef.current = requestId;
-
+  const openDetailDialog = useCallback((item: RecipientSearchItem) => {
     setDetailTarget(item);
-    setDetailPending(true);
-    setDetailResult(null);
-    setDetailError(null);
     setDetailDialogOpen(true);
-
-    try {
-      if (item.recipientType === "mailContact") {
-        const result = await window.radApp.contacts.getDetails({
-          stableKey: item.stableKey,
-        });
-        if (detailRequestIdRef.current === requestId) {
-          setDetailResult({ mode: "contact", data: result.contact });
-        }
-      } else if (item.recipientType === "guestUser") {
-        const result = await window.radApp.guests.getDetails({
-          stableKey: item.stableKey,
-        });
-        if (detailRequestIdRef.current === requestId) {
-          setDetailResult({ mode: "guest", data: result.guest });
-        }
-      } else if (item.recipientType === "mailbox" || item.recipientType === "mailUser") {
-        const result = await window.radApp.exchange.getRecipientDetails({
-          stableKey: item.stableKey,
-        });
-        if (detailRequestIdRef.current === requestId) {
-          setDetailResult({ mode: "exchangeRecipient", data: result.recipient });
-        }
-      }
-    } catch (err: unknown) {
-      if (detailRequestIdRef.current === requestId) {
-        setDetailError(
-          formatPresentedCommandFailure(
-            presentCommandFailure(err, "Detail Error", "Failed to load details."),
-          ),
-        );
-      }
-    } finally {
-      if (detailRequestIdRef.current === requestId) {
-        setDetailPending(false);
-      }
-    }
   }, []);
 
   const handleDetailClose = useCallback(() => {
-    detailRequestIdRef.current += 1;
     setDetailDialogOpen(false);
     setDetailTarget(null);
-    setDetailPending(false);
-    setDetailResult(null);
-    setDetailError(null);
   }, []);
 
   const tabs = [
@@ -656,7 +668,6 @@ export function DirectoryScreen() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      setError(null);
                       setEffectiveQuery("");
                       setSearchText("");
                     }}
@@ -1284,9 +1295,7 @@ export function DirectoryScreen() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    if (detailTarget) {
-                      void openDetailDialog(detailTarget);
-                    }
+                    void activeDetailState.refetch();
                   }}
                 >
                   Retry
