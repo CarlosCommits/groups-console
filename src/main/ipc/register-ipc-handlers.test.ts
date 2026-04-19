@@ -14,9 +14,9 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('@/main/logging', () => ({
-  readAuditEvents: vi.fn(),
+  readSystemLogEvents: vi.fn(),
   runWithOperationContext: vi.fn(async (_context, callback: () => Promise<unknown>) => await callback()),
-  writeAuditEvent: vi.fn(),
+  writeSystemLogEvent: vi.fn(),
   writeOperationalLog: vi.fn(),
 }));
 
@@ -76,7 +76,7 @@ vi.mock('@/main/recipients/recipient-directory', () => ({
   },
 }));
 
-import { readAuditEvents, writeAuditEvent, writeOperationalLog } from '@/main/logging';
+import { readSystemLogEvents, writeOperationalLog, writeSystemLogEvent } from '@/main/logging';
 import { createContact } from '@/main/exchange/create-contact';
 import { getExchangeRecipientDetails } from '@/main/exchange/get-recipient-details';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
@@ -114,8 +114,8 @@ describe('registerIpcHandlers', () => {
     expect(new Set(operationIds).size).toBe(1);
   });
 
-  it('returns audit events through the audit list route', async () => {
-    vi.mocked(readAuditEvents).mockResolvedValue({
+  it('returns system logs through the system log route', async () => {
+    vi.mocked(readSystemLogEvents).mockResolvedValue({
       items: [
         {
           timestamp: '2026-04-17T12:00:00.000Z',
@@ -141,7 +141,7 @@ describe('registerIpcHandlers', () => {
       { sender: { send: vi.fn() } },
       {
         requestId: 'req-audit',
-        command: 'audit.listEvents',
+        command: 'systemLogs.listEvents',
         issuedAt: new Date().toISOString(),
         payload: {
           scope: { kind: 'all' },
@@ -149,7 +149,7 @@ describe('registerIpcHandlers', () => {
       },
     );
 
-    expect(readAuditEvents).toHaveBeenCalledWith({
+    expect(readSystemLogEvents).toHaveBeenCalledWith({
       scope: { kind: 'all' },
     });
     expect(response).toMatchObject({
@@ -228,7 +228,7 @@ describe('registerIpcHandlers', () => {
     )) as { success: boolean };
 
     expect(response.success).toBe(true);
-    expect(writeAuditEvent).toHaveBeenCalledWith(
+    expect(writeSystemLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'failed',
         authoritative: false,
@@ -298,7 +298,7 @@ describe('registerIpcHandlers', () => {
       },
     );
 
-    expect(writeAuditEvent).toHaveBeenCalledWith(
+    expect(writeSystemLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         actorUpn: 'graph-admin@example.com',
         tenantId: 'graph-tenant',
@@ -344,7 +344,7 @@ describe('registerIpcHandlers', () => {
       },
     );
 
-    expect(writeAuditEvent).toHaveBeenCalledWith(
+    expect(writeSystemLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'partial',
         authoritative: false,
