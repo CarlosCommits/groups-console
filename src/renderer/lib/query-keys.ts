@@ -47,6 +47,20 @@ export const queryKeys = {
     return queryKeys.scoped("exchange", connectionIdentity, "groups", "list");
   },
 
+  exchangeGroupMembersRoot(connectionIdentity?: string | null) {
+    return queryKeys.scoped("exchange", connectionIdentity, "groups", "members");
+  },
+
+  exchangeGroupMembersList(connectionIdentity: string | null | undefined, groupExchangeIdentity: string) {
+    return queryKeys.scoped(
+      "exchange",
+      connectionIdentity,
+      "groups",
+      "members",
+      groupExchangeIdentity,
+    );
+  },
+
   graphRoot(connectionIdentity?: string | null) {
     return queryKeys.scoped("graph", connectionIdentity);
   },
