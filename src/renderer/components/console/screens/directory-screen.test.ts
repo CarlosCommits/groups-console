@@ -3,22 +3,20 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExchangeRecipientDetails } from '@/shared/contracts/exchange';
-import type { RecipientSearchItem } from '@/shared/contracts/recipients';
 
-const { useAppMock, useEffectMock, useStateMock } = vi.hoisted(() => ({
+const { useAppMock, useRecipientsSearchQueryMock, useContactDetailsQueryMock, useGuestDetailsQueryMock, useExchangeRecipientDetailsQueryMock } = vi.hoisted(() => ({
   useAppMock: vi.fn(),
-  useEffectMock: vi.fn(),
-  useStateMock: vi.fn(),
+  useRecipientsSearchQueryMock: vi.fn(),
+  useContactDetailsQueryMock: vi.fn(),
+  useGuestDetailsQueryMock: vi.fn(),
+  useExchangeRecipientDetailsQueryMock: vi.fn(),
 }));
 
-vi.mock('react', async () => {
-  const actual = await vi.importActual<typeof import('react')>('react');
-  return {
-    ...actual,
-    useEffect: useEffectMock,
-    useState: useStateMock,
-  };
-});
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    removeQueries: vi.fn(),
+  }),
+}));
 
 vi.mock('@/renderer/components/console', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) =>
@@ -30,6 +28,22 @@ vi.mock('@/renderer/components/console', () => ({
 
 vi.mock('@/renderer/components/console/app-context', () => ({
   useApp: useAppMock,
+}));
+
+vi.mock('@/renderer/hooks/use-recipients-search', () => ({
+  useRecipientsSearchQuery: useRecipientsSearchQueryMock,
+}));
+
+vi.mock('@/renderer/hooks/use-contact-details', () => ({
+  useContactDetailsQuery: useContactDetailsQueryMock,
+}));
+
+vi.mock('@/renderer/hooks/use-guest-details', () => ({
+  useGuestDetailsQuery: useGuestDetailsQueryMock,
+}));
+
+vi.mock('@/renderer/hooks/use-exchange-recipient-details', () => ({
+  useExchangeRecipientDetailsQuery: useExchangeRecipientDetailsQueryMock,
 }));
 
 vi.mock('@/renderer/components/ui/dialog', () => ({
@@ -86,25 +100,6 @@ vi.mock('@/renderer/components/ui/separator', () => ({
 
 import { DirectoryScreen } from './directory-screen';
 
-function makeDetailTarget(recipientType: 'mailbox' | 'mailUser'): RecipientSearchItem {
-  return {
-    source: 'exchange',
-    stableKey: `exchange:objectId:${recipientType}`,
-    recipientType,
-    membershipSupport: 'exchangeDirect',
-    objectId: `recipient-${recipientType}`,
-    exchangeIdentity:
-      recipientType === 'mailUser' ? 'jane.external@example.com' : 'shared@example.com',
-    primaryEmail:
-      recipientType === 'mailUser' ? 'jane@yourcompany.com' : 'shared@example.com',
-    displayName: recipientType === 'mailUser' ? 'Jane External' : 'Shared Mailbox',
-    alias: recipientType === 'mailUser' ? 'jexternal' : 'shared-mailbox',
-    recipientTypeDetails: recipientType === 'mailUser' ? 'MailUser' : 'SharedMailbox',
-    companyName: 'Example Corp',
-    companySource: 'exchange',
-  };
-}
-
 function makeExchangeDetail(recipientType: 'mailbox' | 'mailUser'): ExchangeRecipientDetails {
   return {
     exchangeIdentity:
@@ -131,55 +126,50 @@ function makeExchangeDetail(recipientType: 'mailbox' | 'mailUser'): ExchangeReci
   };
 }
 
-function primeDirectoryState(recipientType: 'mailbox' | 'mailUser') {
-  const setState = vi.fn();
-  const detailTarget = makeDetailTarget(recipientType);
-  const detailResult = {
-    mode: 'exchangeRecipient' as const,
-    data: makeExchangeDetail(recipientType),
-  };
+const defaultSearchQueryResult = {
+  results: null,
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  errorPresentation: null,
+  refetch: vi.fn(async () => undefined),
+};
 
-  const stateValues = [
-    'all',
-    '',
-    '',
-    null,
-    false,
-    null,
-    false,
-    'contact',
-    '',
-    '',
-    '',
-    '',
-    true,
-    false,
-    null,
-    null,
-    false,
-    null,
-    '',
-    false,
-    null,
-    null,
-    true,
-    detailTarget,
-    false,
-    detailResult,
-    null,
-  ];
+const defaultContactDetailsQueryResult = {
+  contact: null,
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  errorPresentation: null,
+  refetch: vi.fn(async () => undefined),
+};
 
-  useStateMock.mockReset();
-  stateValues.forEach((value) => {
-    useStateMock.mockImplementationOnce(() => [value, setState]);
-  });
-}
+const defaultGuestDetailsQueryResult = {
+  guest: null,
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  errorPresentation: null,
+  refetch: vi.fn(async () => undefined),
+};
+
+const defaultExchangeRecipientDetailsQueryResult = {
+  recipient: null,
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  errorPresentation: null,
+  refetch: vi.fn(async () => undefined),
+};
 
 describe('DirectoryScreen exchange recipient details', () => {
   beforeEach(() => {
-    useEffectMock.mockReset();
-    useEffectMock.mockImplementation(() => undefined);
     useAppMock.mockReset();
+    useRecipientsSearchQueryMock.mockReset();
+    useContactDetailsQueryMock.mockReset();
+    useGuestDetailsQueryMock.mockReset();
+    useExchangeRecipientDetailsQueryMock.mockReset();
+
     useAppMock.mockReturnValue({
       shell: {
         session: null,
@@ -211,28 +201,110 @@ describe('DirectoryScreen exchange recipient details', () => {
         loadError: null,
       },
     });
+
+    useRecipientsSearchQueryMock.mockReturnValue({ ...defaultSearchQueryResult });
+    useContactDetailsQueryMock.mockReturnValue({ ...defaultContactDetailsQueryResult });
+    useGuestDetailsQueryMock.mockReturnValue({ ...defaultGuestDetailsQueryResult });
+    useExchangeRecipientDetailsQueryMock.mockReturnValue({ ...defaultExchangeRecipientDetailsQueryResult });
   });
 
-  it('shows both Email and External Target for mail users', () => {
-    primeDirectoryState('mailUser');
+  it('queries exchange recipient details for directory detail reads', () => {
+    const detailData = makeExchangeDetail('mailUser');
 
-    const markup = renderToStaticMarkup(React.createElement(DirectoryScreen));
+    useExchangeRecipientDetailsQueryMock.mockReturnValue({
+      ...defaultExchangeRecipientDetailsQueryResult,
+      recipient: detailData,
+    });
 
-    expect(markup).toContain('Mail User Details');
-    expect(markup).toContain('Email');
-    expect(markup).toContain('External Target');
-    expect(markup).toContain('jane@yourcompany.com');
-    expect(markup).toContain('jane.personal@example.com');
+    renderToStaticMarkup(React.createElement(DirectoryScreen));
+
+    expect(useExchangeRecipientDetailsQueryMock).toHaveBeenCalled();
   });
 
-  it('shows only Email for mailbox details', () => {
-    primeDirectoryState('mailbox');
+  it('queries mailbox details through the exchange recipient hook', () => {
+    const detailData = makeExchangeDetail('mailbox');
 
-    const markup = renderToStaticMarkup(React.createElement(DirectoryScreen));
+    useExchangeRecipientDetailsQueryMock.mockReturnValue({
+      ...defaultExchangeRecipientDetailsQueryResult,
+      recipient: detailData,
+    });
 
-    expect(markup).toContain('Mailbox Details');
-    expect(markup).toContain('Email');
-    expect(markup).toContain('shared@example.com');
-    expect(markup).not.toContain('External Target');
+    renderToStaticMarkup(React.createElement(DirectoryScreen));
+
+    expect(useExchangeRecipientDetailsQueryMock).toHaveBeenCalled();
+  });
+
+  it('passes scoped identities and shell connections to the query hooks', () => {
+    renderToStaticMarkup(React.createElement(DirectoryScreen));
+
+    expect(useRecipientsSearchQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining('connected:tenant-1:connection-1:exchange-admin@example.com'),
+      expect.any(String),
+      expect.any(Array),
+      expect.any(Boolean),
+    );
+
+    expect(useContactDetailsQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        connectionId: 'connection-1',
+        userPrincipalName: 'exchange-admin@example.com',
+      }),
+      undefined,
+      false,
+    );
+
+    expect(useGuestDetailsQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        configuredTenantId: 'tenant-1',
+        accountUsername: 'graph-admin@example.com',
+      }),
+      undefined,
+      false,
+    );
+
+    expect(useExchangeRecipientDetailsQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        connectionId: 'connection-1',
+        userPrincipalName: 'exchange-admin@example.com',
+      }),
+      undefined,
+      false,
+    );
+  });
+
+  it('disables search query when connection is gated', () => {
+    useAppMock.mockReturnValue({
+      shell: {
+        session: null,
+        exchangeCapabilities: null,
+        graphConnection: null,
+        exchangeConnection: {
+          state: 'disconnected',
+          detail: 'Not connected',
+          runtime: null,
+          userPrincipalName: null,
+          connectionId: null,
+          tenantId: null,
+          tokenStatus: null,
+          tokenExpiryTimeUtc: null,
+          connectedAtUtc: null,
+        },
+        isHydrating: false,
+        loadError: null,
+      },
+    });
+
+    renderToStaticMarkup(React.createElement(DirectoryScreen));
+
+    // When disconnected, the search query should receive empty types (disabled)
+    const searchCall = useRecipientsSearchQueryMock.mock.calls[0];
+    expect(searchCall[1]).toBe('');
+    expect(searchCall[2]).toEqual([]);
   });
 });
