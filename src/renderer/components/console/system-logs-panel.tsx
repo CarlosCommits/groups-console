@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Loader2,
   AlertCircle,
@@ -26,8 +25,8 @@ import {
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
 import { cn } from "@/renderer/lib/utils";
+import { useSystemLogsQuery } from "@/renderer/hooks/use-system-logs";
 import type {
-  SystemLogEventItem,
   SystemLogResult,
   SystemLogScope,
 } from "@/shared/contracts/system-logs";
@@ -64,79 +63,17 @@ export function SystemLogsPanel({
   scope,
   className,
 }: SystemLogsPanelProps) {
-  const [events, setEvents] = useState<SystemLogEventItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const requestIdRef = useRef(0);
+  const {
+    events,
+    hasNextPage,
+    isLoading,
+    isFetchingNextPage,
+    error,
+    loadMore,
+    refresh,
+  } = useSystemLogsQuery(scope);
 
-  const loadEvents = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    setEvents([]);
-    setNextCursor(null);
-
-    try {
-      const result = await window.radApp.systemLogs.listEvents({
-        scope,
-        pageSize: 25,
-      });
-
-      if (requestIdRef.current !== requestId) return;
-
-      setEvents(result.items);
-      setNextCursor(result.nextCursor);
-    } catch (err) {
-      if (requestIdRef.current !== requestId) return;
-      const message = err instanceof Error ? err.message : "Failed to load system logs.";
-      setError(message);
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setLoading(false);
-      }
-    }
-  }, [scope]);
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
-    const requestId = requestIdRef.current;
-    setLoadingMore(true);
-
-    try {
-      const result = await window.radApp.systemLogs.listEvents({
-        scope,
-        cursor: nextCursor,
-        pageSize: 25,
-      });
-
-      if (requestId !== requestIdRef.current) return;
-
-      setEvents((prev) => [...prev, ...result.items]);
-      setNextCursor(result.nextCursor);
-    } catch (err) {
-      if (requestId !== requestIdRef.current) return;
-      const message = err instanceof Error ? err.message : "Failed to load more logs.";
-      setError(message);
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoadingMore(false);
-      }
-    }
-  }, [scope, nextCursor, loadingMore]);
-
-  useEffect(() => {
-    void loadEvents();
-  }, [loadEvents]);
-
-  useEffect(() => {
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={cn("flex items-center justify-center py-16", className)}>
         <Loader2 className="size-6 text-[var(--color-primary)] animate-spin mr-2" />
@@ -151,7 +88,7 @@ export function SystemLogsPanel({
         <AlertCircle className="size-8 text-[var(--color-error)] mb-3" />
         <p className="text-sm font-bold text-slate-700 mb-1">Failed to load system logs</p>
         <p className="text-xs text-slate-500 max-w-sm mb-3">{error}</p>
-        <Button size="sm" onClick={() => void loadEvents()}>
+        <Button size="sm" onClick={() => void refresh()}>
           <RefreshCw className="size-3.5 mr-1.5" />
           Retry
         </Button>
@@ -170,7 +107,7 @@ export function SystemLogsPanel({
             variant="ghost"
             size="sm"
             className="text-[11px] text-slate-500 hover:text-[var(--color-primary)]"
-            onClick={() => void loadEvents()}
+            onClick={() => void refresh()}
           >
             <RefreshCw className="size-3 mr-1" />
             Refresh
@@ -232,18 +169,18 @@ export function SystemLogsPanel({
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
-            {nextCursor && (
+                </Table>
+              </div>
+            {hasNextPage && (
               <div className="flex justify-center mt-3">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-[11px] text-[var(--color-primary)]"
-                  disabled={loadingMore}
+                  disabled={isFetchingNextPage}
                   onClick={() => void loadMore()}
                 >
-                  {loadingMore && <Loader2 className="size-3 mr-1 animate-spin" />}
+                  {isFetchingNextPage && <Loader2 className="size-3 mr-1 animate-spin" />}
                   Load more
                 </Button>
               </div>
