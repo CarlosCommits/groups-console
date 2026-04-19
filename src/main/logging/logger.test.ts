@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { SystemLogEventItem } from '@/shared/contracts/system-logs';
+
 let tempLogDirectory: string;
 
 vi.mock('@/main/app/paths', () => {
@@ -12,7 +14,7 @@ vi.mock('@/main/app/paths', () => {
   };
 });
 
-import { readAuditEvents, readLastErrorSummary, writeAuditEvent, writeOperationalLog } from './logger';
+import { readLastErrorSummary, readSystemLogEvents, writeOperationalLog, writeSystemLogEvent } from './logger';
 
 describe('logger', () => {
   beforeEach(async () => {
@@ -48,8 +50,8 @@ describe('logger', () => {
     expect(lastError?.safeErrorCode).toBe('command_failed');
   });
 
-  it('writes audit events to the audit stream', async () => {
-    await writeAuditEvent({
+  it('writes system log events to the system log stream', async () => {
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:00:00.000Z',
       operationId: 'op-1',
       ipcRequestId: 'req-1',
@@ -63,12 +65,12 @@ describe('logger', () => {
       authoritative: true,
     });
 
-    const auditLog = await readFile(path.join(tempLogDirectory, 'audit-current.jsonl'), 'utf8');
-    expect(auditLog).toContain('groups.addMembers');
+    const systemLog = await readFile(path.join(tempLogDirectory, 'system-logs-current.jsonl'), 'utf8');
+    expect(systemLog).toContain('groups.addMembers');
   });
 
-  it('reads audit events newest-first with cursor paging', async () => {
-    await writeAuditEvent({
+  it('reads system log events newest-first with cursor paging', async () => {
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:00:00.000Z',
       operationId: 'op-1',
       ipcRequestId: 'req-1',
@@ -81,7 +83,7 @@ describe('logger', () => {
       result: 'succeeded',
       authoritative: true,
     });
-    await writeAuditEvent({
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:05:00.000Z',
       operationId: 'op-2',
       ipcRequestId: 'req-2',
@@ -94,7 +96,7 @@ describe('logger', () => {
       result: 'failed',
       authoritative: false,
     });
-    await writeAuditEvent({
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:10:00.000Z',
       operationId: 'op-3',
       ipcRequestId: 'req-3',
@@ -108,26 +110,26 @@ describe('logger', () => {
       authoritative: false,
     });
 
-    const firstPage = await readAuditEvents({
+    const firstPage = await readSystemLogEvents({
       scope: { kind: 'all' },
       pageSize: 2,
     });
 
-    expect(firstPage.items.map((item) => item.operationId)).toEqual(['op-3', 'op-2']);
+    expect(firstPage.items.map((item: SystemLogEventItem) => item.operationId)).toEqual(['op-3', 'op-2']);
     expect(firstPage.nextCursor).not.toBeNull();
 
-    const secondPage = await readAuditEvents({
+    const secondPage = await readSystemLogEvents({
       scope: { kind: 'all' },
       cursor: firstPage.nextCursor ?? undefined,
       pageSize: 2,
     });
 
-    expect(secondPage.items.map((item) => item.operationId)).toEqual(['op-1']);
+    expect(secondPage.items.map((item: SystemLogEventItem) => item.operationId)).toEqual(['op-1']);
     expect(secondPage.nextCursor).toBeNull();
   });
 
-  it('filters audit events by target object, result, and query while tolerating malformed lines', async () => {
-    await writeAuditEvent({
+  it('filters system log events by target object, result, and query while tolerating malformed lines', async () => {
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:00:00.000Z',
       operationId: 'op-1',
       ipcRequestId: 'req-1',
@@ -140,7 +142,7 @@ describe('logger', () => {
       result: 'succeeded',
       authoritative: true,
     });
-    await writeAuditEvent({
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:01:00.000Z',
       operationId: 'op-2',
       ipcRequestId: 'req-2',
@@ -153,6 +155,23 @@ describe('logger', () => {
       result: 'failed',
       authoritative: false,
     });
+    await writeFile(
+      path.join(tempLogDirectory, 'system-logs-older.jsonl'),
+      JSON.stringify({
+        timestamp: '2026-04-15T11:58:00.000Z',
+        operationId: 'op-system',
+        ipcRequestId: null,
+        actorUpn: 'admin@example.com',
+        tenantId: 'tenant-1',
+        operationType: 'groups.addMembers',
+        targetObjectType: 'distributionList',
+        targetObjectId: 'group-1',
+        summary: 'Attempted to add another member.',
+        result: 'succeeded',
+        authoritative: true,
+      }) + '\n',
+      'utf8',
+    );
     await writeFile(
       path.join(tempLogDirectory, 'audit-older.jsonl'),
       '{bad json}\n' +
@@ -173,7 +192,7 @@ describe('logger', () => {
       'utf8',
     );
 
-    const result = await readAuditEvents({
+    const result = await readSystemLogEvents({
       scope: {
         kind: 'targetObject',
         targetObjectId: 'group-1',
@@ -201,7 +220,7 @@ describe('logger', () => {
       safeErrorCode: 'command_failed',
       message: 'guest@example.com invite failed.',
     });
-    await writeAuditEvent({
+    await writeSystemLogEvent({
       timestamp: '2026-04-15T12:00:00.000Z',
       operationId: 'op-1',
       ipcRequestId: 'req-1',
@@ -218,12 +237,12 @@ describe('logger', () => {
     const bundleDirectory = await mkdtemp(path.join(os.tmpdir(), 'groups-console-diagnostics-bundle-'));
     const fileCount = await (await import('./logger')).exportDiagnosticsArtifacts(bundleDirectory);
     const opsExport = await readFile(path.join(bundleDirectory, 'ops-current.jsonl'), 'utf8');
-    const auditExport = await readFile(path.join(bundleDirectory, 'audit-current.jsonl'), 'utf8');
+    const systemLogExport = await readFile(path.join(bundleDirectory, 'system-logs-current.jsonl'), 'utf8');
 
     expect(fileCount).toBe(2);
     expect(opsExport).not.toContain('guest@example.com');
-    expect(auditExport).not.toContain('admin@example.com');
-    expect(auditExport).not.toContain('tenant-1');
-    expect(auditExport).not.toContain('guest-1');
+    expect(systemLogExport).not.toContain('admin@example.com');
+    expect(systemLogExport).not.toContain('tenant-1');
+    expect(systemLogExport).not.toContain('guest-1');
   });
 });
