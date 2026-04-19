@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   Filter,
@@ -65,11 +64,9 @@ import {
   presentSourceDegradation,
 } from "@/renderer/components/console/source-degradation-presenter";
 import {
-  hasInventoryChangingAddOutcome,
-  hasInventoryChangingRemoveOutcome,
-  hasMembersRefreshableAddOutcome,
-  hasMembersRefreshableRemoveOutcome,
-} from "@/renderer/components/console/group-members-mutation-outcome";
+  canDismissMutationDialog,
+  handleMutationDialogOpenChange,
+} from "@/renderer/components/console/mutation-dialog-guard";
 import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
@@ -77,13 +74,15 @@ import {
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
 import {
-  invalidateExchangeGroupsQueryForConnection,
   useExchangeGroupsQuery,
 } from "@/renderer/hooks/use-exchange-groups";
 import {
-  invalidateGroupMembersQueryForGroup,
   useGroupMembersQuery,
 } from "@/renderer/hooks/use-group-members";
+import {
+  useAddGroupMembersMutation,
+  useRemoveGroupMembersMutation,
+} from "@/renderer/hooks/use-group-member-mutations";
 import type {
   ExchangeGroupListItem,
   ExchangeGroupRef,
@@ -224,7 +223,6 @@ const CANDIDATE_SEARCH_TYPES: RecipientSearchType[] = [
 
 export function GroupsScreen() {
   const { shell } = useApp();
-  const queryClient = useQueryClient();
   const exchangeConnection = shell.exchangeConnection;
   const exchangeConnected = exchangeConnection?.state === "connected";
   const {
@@ -270,6 +268,8 @@ export function GroupsScreen() {
   } = useGroupMembersQuery(exchangeConnection, selectedGroup);
   const showBlockingMembersError = membersError !== null && !hasMembersData;
   const showStaleMembersError = membersError !== null && hasMembersData;
+  const addGroupMembersMutation = useAddGroupMembersMutation(exchangeConnection);
+  const removeGroupMembersMutation = useRemoveGroupMembersMutation(exchangeConnection);
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -440,14 +440,11 @@ export function GroupsScreen() {
     setAddError(null);
     setAddResult(null);
     try {
-      const result = await window.radApp.groups.addMembers(groupRef, memberRefs);
+      const result = await addGroupMembersMutation.mutateAsync({
+        groupRef,
+        memberRefs,
+      });
       setAddResult(result);
-      if (hasInventoryChangingAddOutcome(result)) {
-        await invalidateExchangeGroupsQueryForConnection(queryClient, exchangeConnection);
-      }
-      if (hasMembersRefreshableAddOutcome(result)) {
-        await invalidateGroupMembersQueryForGroup(queryClient, exchangeConnection, selectedGroup);
-      }
     } catch (err) {
       setAddError(
         formatPresentedCommandFailure(
@@ -457,7 +454,7 @@ export function GroupsScreen() {
     } finally {
       setAddPending(false);
     }
-  }, [selectedGroup, addCandidates, addSelectedKeys, exchangeConnection, queryClient]);
+  }, [selectedGroup, addCandidates, addSelectedKeys, addGroupMembersMutation]);
 
   const handleRemoveMember = useCallback(async () => {
     if (!selectedGroup || !removeConfirmTarget) return;
@@ -471,14 +468,11 @@ export function GroupsScreen() {
     setRemoveError(null);
     setRemoveResult(null);
     try {
-      const result = await window.radApp.groups.removeMembers(groupRef, [memberRef]);
+      const result = await removeGroupMembersMutation.mutateAsync({
+        groupRef,
+        memberRefs: [memberRef],
+      });
       setRemoveResult(result);
-      if (hasInventoryChangingRemoveOutcome(result)) {
-        await invalidateExchangeGroupsQueryForConnection(queryClient, exchangeConnection);
-      }
-      if (hasMembersRefreshableRemoveOutcome(result)) {
-        await invalidateGroupMembersQueryForGroup(queryClient, exchangeConnection, selectedGroup);
-      }
       const allClean = result.items.every((item) => isRemoveStatusClean(item.status));
       if (allClean) {
         setRemoveConfirmTarget(null);
@@ -493,7 +487,7 @@ export function GroupsScreen() {
     } finally {
       setRemovePending(false);
     }
-  }, [selectedGroup, removeConfirmTarget, exchangeConnection, queryClient]);
+  }, [selectedGroup, removeConfirmTarget, removeGroupMembersMutation]);
 
   if (!exchangeConnected) {
     return (
@@ -969,8 +963,16 @@ export function GroupsScreen() {
         </div>
       </div>
 
-      <Dialog open={addDialogOpen} onOpenChange={(open) => { if (!open) setAddDialogOpen(false); }}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+      <Dialog
+        open={addDialogOpen}
+        onOpenChange={(open) => {
+          handleMutationDialogOpenChange(open, addPending, () => setAddDialogOpen(false));
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-lg max-h-[85vh] flex flex-col"
+          showCloseButton={canDismissMutationDialog(addPending)}
+        >
           <DialogHeader>
             <DialogTitle>Add Members to {selectedGroup?.displayName ?? "Group"}</DialogTitle>
             <DialogDescription>
@@ -1141,9 +1143,18 @@ export function GroupsScreen() {
 
       <Dialog
         open={removeConfirmTarget !== null}
-        onOpenChange={(open) => { if (!open) { setRemoveConfirmTarget(null); setRemoveResult(null); setRemoveError(null); } }}
+        onOpenChange={(open) => {
+          handleMutationDialogOpenChange(open, removePending, () => {
+            setRemoveConfirmTarget(null);
+            setRemoveResult(null);
+            setRemoveError(null);
+          });
+        }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent
+          className="sm:max-w-sm"
+          showCloseButton={canDismissMutationDialog(removePending)}
+        >
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription>
