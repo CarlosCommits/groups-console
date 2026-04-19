@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-export const auditResultSchema = z.enum(['succeeded', 'failed', 'partial']);
+export const systemLogResultSchema = z.enum(['succeeded', 'failed', 'partial']);
 
-export const auditScopeSchema = z.discriminatedUnion('kind', [
+export const systemLogScopeSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('all'),
@@ -17,7 +17,7 @@ export const auditScopeSchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
-export const auditEventItemSchema = z
+export const systemLogEventItemSchema = z
   .object({
     timestamp: z.string().datetime(),
     operationId: z.string().min(1),
@@ -28,31 +28,31 @@ export const auditEventItemSchema = z
     targetObjectType: z.string().min(1),
     targetObjectId: z.string().min(1).nullable(),
     summary: z.string().min(1),
-    result: auditResultSchema,
+    result: systemLogResultSchema,
     authoritative: z.boolean(),
   })
   .strict();
 
-export const auditListEventsPayloadSchema = z
+export const systemLogsListEventsPayloadSchema = z
   .object({
-    scope: auditScopeSchema,
+    scope: systemLogScopeSchema,
     cursor: z.string().min(1).optional(),
     pageSize: z.number().int().positive().max(100).optional(),
     query: z.string().min(1).optional(),
     operationType: z.string().min(1).optional(),
-    result: auditResultSchema.optional(),
+    result: systemLogResultSchema.optional(),
   })
   .strict();
 
-export const auditListEventsResultSchema = z
+export const systemLogsListEventsResultSchema = z
   .object({
-    items: z.array(auditEventItemSchema),
+    items: z.array(systemLogEventItemSchema),
     nextCursor: z.string().min(1).nullable(),
   })
   .strict();
 
-export type AuditResult = z.infer<typeof auditResultSchema>;
-export type AuditScope = z.infer<typeof auditScopeSchema>;
-export type AuditEventItem = z.infer<typeof auditEventItemSchema>;
-export type AuditListEventsPayload = z.infer<typeof auditListEventsPayloadSchema>;
-export type AuditListEventsResult = z.infer<typeof auditListEventsResultSchema>;
+export type SystemLogResult = z.infer<typeof systemLogResultSchema>;
+export type SystemLogScope = z.infer<typeof systemLogScopeSchema>;
+export type SystemLogEventItem = z.infer<typeof systemLogEventItemSchema>;
+export type SystemLogsListEventsPayload = z.infer<typeof systemLogsListEventsPayloadSchema>;
+export type SystemLogsListEventsResult = z.infer<typeof systemLogsListEventsResultSchema>;
