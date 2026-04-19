@@ -38,7 +38,7 @@ export async function invalidateExchangeGroupsQueryForConnection(
   const connectionIdentity = getExchangeConnectionIdentity(exchangeConnection);
 
   await queryClient.invalidateQueries({
-    queryKey: queryKeys.exchangeGroupsRoot(connectionIdentity),
+    queryKey: queryKeys.exchangeGroupsList(connectionIdentity),
   });
 }
 
