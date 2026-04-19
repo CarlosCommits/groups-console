@@ -4,18 +4,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExchangeRecipientDetails } from '@/shared/contracts/exchange';
 
-const { useAppMock, useRecipientsSearchQueryMock, useContactDetailsQueryMock, useGuestDetailsQueryMock, useExchangeRecipientDetailsQueryMock } = vi.hoisted(() => ({
+const {
+  useAppMock,
+  useRecipientsSearchQueryMock,
+  useContactDetailsQueryMock,
+  useGuestDetailsQueryMock,
+  useExchangeRecipientDetailsQueryMock,
+  useCreateContactMutationMock,
+  useUpdateContactCompanyMutationMock,
+  useInviteGuestMutationMock,
+  useUpdateGuestCompanyMutationMock,
+} = vi.hoisted(() => ({
   useAppMock: vi.fn(),
   useRecipientsSearchQueryMock: vi.fn(),
   useContactDetailsQueryMock: vi.fn(),
   useGuestDetailsQueryMock: vi.fn(),
   useExchangeRecipientDetailsQueryMock: vi.fn(),
-}));
-
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    removeQueries: vi.fn(),
-  }),
+  useCreateContactMutationMock: vi.fn(),
+  useUpdateContactCompanyMutationMock: vi.fn(),
+  useInviteGuestMutationMock: vi.fn(),
+  useUpdateGuestCompanyMutationMock: vi.fn(),
 }));
 
 vi.mock('@/renderer/components/console', () => ({
@@ -44,6 +52,16 @@ vi.mock('@/renderer/hooks/use-guest-details', () => ({
 
 vi.mock('@/renderer/hooks/use-exchange-recipient-details', () => ({
   useExchangeRecipientDetailsQuery: useExchangeRecipientDetailsQueryMock,
+}));
+
+vi.mock('@/renderer/hooks/use-contact-mutations', () => ({
+  useCreateContactMutation: useCreateContactMutationMock,
+  useUpdateContactCompanyMutation: useUpdateContactCompanyMutationMock,
+}));
+
+vi.mock('@/renderer/hooks/use-guest-mutations', () => ({
+  useInviteGuestMutation: useInviteGuestMutationMock,
+  useUpdateGuestCompanyMutation: useUpdateGuestCompanyMutationMock,
 }));
 
 vi.mock('@/renderer/components/ui/dialog', () => ({
@@ -169,6 +187,10 @@ describe('DirectoryScreen exchange recipient details', () => {
     useContactDetailsQueryMock.mockReset();
     useGuestDetailsQueryMock.mockReset();
     useExchangeRecipientDetailsQueryMock.mockReset();
+    useCreateContactMutationMock.mockReset();
+    useUpdateContactCompanyMutationMock.mockReset();
+    useInviteGuestMutationMock.mockReset();
+    useUpdateGuestCompanyMutationMock.mockReset();
 
     useAppMock.mockReturnValue({
       shell: {
@@ -206,6 +228,10 @@ describe('DirectoryScreen exchange recipient details', () => {
     useContactDetailsQueryMock.mockReturnValue({ ...defaultContactDetailsQueryResult });
     useGuestDetailsQueryMock.mockReturnValue({ ...defaultGuestDetailsQueryResult });
     useExchangeRecipientDetailsQueryMock.mockReturnValue({ ...defaultExchangeRecipientDetailsQueryResult });
+    useCreateContactMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
+    useUpdateContactCompanyMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
+    useInviteGuestMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
+    useUpdateGuestCompanyMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
   });
 
   it('queries exchange recipient details for directory detail reads', () => {
@@ -275,6 +301,66 @@ describe('DirectoryScreen exchange recipient details', () => {
       }),
       undefined,
       false,
+    );
+
+    expect(useCreateContactMutationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        connectionId: 'connection-1',
+        userPrincipalName: 'exchange-admin@example.com',
+      }),
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        configuredTenantId: 'tenant-1',
+        accountUsername: 'graph-admin@example.com',
+      }),
+    );
+
+    expect(useUpdateContactCompanyMutationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        connectionId: 'connection-1',
+        userPrincipalName: 'exchange-admin@example.com',
+      }),
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        configuredTenantId: 'tenant-1',
+        accountUsername: 'graph-admin@example.com',
+      }),
+    );
+
+    expect(useInviteGuestMutationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        connectionId: 'connection-1',
+        userPrincipalName: 'exchange-admin@example.com',
+      }),
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        configuredTenantId: 'tenant-1',
+        accountUsername: 'graph-admin@example.com',
+      }),
+    );
+
+    expect(useUpdateGuestCompanyMutationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        connectionId: 'connection-1',
+        userPrincipalName: 'exchange-admin@example.com',
+      }),
+      expect.objectContaining({
+        state: 'connected',
+        tenantId: 'tenant-1',
+        configuredTenantId: 'tenant-1',
+        accountUsername: 'graph-admin@example.com',
+      }),
     );
   });
 

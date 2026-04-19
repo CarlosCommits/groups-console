@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Edit,
@@ -50,19 +49,25 @@ import {
   presentSourceDegradation,
 } from "@/renderer/components/console/source-degradation-presenter";
 import { useRecipientsSearchQuery } from "@/renderer/hooks/use-recipients-search";
-import {
-  removeContactDetailsQuery,
-  useContactDetailsQuery,
-} from "@/renderer/hooks/use-contact-details";
-import {
-  removeGuestDetailsQuery,
-  useGuestDetailsQuery,
-} from "@/renderer/hooks/use-guest-details";
+import { useContactDetailsQuery } from "@/renderer/hooks/use-contact-details";
+import { useGuestDetailsQuery } from "@/renderer/hooks/use-guest-details";
 import { useExchangeRecipientDetailsQuery } from "@/renderer/hooks/use-exchange-recipient-details";
+import {
+  useCreateContactMutation,
+  useUpdateContactCompanyMutation,
+} from "@/renderer/hooks/use-contact-mutations";
+import {
+  useInviteGuestMutation,
+  useUpdateGuestCompanyMutation,
+} from "@/renderer/hooks/use-guest-mutations";
 import {
   getExchangeConnectionIdentity,
   getGraphConnectionIdentity,
 } from "@/renderer/lib/query-keys";
+import {
+  canDismissMutationDialog,
+  handleMutationDialogOpenChange,
+} from "@/renderer/components/console/mutation-dialog-guard";
 import { cn } from "@/renderer/lib/utils";
 import type {
   RecipientSearchItem,
@@ -234,10 +239,22 @@ function getUpdateMode(
 
 export function DirectoryScreen() {
   const { shell } = useApp();
-  const queryClient = useQueryClient();
   const exchangeConnected = shell.exchangeConnection?.state === "connected";
   const graphConnected = shell.graphConnection?.state === "connected";
   const graphTenantMatched = shell.graphConnection?.exchangeAlignment === "matched";
+  const createContactMutation = useCreateContactMutation(
+    shell.exchangeConnection,
+    shell.graphConnection,
+  );
+  const updateContactCompanyMutation = useUpdateContactCompanyMutation(
+    shell.exchangeConnection,
+    shell.graphConnection,
+  );
+  const inviteGuestMutation = useInviteGuestMutation(shell.exchangeConnection, shell.graphConnection);
+  const updateGuestCompanyMutation = useUpdateGuestCompanyMutation(
+    shell.exchangeConnection,
+    shell.graphConnection,
+  );
 
   const [activeTab, setActiveTab] = useState("all");
   const [searchText, setSearchText] = useState("");
@@ -307,10 +324,6 @@ export function DirectoryScreen() {
   const results = searchQuery.results;
   const loading = searchQuery.isLoading;
   const error = searchQuery.error;
-
-  const refreshSearch = useCallback(() => {
-    void searchQuery.refetch();
-  }, [searchQuery]);
 
   const contactDetailsQuery = useContactDetailsQuery(
     shell.exchangeConnection,
@@ -421,7 +434,7 @@ export function DirectoryScreen() {
     setCreateError(null);
     try {
       if (createMode === "contact") {
-        const result = await window.radApp.contacts.create({
+        const result = await createContactMutation.mutateAsync({
           firstName: createFirstName.trim(),
           lastName: createLastName.trim(),
           email: createEmail.trim(),
@@ -444,7 +457,7 @@ export function DirectoryScreen() {
           payload.companyName = companyNameTrimmed;
         }
         payload.sendInvitationMessage = createSendInvitation;
-        const result = await window.radApp.guests.invite(payload);
+        const result = await inviteGuestMutation.mutateAsync(payload);
         setCreateResult({ mode: "guest", data: result });
       }
     } catch (err: unknown) {
@@ -497,15 +510,21 @@ export function DirectoryScreen() {
     try {
       const mode = getUpdateMode(updateTarget);
       if (mode === "contact") {
-        const result = await window.radApp.contacts.updateCompany({
-          exchangeIdentity: updateTarget.exchangeIdentity!,
-          companyName: updateCompanyName.trim(),
+        const result = await updateContactCompanyMutation.mutateAsync({
+          payload: {
+            exchangeIdentity: updateTarget.exchangeIdentity!,
+            companyName: updateCompanyName.trim(),
+          },
+          stableKey: updateTarget.stableKey,
         });
         setUpdateResult({ mode: "contact", data: result });
       } else {
-        const result = await window.radApp.guests.updateCompany({
-          guestUserId: updateTarget.objectId!,
-          companyName: updateCompanyName.trim(),
+        const result = await updateGuestCompanyMutation.mutateAsync({
+          payload: {
+            guestUserId: updateTarget.objectId!,
+            companyName: updateCompanyName.trim(),
+          },
+          stableKey: updateTarget.stableKey,
         });
         setUpdateResult({ mode: "guest", data: result });
       }
@@ -521,16 +540,6 @@ export function DirectoryScreen() {
   };
 
   const handleUpdateClose = () => {
-    if (updateResult) {
-      if (updateTarget) {
-        if (updateResult.mode === "contact") {
-          removeContactDetailsQuery(queryClient, shell.exchangeConnection, updateTarget.stableKey);
-        } else {
-          removeGuestDetailsQuery(queryClient, shell.graphConnection, updateTarget.stableKey);
-        }
-      }
-      void refreshSearch();
-    }
     setUpdateDialogOpen(false);
     setUpdateTarget(null);
     setUpdateResult(null);
@@ -827,8 +836,16 @@ export function DirectoryScreen() {
         </div>
       </div>
 
-      <Dialog open={createDialogOpen} onOpenChange={(open) => { if (!open) handleCreateClose(); }}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          handleMutationDialogOpenChange(open, createPending, handleCreateClose);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-lg max-h-[85vh] flex flex-col"
+          showCloseButton={canDismissMutationDialog(createPending)}
+        >
           <DialogHeader>
             <DialogTitle>
               {createResult && createResult.data.outcome === "blockedConflict"
@@ -1139,9 +1156,14 @@ export function DirectoryScreen() {
 
       <Dialog
         open={updateDialogOpen}
-        onOpenChange={(open) => { if (!open) handleUpdateClose(); }}
+        onOpenChange={(open) => {
+          handleMutationDialogOpenChange(open, updatePending, handleUpdateClose);
+        }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={canDismissMutationDialog(updatePending)}
+        >
           <DialogHeader>
             <DialogTitle>Update Company</DialogTitle>
             <DialogDescription>
