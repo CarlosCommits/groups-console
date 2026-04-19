@@ -3,13 +3,13 @@ import path from 'node:path';
 
 import { getRadAppLogDirectory } from '@/main/app/paths';
 import {
-  auditEventItemSchema,
-  type AuditEventItem,
-  type AuditListEventsPayload,
-  type AuditListEventsResult,
-} from '@/shared/contracts/audit';
+  systemLogEventItemSchema,
+  type SystemLogEventItem,
+  type SystemLogsListEventsPayload,
+  type SystemLogsListEventsResult,
+} from '@/shared/contracts/system-logs';
 
-import type { AuditEvent } from './audit-event';
+import type { SystemLogEvent } from './system-log-event';
 import type { OperationalLogEntry } from './log-entry';
 import { redactForLog } from './redact';
 import { rotateIfNeeded } from './rotation';
@@ -24,25 +24,25 @@ export async function writeOperationalLog(entry: OperationalLogEntry): Promise<v
   }
 }
 
-export async function writeAuditEvent(event: AuditEvent): Promise<void> {
-  await writeJsonLine('audit', event);
+export async function writeSystemLogEvent(event: SystemLogEvent): Promise<void> {
+  await writeJsonLine('system-logs', event);
 }
 
-export async function readAuditEvents(
-  payload: AuditListEventsPayload,
-): Promise<AuditListEventsResult> {
-  const allEvents = await readAllAuditEvents(getRadAppLogDirectory());
-  const filteredEvents = allEvents.filter((event) => matchesAuditPayload(event, payload));
-  filteredEvents.sort(compareAuditEvents);
+export async function readSystemLogEvents(
+  payload: SystemLogsListEventsPayload,
+): Promise<SystemLogsListEventsResult> {
+  const allEvents = await readAllSystemLogEvents(getRadAppLogDirectory());
+  const filteredEvents = allEvents.filter((event) => matchesSystemLogPayload(event, payload));
+  filteredEvents.sort(compareSystemLogEvents);
 
-  const startIndex = getAuditStartIndex(filteredEvents, payload.cursor);
+  const startIndex = getSystemLogStartIndex(filteredEvents, payload.cursor);
   const pageSize = payload.pageSize ?? 50;
   const items = filteredEvents.slice(startIndex, startIndex + pageSize);
   const hasMore = startIndex + pageSize < filteredEvents.length;
 
   return {
     items,
-    nextCursor: hasMore && items.length > 0 ? encodeAuditCursor(items[items.length - 1]!) : null,
+    nextCursor: hasMore && items.length > 0 ? encodeSystemLogCursor(items[items.length - 1]!) : null,
   };
 }
 
@@ -100,7 +100,10 @@ export function sanitizeLastErrorSummaryForDiagnostics(
   };
 }
 
-async function writeJsonLine(stream: 'ops' | 'audit', entry: OperationalLogEntry | AuditEvent): Promise<void> {
+async function writeJsonLine(
+  stream: 'ops' | 'system-logs',
+  entry: OperationalLogEntry | SystemLogEvent,
+): Promise<void> {
   const logDirectory = getRadAppLogDirectory();
   const currentPath = await rotateIfNeeded(logDirectory, stream);
   const safeEntry = redactForLog(entry);
@@ -142,7 +145,7 @@ function sanitizeLogRecordForDiagnostics(
   fileName: string,
   record: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (fileName.startsWith('audit-')) {
+  if (fileName.startsWith('audit-') || fileName.startsWith('system-logs-')) {
     return {
       timestamp: record.timestamp ?? null,
       operationType: record.operationType ?? null,
@@ -167,21 +170,26 @@ function sanitizeLogRecordForDiagnostics(
   };
 }
 
-async function readAllAuditEvents(logDirectory: string): Promise<AuditEventItem[]> {
+async function readAllSystemLogEvents(logDirectory: string): Promise<SystemLogEventItem[]> {
   try {
     const entries = await readdir(logDirectory, { withFileTypes: true });
     const filePaths = entries
-      .filter((entry) => entry.isFile() && entry.name.startsWith('audit-') && entry.name.endsWith('.jsonl'))
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          entry.name.endsWith('.jsonl') &&
+          (entry.name.startsWith('audit-') || entry.name.startsWith('system-logs-')),
+      )
       .map((entry) => path.join(logDirectory, entry.name));
 
-    const batches = await Promise.all(filePaths.map(async (filePath) => await readAuditFile(filePath)));
+    const batches = await Promise.all(filePaths.map(async (filePath) => await readSystemLogFile(filePath)));
     return batches.flat();
   } catch {
     return [];
   }
 }
 
-async function readAuditFile(filePath: string): Promise<AuditEventItem[]> {
+async function readSystemLogFile(filePath: string): Promise<SystemLogEventItem[]> {
   try {
     const contents = await readFile(filePath, 'utf8');
     return contents
@@ -191,7 +199,7 @@ async function readAuditFile(filePath: string): Promise<AuditEventItem[]> {
       .flatMap((line) => {
         try {
           const parsed = JSON.parse(line) as unknown;
-          const result = auditEventItemSchema.safeParse(parsed);
+          const result = systemLogEventItemSchema.safeParse(parsed);
           return result.success ? [result.data] : [];
         } catch {
           return [];
@@ -202,7 +210,10 @@ async function readAuditFile(filePath: string): Promise<AuditEventItem[]> {
   }
 }
 
-function matchesAuditPayload(event: AuditEventItem, payload: AuditListEventsPayload): boolean {
+function matchesSystemLogPayload(
+  event: SystemLogEventItem,
+  payload: SystemLogsListEventsPayload,
+): boolean {
   if (payload.scope.kind === 'targetObject') {
     if (event.targetObjectId !== payload.scope.targetObjectId) {
       return false;
@@ -246,7 +257,7 @@ function matchesAuditPayload(event: AuditEventItem, payload: AuditListEventsPayl
   return true;
 }
 
-function compareAuditEvents(left: AuditEventItem, right: AuditEventItem): number {
+function compareSystemLogEvents(left: SystemLogEventItem, right: SystemLogEventItem): number {
   const timestampDelta = new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime();
   if (timestampDelta !== 0) {
     return timestampDelta;
@@ -255,22 +266,22 @@ function compareAuditEvents(left: AuditEventItem, right: AuditEventItem): number
   return right.operationId.localeCompare(left.operationId);
 }
 
-function getAuditStartIndex(items: AuditEventItem[], cursor: string | undefined): number {
+function getSystemLogStartIndex(items: SystemLogEventItem[], cursor: string | undefined): number {
   if (!cursor) {
     return 0;
   }
 
-  const decoded = decodeAuditCursor(cursor);
+  const decoded = decodeSystemLogCursor(cursor);
   if (!decoded) {
     return 0;
   }
 
-  const firstItemAfterCursor = items.findIndex((item) => compareAuditCursor(item, decoded) > 0);
+  const firstItemAfterCursor = items.findIndex((item) => compareSystemLogCursor(item, decoded) > 0);
   return firstItemAfterCursor >= 0 ? firstItemAfterCursor : items.length;
 }
 
-function compareAuditCursor(
-  item: AuditEventItem,
+function compareSystemLogCursor(
+  item: SystemLogEventItem,
   cursor: { timestamp: string; operationId: string },
 ): number {
   const timestampDelta = new Date(cursor.timestamp).getTime() - new Date(item.timestamp).getTime();
@@ -281,14 +292,14 @@ function compareAuditCursor(
   return cursor.operationId.localeCompare(item.operationId);
 }
 
-function encodeAuditCursor(item: AuditEventItem): string {
+function encodeSystemLogCursor(item: SystemLogEventItem): string {
   return Buffer.from(
     JSON.stringify({ timestamp: item.timestamp, operationId: item.operationId }),
     'utf8',
   ).toString('base64url');
 }
 
-function decodeAuditCursor(cursor: string): { timestamp: string; operationId: string } | null {
+function decodeSystemLogCursor(cursor: string): { timestamp: string; operationId: string } | null {
   try {
     const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
       timestamp?: unknown;
