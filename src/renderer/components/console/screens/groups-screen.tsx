@@ -67,7 +67,6 @@ import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
-import { AuditEventsPanel } from "@/renderer/components/console/audit-events-panel";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
 import type {
@@ -312,18 +311,6 @@ export function GroupsScreen() {
         (g.alias ?? "").toLowerCase().includes(lower),
       );
   }, [groups, groupFilter]);
-
-  const auditScope = useMemo(
-    () =>
-      selectedGroup
-        ? {
-            kind: "targetObject" as const,
-            targetObjectId: selectedGroup.exchangeIdentity,
-            targetObjectTypes: [selectedGroup.groupKind],
-          }
-        : null,
-    [selectedGroup],
-  );
 
   useEffect(() => {
     if (filteredGroups.length === 0) {
@@ -752,12 +739,6 @@ export function GroupsScreen() {
                       >
                         Settings
                       </TabsTrigger>
-                      <TabsTrigger
-                        value="audit-logs"
-                        className="text-xs font-semibold pb-3 data-[state=active]:text-[var(--color-primary)] text-slate-400 hover:text-slate-600"
-                      >
-                        Audit Logs
-                      </TabsTrigger>
                     </TabsList>
                     {activeTab === "members" ? (
                       <div className="flex items-center gap-2 pb-2">
@@ -918,21 +899,7 @@ export function GroupsScreen() {
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="audit-logs" className="mt-0 flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar h-full">
-                      {selectedGroup && auditScope ? (
-                        <AuditEventsPanel
-                          mode="embedded"
-                          scope={auditScope}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center py-16">
-                          <span className="text-sm text-slate-400">Select a group to view audit logs.</span>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                  </Tabs>
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center">
