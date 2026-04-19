@@ -1,4 +1,5 @@
 import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
+import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 
 const QUERY_NAMESPACE = "console";
 const DISCONNECTED_CONNECTION_SCOPE = "disconnected";
@@ -8,6 +9,11 @@ type QueryKeyPart = string | number | boolean | null | undefined | Record<string
 type ExchangeConnectionIdentityInput = Pick<
   ExchangeConnectionStatus,
   "state" | "tenantId" | "connectionId" | "userPrincipalName"
+>;
+
+type GraphConnectionIdentityInput = Pick<
+  GraphConnectionStatus,
+  "state" | "tenantId" | "configuredTenantId" | "accountUsername"
 >;
 
 export function normalizeConnectionScope(connectionIdentity?: string | null) {
@@ -23,6 +29,16 @@ export function getExchangeConnectionIdentity(
     exchangeConnection?.tenantId ?? "none",
     exchangeConnection?.connectionId ?? "none",
     exchangeConnection?.userPrincipalName ?? "none",
+  ].join(":");
+}
+
+export function getGraphConnectionIdentity(
+  graphConnection?: GraphConnectionIdentityInput | null,
+) {
+  return [
+    graphConnection?.state ?? "disconnected",
+    graphConnection?.tenantId ?? graphConnection?.configuredTenantId ?? "none",
+    graphConnection?.accountUsername ?? "none",
   ].join(":");
 }
 
@@ -63,6 +79,26 @@ export const queryKeys = {
 
   graphRoot(connectionIdentity?: string | null) {
     return queryKeys.scoped("graph", connectionIdentity);
+  },
+
+  recipientsSearchRoot(connectionIdentity?: string | null) {
+    return queryKeys.scoped("recipients", connectionIdentity, "search");
+  },
+
+  recipientsSearch(connectionIdentity: string | null | undefined, query: string, types: readonly string[]) {
+    return queryKeys.scoped("recipients", connectionIdentity, "search", query, types.join(","));
+  },
+
+  contactDetails(connectionIdentity: string | null | undefined, stableKey: string) {
+    return queryKeys.scoped("contacts", connectionIdentity, "details", stableKey);
+  },
+
+  guestDetails(connectionIdentity: string | null | undefined, stableKey: string) {
+    return queryKeys.scoped("guests", connectionIdentity, "details", stableKey);
+  },
+
+  exchangeRecipientDetails(connectionIdentity: string | null | undefined, stableKey: string) {
+    return queryKeys.scoped("exchange", connectionIdentity, "recipient-details", stableKey);
   },
 };
 

@@ -98,4 +98,66 @@ describe("query keys", () => {
       "group-1@example.com",
     ]);
   });
+
+  it("builds recipients search root keys under the recipients scope", () => {
+    expect(queryKeys.recipientsSearchRoot("tenant-a")).toEqual([
+      queryKeyNamespace,
+      "recipients",
+      "tenant-a",
+      "search",
+    ]);
+  });
+
+  it("builds recipients search keys with query and types", () => {
+    expect(queryKeys.recipientsSearch("tenant-a", "john", ["mailbox", "mailContact"])).toEqual([
+      queryKeyNamespace,
+      "recipients",
+      "tenant-a",
+      "search",
+      "john",
+      "mailbox,mailContact",
+    ]);
+  });
+
+  it("builds contact details keys with stable key identity", () => {
+    expect(queryKeys.contactDetails("tenant-a", "exchange:objectId:mailContact:123")).toEqual([
+      queryKeyNamespace,
+      "contacts",
+      "tenant-a",
+      "details",
+      "exchange:objectId:mailContact:123",
+    ]);
+  });
+
+  it("builds guest details keys with stable key identity", () => {
+    expect(queryKeys.guestDetails("tenant-a", "graph:objectId:abc-123")).toEqual([
+      queryKeyNamespace,
+      "guests",
+      "tenant-a",
+      "details",
+      "graph:objectId:abc-123",
+    ]);
+  });
+
+  it("builds exchange recipient details keys with stable key identity", () => {
+    expect(queryKeys.exchangeRecipientDetails("tenant-a", "exchange:objectId:mailbox:456")).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "recipient-details",
+      "exchange:objectId:mailbox:456",
+    ]);
+  });
+
+  it("isolates recipients search keys by connection identity", () => {
+    const keyA = queryKeys.recipientsSearch("connected:tenant-a:conn-a:admin@example.com", "john", ["mailbox"]);
+    const keyB = queryKeys.recipientsSearch("connected:tenant-b:conn-b:admin@example.com", "john", ["mailbox"]);
+    expect(keyA).not.toEqual(keyB);
+  });
+
+  it("isolates detail keys by connection identity", () => {
+    const keyA = queryKeys.contactDetails("connected:tenant-a:conn-a:admin@example.com", "sk-1");
+    const keyB = queryKeys.contactDetails("connected:tenant-b:conn-b:admin@example.com", "sk-1");
+    expect(keyA).not.toEqual(keyB);
+  });
 });
