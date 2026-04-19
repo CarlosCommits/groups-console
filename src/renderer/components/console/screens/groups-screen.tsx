@@ -65,6 +65,12 @@ import {
   presentSourceDegradation,
 } from "@/renderer/components/console/source-degradation-presenter";
 import {
+  hasInventoryChangingAddOutcome,
+  hasInventoryChangingRemoveOutcome,
+  hasMembersRefreshableAddOutcome,
+  hasMembersRefreshableRemoveOutcome,
+} from "@/renderer/components/console/group-members-mutation-outcome";
+import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
@@ -74,6 +80,10 @@ import {
   invalidateExchangeGroupsQueryForConnection,
   useExchangeGroupsQuery,
 } from "@/renderer/hooks/use-exchange-groups";
+import {
+  invalidateGroupMembersQueryForGroup,
+  useGroupMembersQuery,
+} from "@/renderer/hooks/use-group-members";
 import type {
   ExchangeGroupListItem,
   ExchangeGroupRef,
@@ -227,10 +237,6 @@ export function GroupsScreen() {
 
   const [selectedGroup, setSelectedGroup] = useState<ExchangeGroupListItem | null>(null);
 
-  const [members, setMembers] = useState<GroupMemberListItem[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-  const [membersError, setMembersError] = useState<string | null>(null);
-
   const [activeTab, setActiveTab] = useState("members");
   const [sortBy, setSortBy] = useState("name");
   const [groupFilter, setGroupFilter] = useState("");
@@ -254,6 +260,16 @@ export function GroupsScreen() {
 
   const hasGroupsData = appliedKind !== null;
   const showStaleGroupsError = groupsError !== null && hasGroupsData;
+  const {
+    members,
+    isLoading: membersLoading,
+    isFetching: membersFetching,
+    error: membersError,
+    hasData: hasMembersData,
+    refetch: refetchMembers,
+  } = useGroupMembersQuery(exchangeConnection, selectedGroup);
+  const showBlockingMembersError = membersError !== null && !hasMembersData;
+  const showStaleMembersError = membersError !== null && hasMembersData;
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -270,30 +286,6 @@ export function GroupsScreen() {
       return groups[0];
     });
   }, [groups]);
-
-  const loadMembers = useCallback(async () => {
-    if (!selectedGroup || !exchangeConnected) {
-      setMembers([]);
-      setMembersError(null);
-      return;
-    }
-    setMembersLoading(true);
-    setMembersError(null);
-    try {
-      const ref = groupRefFromListItem(selectedGroup);
-      const result = await window.radApp.groups.getMembers(ref);
-      setMembers(result.items);
-    } catch (err) {
-      const presented = presentCommandFailure(err, "Members Error", "Failed to load members.");
-      setMembersError(formatPresentedCommandFailure(presented));
-    } finally {
-      setMembersLoading(false);
-    }
-  }, [selectedGroup, exchangeConnected]);
-
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
 
   const filteredGroups = useMemo(() => {
     if (!groupFilter.trim()) return groups;
@@ -450,10 +442,12 @@ export function GroupsScreen() {
     try {
       const result = await window.radApp.groups.addMembers(groupRef, memberRefs);
       setAddResult(result);
-      if (result.items.some((item) => item.status === "added")) {
+      if (hasInventoryChangingAddOutcome(result)) {
         await invalidateExchangeGroupsQueryForConnection(queryClient, exchangeConnection);
       }
-      await loadMembers();
+      if (hasMembersRefreshableAddOutcome(result)) {
+        await invalidateGroupMembersQueryForGroup(queryClient, exchangeConnection, selectedGroup);
+      }
     } catch (err) {
       setAddError(
         formatPresentedCommandFailure(
@@ -463,7 +457,7 @@ export function GroupsScreen() {
     } finally {
       setAddPending(false);
     }
-  }, [selectedGroup, addCandidates, addSelectedKeys, exchangeConnection, loadMembers, queryClient]);
+  }, [selectedGroup, addCandidates, addSelectedKeys, exchangeConnection, queryClient]);
 
   const handleRemoveMember = useCallback(async () => {
     if (!selectedGroup || !removeConfirmTarget) return;
@@ -479,16 +473,16 @@ export function GroupsScreen() {
     try {
       const result = await window.radApp.groups.removeMembers(groupRef, [memberRef]);
       setRemoveResult(result);
-      if (result.items.some((item) => item.status === "removed")) {
+      if (hasInventoryChangingRemoveOutcome(result)) {
         await invalidateExchangeGroupsQueryForConnection(queryClient, exchangeConnection);
+      }
+      if (hasMembersRefreshableRemoveOutcome(result)) {
+        await invalidateGroupMembersQueryForGroup(queryClient, exchangeConnection, selectedGroup);
       }
       const allClean = result.items.every((item) => isRemoveStatusClean(item.status));
       if (allClean) {
-        await loadMembers();
         setRemoveConfirmTarget(null);
         setRemoveResult(null);
-      } else {
-        await loadMembers();
       }
     } catch (err) {
       setRemoveError(
@@ -499,7 +493,7 @@ export function GroupsScreen() {
     } finally {
       setRemovePending(false);
     }
-  }, [selectedGroup, removeConfirmTarget, exchangeConnection, loadMembers, queryClient]);
+  }, [selectedGroup, removeConfirmTarget, exchangeConnection, queryClient]);
 
   if (!exchangeConnected) {
     return (
@@ -711,15 +705,18 @@ export function GroupsScreen() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex gap-6 mt-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">
-                        Total Members:
-                      </span>
-                      <span className="text-xs font-extrabold font-headline">
-                        {membersLoading ? "…" : members.length}
-                      </span>
-                    </div>
+                    <div className="flex gap-6 mt-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">
+                          Total Members:
+                        </span>
+                        <span className="text-xs font-extrabold font-headline flex items-center gap-2">
+                          {membersLoading ? "…" : members.length}
+                          {membersFetching && !membersLoading && (
+                            <Loader2 className="size-3.5 animate-spin text-[var(--color-primary)]" />
+                          )}
+                        </span>
+                      </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] uppercase font-bold text-slate-400">
                         ID:
@@ -795,19 +792,46 @@ export function GroupsScreen() {
 
                   <TabsContent value="members" className="mt-0 flex-1 overflow-hidden">
                     <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar h-full">
+                      {showStaleMembersError && (
+                        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold text-amber-900">Members list may be stale</p>
+                            <p className="text-[10px] text-amber-800/80 truncate">{membersError}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 text-[10px]"
+                            onClick={() => void refetchMembers()}
+                          >
+                            Retry
+                          </Button>
+                        </div>
+                      )}
                       {membersLoading ? (
                         <div className="flex items-center justify-center py-16">
                           <Loader2 className="size-6 text-[var(--color-primary)] animate-spin mr-2" />
                           <span className="text-sm text-slate-500">Loading members…</span>
                         </div>
-                      ) : membersError ? (
+                      ) : showBlockingMembersError ? (
                         <div className="flex items-center justify-center py-16">
                           <AlertCircle className="size-5 text-[var(--color-error)] mr-2" />
                           <span className="text-sm text-slate-500">{membersError}</span>
                         </div>
                       ) : visibleMembers.length === 0 ? (
                         <div className="flex items-center justify-center py-16">
-                          <span className="text-sm text-slate-400">No members found.</span>
+                          <div className="text-center">
+                            <span className="text-sm text-slate-400">
+                              {showStaleMembersError ? "Members list may be stale." : "No members found."}
+                            </span>
+                            {showStaleMembersError && (
+                              <div className="mt-4">
+                                <Button size="sm" onClick={() => void refetchMembers()}>
+                                  Retry
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <div className="bg-white border border-slate-200/60 rounded-lg overflow-hidden min-h-full">
