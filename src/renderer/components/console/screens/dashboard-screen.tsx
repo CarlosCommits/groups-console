@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Users,
   RefreshCw,
@@ -42,6 +42,8 @@ import {
 } from "@/renderer/components/console/surface-styles";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
+import { useExchangeGroupsQuery } from "@/renderer/hooks/use-exchange-groups";
+import { getExchangeConnectionIdentity } from "@/renderer/lib/query-keys";
 import { deriveShellReadiness } from "@/renderer/components/console/shell-readiness";
 import {
   deriveAttentionItems,
@@ -98,40 +100,48 @@ export function DashboardScreen() {
   const attentionItems = deriveAttentionItems(shell);
   const { ready: readyChecks, total: totalChecks } = countReadyChecks(shell);
 
-  const [groups, setGroups] = useState<ExchangeGroupListItem[]>([]);
-  const [groupsLoading, setGroupsLoading] = useState(false);
-  const [groupsError, setGroupsError] = useState<string | null>(null);
-  const [hasLoadedGroups, setHasLoadedGroups] = useState(false);
+  const exchangeConnection = shell.exchangeConnection;
+  const exchangeConnected = exchangeConnection?.state === "connected";
+  const exchangeConnectionIdentity = getExchangeConnectionIdentity(exchangeConnection);
+  const {
+    groups,
+    appliedKind,
+    isLoading: groupsLoading,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useExchangeGroupsQuery(exchangeConnection);
 
-  const exchangeConnected = shell.exchangeConnection?.state === "connected";
-
-  const loadGroups = useCallback(async () => {
-    if (!exchangeConnected) {
-      setGroups([]);
-      setGroupsError(null);
-      setGroupsLoading(false);
-      setHasLoadedGroups(false);
-      return;
-    }
-    setGroupsLoading(true);
-    setGroupsError(null);
-    try {
-      const result = await window.radApp.exchange.listGroups();
-      setGroups(result.items);
-      setHasLoadedGroups(true);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load groups.";
-      setGroups([]);
-      setGroupsError(message);
-      setHasLoadedGroups(true);
-    } finally {
-      setGroupsLoading(false);
-    }
-  }, [exchangeConnected]);
+  const [pendingGroupsRefresh, setPendingGroupsRefresh] = useState(false);
+  const refreshRequestedExchangeIdentityRef = useRef<string | null>(null);
 
   useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
+    if (!pendingGroupsRefresh || shell.isHydrating) {
+      return;
+    }
+
+    if (!exchangeConnected || refreshRequestedExchangeIdentityRef.current !== exchangeConnectionIdentity) {
+      setPendingGroupsRefresh(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    void refetchGroups().finally(() => {
+      if (!cancelled) {
+        setPendingGroupsRefresh(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    exchangeConnected,
+    exchangeConnectionIdentity,
+    pendingGroupsRefresh,
+    refetchGroups,
+    shell.isHydrating,
+  ]);
 
   const recentGroups = useMemo(() => {
     const withDates = groups.filter((g) => g.whenChangedUtc !== null);
@@ -156,30 +166,32 @@ export function DashboardScreen() {
     signedOut: "neutral",
   };
 
-  const isRefreshing = shell.isHydrating;
+  const isRefreshing = shell.isHydrating || pendingGroupsRefresh;
+  const hasGroupsData = appliedKind !== null;
+  const showGroupsError = groupsError !== null && !hasGroupsData;
+  const showStaleGroupsError = groupsError !== null && hasGroupsData;
 
   const groupInventoryValue = !exchangeConnected
     ? "—"
-    : groupsLoading || !hasLoadedGroups
+    : groupsLoading
       ? "…"
-      : groupsError
+      : showGroupsError
         ? "Error"
         : String(groups.length);
 
   const groupInventoryTrend = !exchangeConnected
     ? undefined
-    : groupsError
+    : showGroupsError
       ? "Load failed"
-      : !groupsLoading && groups.length > 0
+      : groups.length > 0
         ? `${distributionCount} DL · ${securityCount} SG`
         : undefined;
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
+    refreshRequestedExchangeIdentityRef.current = exchangeConnectionIdentity;
+    setPendingGroupsRefresh(true);
     await refreshShellState();
-    if (exchangeConnected) {
-      await loadGroups();
-    }
-  };
+  }, [exchangeConnectionIdentity, refreshShellState]);
 
   if (shell.isHydrating && !shell.session) {
     return (
@@ -332,6 +344,22 @@ export function DashboardScreen() {
               )}
             </CardHeader>
             <CardContent className="p-0">
+              {showStaleGroupsError && (
+                <div className="flex items-center justify-between gap-3 border-b border-amber-200/70 bg-amber-50 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-amber-900">Group inventory may be stale</p>
+                    <p className="text-[10px] text-amber-800/80 truncate">{groupsError}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-[10px]"
+                    onClick={() => void refetchGroups()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )}
               {!exchangeConnected ? (
                 <div className="p-6 flex flex-col items-center justify-center text-center">
                   <WifiOff className="size-8 text-slate-300 mb-2" />
@@ -345,7 +373,7 @@ export function DashboardScreen() {
                   <Loader2 className="size-5 text-[var(--color-primary)] animate-spin mr-2" />
                   <span className="text-sm text-slate-500">Loading groups…</span>
                 </div>
-              ) : groupsError ? (
+              ) : showGroupsError ? (
                 <div className="p-6 flex flex-col items-center justify-center text-center">
                   <AlertCircle className="size-8 text-[var(--color-error)] mb-2" />
                   <p className="text-xs font-bold text-slate-700">Failed to load groups</p>
@@ -354,15 +382,10 @@ export function DashboardScreen() {
                     variant="outline"
                     size="sm"
                     className="mt-3 text-xs"
-                    onClick={() => void loadGroups()}
+                    onClick={() => void refetchGroups()}
                   >
                     Retry
                   </Button>
-                </div>
-              ) : !hasLoadedGroups ? (
-                <div className="p-6 flex items-center justify-center">
-                  <Loader2 className="size-5 text-[var(--color-primary)] animate-spin mr-2" />
-                  <span className="text-sm text-slate-500">Loading groups…</span>
                 </div>
               ) : recentGroups.length === 0 ? (
                 <div className="p-6 flex flex-col items-center justify-center text-center">
