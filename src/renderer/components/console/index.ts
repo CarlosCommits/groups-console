@@ -13,5 +13,5 @@ export type { ReadinessLevel, ShellReadinessSummary, AuthSetupStep } from "./she
 export { ShellAuthPanel } from "./shell-auth-panel";
 export { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
 export type { ClassifiedFailurePresentation, FailureSeverity } from "./command-failure-presenter";
-export { AuditEventsPanel } from "./audit-events-panel";
-export type { AuditEventsPanelMode, AuditEventsPanelProps } from "./audit-events-panel";
+export { SystemLogsPanel } from "./system-logs-panel";
+export type { SystemLogsPanelProps } from "./system-logs-panel";
