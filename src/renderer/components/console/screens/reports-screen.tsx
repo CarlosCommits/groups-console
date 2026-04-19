@@ -44,12 +44,12 @@ import {
 } from "@/renderer/components/console/surface-styles";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
+import { useExchangeGroupsQuery } from "@/renderer/hooks/use-exchange-groups";
 import {
   deriveCapabilityRows,
   deriveCoverageSummary,
   type CapabilityStatus,
 } from "@/renderer/components/console/reports-coverage";
-import type { ExchangeGroupListItem } from "@/shared/contracts/exchange";
 import type {
   ReportGroupKind,
   ReportsGenerateMembershipMatrixResult,
@@ -90,12 +90,15 @@ export function ReportsScreen() {
   const capabilityRows = useMemo(() => deriveCapabilityRows(shell), [shell]);
   const coverage = useMemo(() => deriveCoverageSummary(capabilityRows), [capabilityRows]);
 
-  const exchangeConnected = shell.exchangeConnection?.state === "connected";
-
-  const [groups, setGroups] = useState<ExchangeGroupListItem[]>([]);
-  const [groupsLoading, setGroupsLoading] = useState(false);
-  const [groupsError, setGroupsError] = useState<string | null>(null);
-  const [hasLoadedGroups, setHasLoadedGroups] = useState(false);
+  const exchangeConnection = shell.exchangeConnection;
+  const exchangeConnected = exchangeConnection?.state === "connected";
+  const {
+    groups,
+    appliedKind,
+    isLoading: groupsLoading,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useExchangeGroupsQuery(exchangeConnection);
 
   const [selectedKind, setSelectedKind] = useState<ReportGroupKind>("all");
   const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
@@ -106,34 +109,6 @@ export function ReportsScreen() {
 
   const activeRequestIdRef = useRef(0);
 
-  const loadGroups = useCallback(async () => {
-    if (!exchangeConnected) {
-      setGroups([]);
-      setGroupsError(null);
-      setGroupsLoading(false);
-      setHasLoadedGroups(false);
-      return;
-    }
-    setGroupsLoading(true);
-    setGroupsError(null);
-    try {
-      const result = await window.radApp.exchange.listGroups();
-      setGroups(result.items);
-      setHasLoadedGroups(true);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load groups.";
-      setGroups([]);
-      setGroupsError(message);
-      setHasLoadedGroups(true);
-    } finally {
-      setGroupsLoading(false);
-    }
-  }, [exchangeConnected]);
-
-  useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
-
   const distributionCount = useMemo(
     () => groups.filter((g) => g.groupKind === "distributionList").length,
     [groups],
@@ -143,19 +118,23 @@ export function ReportsScreen() {
     [groups],
   );
 
+  const hasGroupsData = appliedKind !== null;
+  const showGroupsError = groupsError !== null && !hasGroupsData;
+  const showStaleGroupsError = groupsError !== null && hasGroupsData;
+
   const groupInventoryValue = !exchangeConnected
     ? "—"
-    : groupsLoading || !hasLoadedGroups
+    : groupsLoading
       ? "…"
-      : groupsError
+      : showGroupsError
         ? "Error"
         : String(groups.length);
 
   const groupInventoryTrend = !exchangeConnected
     ? undefined
-    : groupsError
+    : showGroupsError
       ? "Load failed"
-      : !groupsLoading && groups.length > 0
+      : groups.length > 0
         ? `${distributionCount} DL · ${securityCount} SG`
         : undefined;
 
@@ -637,14 +616,24 @@ export function ReportsScreen() {
 
           {exchangeConnected && groupsError && (
             <Card className={cn(CONSOLE_SURFACE_CARD, "border-[var(--color-error)]/20")}>
-              <CardContent className="p-4 flex items-center gap-3">
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                 <AlertCircle className="size-4 text-[var(--color-error)] shrink-0" />
                 <div>
                   <p className="text-[11px] font-bold text-slate-700">
-                    Group inventory failed
+                    {showStaleGroupsError ? "Group inventory may be stale" : "Group inventory failed"}
                   </p>
                   <p className="text-[10px] text-slate-400">{groupsError}</p>
                 </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 text-[10px]"
+                  onClick={() => void refetchGroups()}
+                >
+                  Retry
+                </Button>
               </CardContent>
             </Card>
           )}
