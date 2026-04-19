@@ -15,17 +15,17 @@ describe('command contracts', () => {
     expect(result.command).toBe('session.getStatus');
   });
 
-  it('accepts the audit.listEvents command name', () => {
+  it('accepts the systemLogs.listEvents command name', () => {
     const result = commandRequestSchema.parse({
       requestId: 'req-audit',
-      command: 'audit.listEvents',
+      command: 'systemLogs.listEvents',
       issuedAt: new Date().toISOString(),
       payload: {
         scope: { kind: 'all' },
       },
     });
 
-    expect(result.command).toBe('audit.listEvents');
+    expect(result.command).toBe('systemLogs.listEvents');
   });
 
   it('accepts a successful response envelope', () => {
