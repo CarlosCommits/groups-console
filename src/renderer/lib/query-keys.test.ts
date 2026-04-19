@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getExchangeConnectionIdentity,
+  getSystemLogScopeKey,
   disconnectedConnectionScope,
   normalizeConnectionScope,
   queryKeyNamespace,
@@ -40,6 +41,22 @@ describe("query keys", () => {
     ]);
   });
 
+  it("builds system logs root keys under the shared application namespace", () => {
+    expect(queryKeys.systemLogsRoot()).toEqual([
+      queryKeyNamespace,
+      "systemLogs",
+    ]);
+  });
+
+  it("builds system logs list keys with the scope identity", () => {
+    expect(queryKeys.systemLogsList("all")).toEqual([
+      queryKeyNamespace,
+      "systemLogs",
+      "list",
+      "all",
+    ]);
+  });
+
   it("builds exchange root keys with the provided connection identity", () => {
     expect(queryKeys.exchangeRoot("tenant-a")).toEqual([
       queryKeyNamespace,
@@ -57,6 +74,35 @@ describe("query keys", () => {
         userPrincipalName: "admin@example.com",
       }),
     ).toBe("connected:tenant-a:exchange-connection-a:admin@example.com");
+  });
+
+  it("builds the all-scope system logs identity with a stable shared key", () => {
+    expect(getSystemLogScopeKey({ kind: "all" })).toBe("all");
+  });
+
+  it("builds target-object system logs identity from object id and sorted types", () => {
+    expect(
+      getSystemLogScopeKey({
+        kind: "targetObject",
+        targetObjectId: "group-1",
+        targetObjectTypes: ["mailEnabledSecurityGroup", "distributionList"],
+      }),
+    ).toBe("targetObject:group-1:distributionList,mailEnabledSecurityGroup");
+  });
+
+  it("isolates target-object system logs identities when target types differ", () => {
+    const keyA = getSystemLogScopeKey({
+      kind: "targetObject",
+      targetObjectId: "group-1",
+      targetObjectTypes: ["distributionList"],
+    });
+    const keyB = getSystemLogScopeKey({
+      kind: "targetObject",
+      targetObjectId: "group-1",
+      targetObjectTypes: ["mailEnabledSecurityGroup"],
+    });
+
+    expect(keyA).not.toBe(keyB);
   });
 
   it("builds exchange groups root keys under the shared exchange scope", () => {
