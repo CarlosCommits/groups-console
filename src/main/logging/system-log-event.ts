@@ -1,4 +1,4 @@
-export interface AuditEvent {
+export interface SystemLogEvent {
   timestamp: string;
   operationId: string;
   ipcRequestId: string | null;
