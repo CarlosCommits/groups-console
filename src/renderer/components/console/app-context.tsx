@@ -11,6 +11,7 @@ import type { SessionStatusSchema } from "@/shared/contracts/session";
 import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 import { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
+import { purgeAppQueryCacheForConnectionBoundary } from "@/renderer/lib/query-client";
 
 type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
 
@@ -84,16 +85,35 @@ interface AppProviderProps {
   children: ReactNode;
 }
 
+const initialShellState: ShellState = {
+  session: null,
+  exchangeCapabilities: null,
+  graphConnection: null,
+  exchangeConnection: null,
+  isHydrating: true,
+  loadError: null,
+};
+
+export function getShellConnectionBoundary(shell: Pick<ShellState, "graphConnection" | "exchangeConnection">) {
+  const exchangeBoundary = [
+    shell.exchangeConnection?.state ?? "disconnected",
+    shell.exchangeConnection?.tenantId ?? "none",
+    shell.exchangeConnection?.connectionId ?? "none",
+    shell.exchangeConnection?.userPrincipalName ?? "none",
+  ].join(":");
+
+  const graphBoundary = [
+    shell.graphConnection?.state ?? "disconnected",
+    shell.graphConnection?.tenantId ?? shell.graphConnection?.configuredTenantId ?? "none",
+    shell.graphConnection?.accountUsername ?? "none",
+  ].join(":");
+
+  return `exchange:${exchangeBoundary}|graph:${graphBoundary}`;
+}
+
 export function AppProvider({ children }: AppProviderProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>("dashboard");
-  const [shell, setShell] = useState<ShellState>({
-    session: null,
-    exchangeCapabilities: null,
-    graphConnection: null,
-    exchangeConnection: null,
-    isHydrating: true,
-    loadError: null,
-  });
+  const [shell, setShell] = useState<ShellState>(initialShellState);
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionErrors, setActionErrors] = useState<ActionErrors>({});
@@ -105,6 +125,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [exchangeUpn, setExchangeUpn] = useState(exchangeUpnPreset);
   const userEditedUpn = useRef(false);
   const previousExchangeUpnPreset = useRef(exchangeUpnPreset);
+  const shellConnectionBoundaryRef = useRef(getShellConnectionBoundary(initialShellState));
 
   useEffect(() => {
     if (previousExchangeUpnPreset.current !== exchangeUpnPreset) {
@@ -136,12 +157,23 @@ export function AppProvider({ children }: AppProviderProps) {
     });
   }, []);
 
+  const applyShellState = useCallback((nextShell: ShellState) => {
+    const nextBoundary = getShellConnectionBoundary(nextShell);
+
+    if (shellConnectionBoundaryRef.current !== nextBoundary) {
+      purgeAppQueryCacheForConnectionBoundary();
+      shellConnectionBoundaryRef.current = nextBoundary;
+    }
+
+    setShell(nextShell);
+  }, []);
+
   const refreshShellState = useCallback(async () => {
     setShell((prev) => ({ ...prev, isHydrating: true, loadError: null }));
 
     try {
       if (!requireServices("session", "exchange", "graph")) {
-        setShell({
+        applyShellState({
           session: null,
           exchangeCapabilities: null,
           graphConnection: null,
@@ -160,7 +192,7 @@ export function AppProvider({ children }: AppProviderProps) {
           window.radApp.exchange.getConnectionStatus(),
         ]);
 
-      setShell({
+      applyShellState({
         session,
         exchangeCapabilities,
         graphConnection,
@@ -174,7 +206,7 @@ export function AppProvider({ children }: AppProviderProps) {
         "Shell State Error",
         "Failed to load application state.",
       );
-      setShell({
+      applyShellState({
         session: null,
         exchangeCapabilities: null,
         graphConnection: null,
@@ -183,7 +215,7 @@ export function AppProvider({ children }: AppProviderProps) {
         loadError: formatPresentedCommandFailure(presented),
       });
     }
-  }, []);
+  }, [applyShellState]);
 
   useEffect(() => {
     void refreshShellState();
