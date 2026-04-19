@@ -8,9 +8,9 @@ import {
   type CommandResponse,
 } from '@/shared/contracts/command';
 import {
-  auditListEventsPayloadSchema,
-  auditListEventsResultSchema,
-} from '@/shared/contracts/audit';
+  systemLogsListEventsPayloadSchema,
+  systemLogsListEventsResultSchema,
+} from '@/shared/contracts/system-logs';
 import {
   diagnosticsExportPayloadSchema,
   diagnosticsExportResultSchema,
@@ -89,8 +89,8 @@ import { generateMembershipMatrixReport } from '@/main/reports/generate-membersh
 import { exportDiagnostics } from '@/main/ipc/handlers/export-diagnostics';
 import {
   runWithOperationContext,
-  readAuditEvents,
-  writeAuditEvent,
+  readSystemLogEvents,
+  writeSystemLogEvent,
   writeOperationalLog,
   type BackendOwner,
 } from '@/main/logging';
@@ -166,7 +166,7 @@ async function logOperationEvent(input: {
   }
 }
 
-async function maybeWriteMutationAudit(
+async function maybeWriteMutationSystemLog(
   request: CommandRequest,
   operationId: string,
   responseData: unknown,
@@ -196,24 +196,24 @@ async function maybeWriteMutationAudit(
         ? exchangeStatus.userPrincipalName
         : null;
 
-  const disposition = getAuditDisposition(request.command, responseData, result);
+  const disposition = getSystemLogDisposition(request.command, responseData, result);
 
   try {
-    await writeAuditEvent({
+    await writeSystemLogEvent({
       timestamp: new Date().toISOString(),
       operationId,
       ipcRequestId: request.requestId,
       actorUpn,
       tenantId,
       operationType: request.command,
-      targetObjectType: getAuditTargetType(request.command, request.payload),
-      targetObjectId: getAuditTargetId(request.command, request.payload, responseData),
-      summary: getAuditSummary(request.command, request.payload),
+      targetObjectType: getSystemLogTargetType(request.command, request.payload),
+      targetObjectId: getSystemLogTargetId(request.command, request.payload, responseData),
+      summary: getSystemLogSummary(request.command, request.payload),
       result: disposition.result,
       authoritative: disposition.authoritative,
     });
   } catch {
-    // Audit persistence must never affect command execution semantics.
+    // System-log persistence must never affect command execution semantics.
   }
 }
 
@@ -303,7 +303,7 @@ function getTerminalResult(commandName: string, responseData: unknown): 'succeed
   return 'succeeded';
 }
 
-function getAuditDisposition(
+function getSystemLogDisposition(
   commandName: string,
   responseData: unknown,
   result: 'succeeded' | 'failed' | 'partial',
@@ -356,7 +356,7 @@ function getAuditDisposition(
   return { result, authoritative: true };
 }
 
-function getAuditTargetType(commandName: string, payload: Record<string, unknown>): string {
+function getSystemLogTargetType(commandName: string, payload: Record<string, unknown>): string {
   switch (commandName) {
     case 'groups.addMembers':
     case 'groups.removeMembers':
@@ -374,7 +374,7 @@ function getAuditTargetType(commandName: string, payload: Record<string, unknown
   }
 }
 
-function getAuditTargetId(
+function getSystemLogTargetId(
   commandName: string,
   payload: Record<string, unknown>,
   responseData: unknown,
@@ -402,7 +402,7 @@ function getAuditTargetId(
   }
 }
 
-function getAuditSummary(commandName: string, payload: Record<string, unknown>): string {
+function getSystemLogSummary(commandName: string, payload: Record<string, unknown>): string {
   switch (commandName) {
     case 'groups.addMembers':
       return `Attempted to add ${Array.isArray(payload.members) ? payload.members.length : 0} member(s).`;
@@ -427,9 +427,9 @@ async function executeCommand(
   emitProgress: (event: { phase: 'preflight' | 'executing' | 'verifying' | 'complete'; message: string; percent?: number }) => void,
 ): Promise<CommandResponse> {
   switch (request.command as string) {
-    case 'audit.listEvents': {
-      const payload = auditListEventsPayloadSchema.parse(request.payload);
-      const result = auditListEventsResultSchema.parse(await readAuditEvents(payload));
+    case 'systemLogs.listEvents': {
+      const payload = systemLogsListEventsPayloadSchema.parse(request.payload);
+      const result = systemLogsListEventsResultSchema.parse(await readSystemLogEvents(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
@@ -847,7 +847,7 @@ export function registerIpcHandlers(): void {
             safeErrorCode: null,
             message: `Completed ${request.command}.`,
           });
-          await maybeWriteMutationAudit(request, operationId, response.data, terminalResult, backendOwner);
+          await maybeWriteMutationSystemLog(request, operationId, response.data, terminalResult, backendOwner);
 
           return response;
         },
@@ -885,7 +885,7 @@ export function registerIpcHandlers(): void {
       });
 
       if (parsedRequest) {
-        await maybeWriteMutationAudit(
+        await maybeWriteMutationSystemLog(
           parsedRequest,
           operationId,
           null,
