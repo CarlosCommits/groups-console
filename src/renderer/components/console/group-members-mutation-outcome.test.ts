@@ -81,22 +81,32 @@ describe("group members mutation outcomes", () => {
   it("invalidates inventory only for added members", () => {
     expect(hasInventoryChangingAddOutcome(makeAddResult("added"))).toBe(true);
     expect(hasInventoryChangingAddOutcome(makeAddResult("alreadyMember"))).toBe(false);
+    expect(hasInventoryChangingAddOutcome(makeAddResult("invalid"))).toBe(false);
+    expect(hasInventoryChangingAddOutcome(makeAddResult("verificationFailed"))).toBe(false);
+    expect(hasInventoryChangingAddOutcome(makeAddResult("failed"))).toBe(false);
   });
 
   it("invalidates members query for clean add outcomes including already-member", () => {
     expect(hasMembersRefreshableAddOutcome(makeAddResult("added"))).toBe(true);
     expect(hasMembersRefreshableAddOutcome(makeAddResult("alreadyMember"))).toBe(true);
+    expect(hasMembersRefreshableAddOutcome(makeAddResult("invalid"))).toBe(false);
+    expect(hasMembersRefreshableAddOutcome(makeAddResult("verificationFailed"))).toBe(false);
     expect(hasMembersRefreshableAddOutcome(makeAddResult("failed"))).toBe(false);
   });
 
   it("invalidates inventory only for removed members", () => {
     expect(hasInventoryChangingRemoveOutcome(makeRemoveResult("removed"))).toBe(true);
     expect(hasInventoryChangingRemoveOutcome(makeRemoveResult("notMember"))).toBe(false);
+    expect(hasInventoryChangingRemoveOutcome(makeRemoveResult("invalid"))).toBe(false);
+    expect(hasInventoryChangingRemoveOutcome(makeRemoveResult("verificationFailed"))).toBe(false);
+    expect(hasInventoryChangingRemoveOutcome(makeRemoveResult("failed"))).toBe(false);
   });
 
   it("invalidates members query for clean remove outcomes including not-member", () => {
     expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("removed"))).toBe(true);
     expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("notMember"))).toBe(true);
+    expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("invalid"))).toBe(false);
+    expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("verificationFailed"))).toBe(false);
     expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("failed"))).toBe(false);
   });
 });
