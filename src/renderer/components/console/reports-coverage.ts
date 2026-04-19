@@ -99,12 +99,12 @@ export function deriveCapabilityRows(shell: ShellState): CapabilityRow[] {
   });
 
   rows.push({
-    id: "audit-observability",
-    surface: "Audit & Observability",
+    id: "local-system-logs",
+    surface: "Local System Logs & Diagnostics",
     status: checks?.find((check) => check.id === "logDirectory")?.status === "ready" ? "available" : "unavailable",
     detail:
       checks?.find((check) => check.id === "logDirectory")?.status === "ready"
-        ? "Structured logging, diagnostics export, and audit log viewer available"
+        ? "Local troubleshooting logs and diagnostics export available"
         : "Requires writable log directory",
   });
 

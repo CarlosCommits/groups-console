@@ -273,10 +273,6 @@ export function ReportsScreen() {
                 Retry
               </Button>
             )}
-            <Button variant="outline" size="sm" className="text-xs" disabled>
-              <ShieldCheck className="size-3.5 mr-1.5" />
-              Generate Audit
-            </Button>
           </div>
         }
       />

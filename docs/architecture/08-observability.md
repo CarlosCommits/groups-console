@@ -1,4 +1,4 @@
-# 08. Observability, Audit, and Diagnostics
+# 08. Observability, Local System Logs, and Diagnostics
 
 ## Purpose
 
@@ -28,9 +28,9 @@ The main process writes structured logs in JSON lines or similarly machine-reada
 - result (`started`, `succeeded`, `failed`, `partial`)
 - safe error code
 
-## Audit events
+## Local mutation event log
 
-Every mutation should emit a higher-level audit event with:
+Every mutation should emit a higher-level local system-log event with:
 
 - actor UPN if available
 - tenant ID
