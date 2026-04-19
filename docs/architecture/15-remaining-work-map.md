@@ -62,7 +62,7 @@ Current reality:
 Follow-up that still remains outside this completed slice:
 
 - richer report variants beyond the current membership matrix are still deferred
-- observability and audit coverage for report generation is still missing until the observability slice lands
+- tenant-authoritative audit coverage for report generation is still missing; the shipped System Logs slice is local troubleshooting only
 
 ### 2. Guest membership execution path
 
@@ -120,24 +120,25 @@ Follow-up that still remains outside this completed slice:
 
 - a dedicated `contacts.search` route is still not implemented and remains optional so long as `recipients.search` is the intended shared picker
 
-### 5. Observability, audit, and diagnostics
+### 5. Observability, local system logs, and diagnostics
 
 **Status:** completed
 
-The observability plan in `08-observability.md` and the hardening epic in `12-backlog-and-commits.md` called for structured logs, audit events, and a diagnostics export. That slice is now implemented in the Electron main process and exposed through the app UI.
+The observability plan in `08-observability.md` and the hardening epic in `12-backlog-and-commits.md` called for structured logs, local mutation event capture, and a diagnostics export. That slice is now implemented in the Electron main process and exposed through the app UI.
 
 Current reality:
 
-- the main process now writes structured local operational logs and a separate audit event stream
-- mutation workflows emit audit events with operation correlation, target metadata, and authoritative/non-authoritative results
+- the main process now writes structured local operational logs and a separate local system-log event stream
+- mutation workflows emit local system-log events with operation correlation, target metadata, and authoritative/non-authoritative results
 - a diagnostics bundle export command is implemented and exposed through Settings
 - the logging pipeline now applies redaction and exports sanitized diagnostics artifacts instead of raw log files
 - the app now carries correlation through IPC handling and the PowerShell-backed Exchange host path
-- a dedicated renderer audit-log viewer now exists as a top-level Audit screen, and the Groups workspace now exposes a group-scoped audit tab backed by the same audit read path
+- a local System Logs viewer is now exposed in Settings alongside diagnostics export for troubleshooting use
 
 Follow-up that still remains outside this completed slice:
 
 - renderer-origin breadcrumbs are still intentionally omitted; the current logging model remains main-process authoritative only
+- tenant-authoritative audit history is still a separate future slice; the current System Logs viewer is intentionally local troubleshooting only
 
 ### 6. Deeper permission and remediation classification
 
@@ -175,7 +176,7 @@ Completed since the previous revision:
 
 - **Deeper permission and remediation classification** — shipped as classified runtime failures in IPC, typed preload propagation, renderer remediation presentation for shell, Directory, and Groups flows, and structured per-source degradation handling for composite recipient-search partial-success paths
 
-- **Observability, audit, and diagnostics** — shipped as main-process structured logs, mutation audit events, diagnostics export, correlation propagation, a top-level Audit screen, and a group-scoped Groups audit tab
+- **Observability, local system logs, and diagnostics** — shipped as main-process structured logs, local mutation event capture, diagnostics export, correlation propagation, and a Settings-hosted System Logs viewer
 - **Richer contact and guest detail reads** — shipped as Exchange-owned `contacts.getDetails`, Graph-owned `guests.getDetails`, Exchange-owned `exchange.getRecipientDetails` for `mailbox`/`mailUser`, and a Directory detail dialog backed by fresh on-demand reads
 - **Report and export backend** — shipped as Exchange-owned membership-matrix export with JS-side XLSX generation, progress streaming, and a live Reports screen
 - **Guest membership execution path** — shipped as Graph-objectId → Exchange `GuestMailUser` resolution with selected-principal preservation in group add flows
@@ -188,8 +189,8 @@ Completed since the previous revision:
 - Contact creation and guest invitation both run cross-system overlap checks before proceeding. **Completed.**
 - The Reports screen is wired to a live export backend, not a deferred placeholder. **Completed.**
 - Contact, guest, mailbox, and mailUser detail reads are backed by dedicated commands rather than relying only on search-row summaries. **Completed.**
-- Structured logs are written for every supported workflow, mutation audit events are captured, and a diagnostics bundle can be exported without manual file hunting. **Completed.**
-- A dedicated audit viewer is available both globally and in the Groups workspace. **Completed.**
+- Structured logs are written for every supported workflow, local mutation events are captured, and a diagnostics bundle can be exported without manual file hunting. **Completed.**
+- A dedicated System Logs viewer is available in Settings for local troubleshooting. **Completed.**
 - The permission matrix is updated as each new workflow is implemented. **Completed for the current command surface.**
 - No deferred backlog item from `12-backlog-and-commits.md` is treated as an immediate blocker unless it appears in the remaining work categories above.
 - Internal user company sourcing is documented as a known consistency gap until it is aligned with the planned Graph source rule.
