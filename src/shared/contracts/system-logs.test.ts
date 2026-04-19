@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  auditEventItemSchema,
-  auditListEventsPayloadSchema,
-  auditListEventsResultSchema,
-  auditScopeSchema,
-} from './audit';
+  systemLogEventItemSchema,
+  systemLogsListEventsPayloadSchema,
+  systemLogsListEventsResultSchema,
+  systemLogScopeSchema,
+} from './system-logs';
 
-describe('audit contracts', () => {
+describe('system log contracts', () => {
   it('accepts the all scope payload shape', () => {
-    const payload = auditListEventsPayloadSchema.parse({
+    const payload = systemLogsListEventsPayloadSchema.parse({
       scope: { kind: 'all' },
       pageSize: 50,
     });
@@ -18,7 +18,7 @@ describe('audit contracts', () => {
   });
 
   it('accepts the target-object scope payload shape', () => {
-    const scope = auditScopeSchema.parse({
+    const scope = systemLogScopeSchema.parse({
       kind: 'targetObject',
       targetObjectId: 'group-123',
       targetObjectTypes: ['distributionList'],
@@ -32,15 +32,15 @@ describe('audit contracts', () => {
 
   it('rejects extra payload fields', () => {
     expect(() =>
-      auditListEventsPayloadSchema.parse({
+      systemLogsListEventsPayloadSchema.parse({
         scope: { kind: 'all' },
         extra: true,
       }),
     ).toThrow();
   });
 
-  it('accepts audit event items with nullable actor and target IDs', () => {
-    const item = auditEventItemSchema.parse({
+  it('accepts system log items with nullable actor and target IDs', () => {
+    const item = systemLogEventItemSchema.parse({
       timestamp: '2026-04-17T12:00:00.000Z',
       operationId: 'op-1',
       ipcRequestId: null,
@@ -58,7 +58,7 @@ describe('audit contracts', () => {
   });
 
   it('accepts list results with a next cursor', () => {
-    const result = auditListEventsResultSchema.parse({
+    const result = systemLogsListEventsResultSchema.parse({
       items: [
         {
           timestamp: '2026-04-17T12:00:00.000Z',
