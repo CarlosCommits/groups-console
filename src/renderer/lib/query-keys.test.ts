@@ -77,4 +77,25 @@ describe("query keys", () => {
       "list",
     ]);
   });
+
+  it("builds exchange group members root keys under the shared exchange scope", () => {
+    expect(queryKeys.exchangeGroupMembersRoot("tenant-a")).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "groups",
+      "members",
+    ]);
+  });
+
+  it("builds exchange group members list keys under the shared exchange scope", () => {
+    expect(queryKeys.exchangeGroupMembersList("tenant-a", "group-1@example.com")).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "groups",
+      "members",
+      "group-1@example.com",
+    ]);
+  });
 });
