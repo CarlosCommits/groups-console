@@ -45,8 +45,6 @@ export function AppShell({
       <AppHeader
         graphConnected={summary?.graphConnected ?? false}
         exchangeActive={summary?.exchangeActive ?? false}
-        readiness={summary?.readiness}
-        userName={summary?.displayName ?? "Loading shell"}
       />
       <main className="ml-60 pt-14 px-6 pb-6 min-h-screen">
         {summary?.readiness === "signedOut" ? (
