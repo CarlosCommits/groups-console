@@ -1,11 +1,29 @@
+import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
+
 const QUERY_NAMESPACE = "console";
 const DISCONNECTED_CONNECTION_SCOPE = "disconnected";
 
 type QueryKeyPart = string | number | boolean | null | undefined | Record<string, unknown>;
 
+type ExchangeConnectionIdentityInput = Pick<
+  ExchangeConnectionStatus,
+  "state" | "tenantId" | "connectionId" | "userPrincipalName"
+>;
+
 export function normalizeConnectionScope(connectionIdentity?: string | null) {
   const normalized = connectionIdentity?.trim();
   return normalized && normalized.length > 0 ? normalized : DISCONNECTED_CONNECTION_SCOPE;
+}
+
+export function getExchangeConnectionIdentity(
+  exchangeConnection?: ExchangeConnectionIdentityInput | null,
+) {
+  return [
+    exchangeConnection?.state ?? "disconnected",
+    exchangeConnection?.tenantId ?? "none",
+    exchangeConnection?.connectionId ?? "none",
+    exchangeConnection?.userPrincipalName ?? "none",
+  ].join(":");
 }
 
 export const queryKeys = {
@@ -19,6 +37,14 @@ export const queryKeys = {
 
   exchangeRoot(connectionIdentity?: string | null) {
     return queryKeys.scoped("exchange", connectionIdentity);
+  },
+
+  exchangeGroupsRoot(connectionIdentity?: string | null) {
+    return queryKeys.scoped("exchange", connectionIdentity, "groups");
+  },
+
+  exchangeGroupsList(connectionIdentity?: string | null) {
+    return queryKeys.scoped("exchange", connectionIdentity, "groups", "list");
   },
 
   graphRoot(connectionIdentity?: string | null) {

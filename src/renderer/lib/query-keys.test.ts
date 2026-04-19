@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getExchangeConnectionIdentity,
   disconnectedConnectionScope,
   normalizeConnectionScope,
   queryKeyNamespace,
@@ -44,6 +45,36 @@ describe("query keys", () => {
       queryKeyNamespace,
       "exchange",
       "tenant-a",
+    ]);
+  });
+
+  it("builds the exchange connection identity from boundary fields only", () => {
+    expect(
+      getExchangeConnectionIdentity({
+        state: "connected",
+        tenantId: "tenant-a",
+        connectionId: "exchange-connection-a",
+        userPrincipalName: "admin@example.com",
+      }),
+    ).toBe("connected:tenant-a:exchange-connection-a:admin@example.com");
+  });
+
+  it("builds exchange groups root keys under the shared exchange scope", () => {
+    expect(queryKeys.exchangeGroupsRoot("tenant-a")).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "groups",
+    ]);
+  });
+
+  it("builds exchange groups list keys under the shared exchange scope", () => {
+    expect(queryKeys.exchangeGroupsList("tenant-a")).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "groups",
+      "list",
     ]);
   });
 });
