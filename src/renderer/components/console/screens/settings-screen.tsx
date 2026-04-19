@@ -9,6 +9,7 @@ import {
   Plug,
   Unplug,
   Download,
+  FileText,
 } from "lucide-react";
 import { Switch } from "@/renderer/components/ui/switch";
 import { Button } from "@/renderer/components/ui/button";
@@ -18,9 +19,12 @@ import {
   StatusBadge,
 } from "@/renderer/components/console";
 import { useApp } from "@/renderer/components/console";
+import { SystemLogsPanel } from "@/renderer/components/console/system-logs-panel";
 import type { BootstrapCheckStatus } from "@/shared/contracts/session";
 import type { GraphConnectionState } from "@/shared/contracts/graph";
 import type { ExchangeConnectionState } from "@/shared/contracts/exchange";
+
+const GLOBAL_SYSTEM_LOG_SCOPE = { kind: "all" } as const;
 
 interface SettingRowProps {
   label: string;
@@ -312,6 +316,19 @@ export function SettingsScreen() {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="bg-white border border-[var(--color-outline-variant)]/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="size-5 text-[var(--color-primary)]" />
+            <h2 className="text-sm font-extrabold font-headline">
+              System Logs
+            </h2>
+          </div>
+          <p className="text-xs text-slate-500 mb-3">
+            Local troubleshooting logs for this application instance. These are not tenant-authoritative audit records.
+          </p>
+          <SystemLogsPanel scope={GLOBAL_SYSTEM_LOG_SCOPE} />
         </div>
 
         <div className="bg-white border border-[var(--color-outline-variant)]/30 rounded-lg p-4">
