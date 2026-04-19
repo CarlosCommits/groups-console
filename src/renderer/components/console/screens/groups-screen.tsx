@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   Filter,
@@ -69,6 +70,10 @@ import {
 } from "@/renderer/components/console/surface-styles";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
+import {
+  invalidateExchangeGroupsQueryForConnection,
+  useExchangeGroupsQuery,
+} from "@/renderer/hooks/use-exchange-groups";
 import type {
   ExchangeGroupListItem,
   ExchangeGroupRef,
@@ -209,11 +214,16 @@ const CANDIDATE_SEARCH_TYPES: RecipientSearchType[] = [
 
 export function GroupsScreen() {
   const { shell } = useApp();
-  const exchangeConnected = shell.exchangeConnection?.state === "connected";
-
-  const [groups, setGroups] = useState<ExchangeGroupListItem[]>([]);
-  const [groupsLoading, setGroupsLoading] = useState(false);
-  const [groupsError, setGroupsError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const exchangeConnection = shell.exchangeConnection;
+  const exchangeConnected = exchangeConnection?.state === "connected";
+  const {
+    groups,
+    appliedKind,
+    isLoading: groupsLoading,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useExchangeGroupsQuery(exchangeConnection);
 
   const [selectedGroup, setSelectedGroup] = useState<ExchangeGroupListItem | null>(null);
 
@@ -242,24 +252,8 @@ export function GroupsScreen() {
   const [removeResult, setRemoveResult] = useState<GroupsRemoveMembersResult | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  const loadGroups = useCallback(async () => {
-    if (!exchangeConnected) return;
-    setGroupsLoading(true);
-    setGroupsError(null);
-    try {
-      const result = await window.radApp.exchange.listGroups();
-      setGroups(result.items);
-    } catch (err) {
-      const presented = presentCommandFailure(err, "Groups Error", "Failed to load groups.");
-      setGroupsError(formatPresentedCommandFailure(presented));
-    } finally {
-      setGroupsLoading(false);
-    }
-  }, [exchangeConnected]);
-
-  useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
+  const hasGroupsData = appliedKind !== null;
+  const showStaleGroupsError = groupsError !== null && hasGroupsData;
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -456,6 +450,9 @@ export function GroupsScreen() {
     try {
       const result = await window.radApp.groups.addMembers(groupRef, memberRefs);
       setAddResult(result);
+      if (result.items.some((item) => item.status === "added")) {
+        await invalidateExchangeGroupsQueryForConnection(queryClient, exchangeConnection);
+      }
       await loadMembers();
     } catch (err) {
       setAddError(
@@ -466,7 +463,7 @@ export function GroupsScreen() {
     } finally {
       setAddPending(false);
     }
-  }, [selectedGroup, addCandidates, addSelectedKeys, loadMembers]);
+  }, [selectedGroup, addCandidates, addSelectedKeys, exchangeConnection, loadMembers, queryClient]);
 
   const handleRemoveMember = useCallback(async () => {
     if (!selectedGroup || !removeConfirmTarget) return;
@@ -482,6 +479,9 @@ export function GroupsScreen() {
     try {
       const result = await window.radApp.groups.removeMembers(groupRef, [memberRef]);
       setRemoveResult(result);
+      if (result.items.some((item) => item.status === "removed")) {
+        await invalidateExchangeGroupsQueryForConnection(queryClient, exchangeConnection);
+      }
       const allClean = result.items.every((item) => isRemoveStatusClean(item.status));
       if (allClean) {
         await loadMembers();
@@ -499,7 +499,7 @@ export function GroupsScreen() {
     } finally {
       setRemovePending(false);
     }
-  }, [selectedGroup, removeConfirmTarget, loadMembers]);
+  }, [selectedGroup, removeConfirmTarget, exchangeConnection, loadMembers, queryClient]);
 
   if (!exchangeConnected) {
     return (
@@ -536,7 +536,7 @@ export function GroupsScreen() {
     );
   }
 
-  if (groupsError) {
+  if (groupsError && appliedKind === null) {
     return (
       <AppShell>
         <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
@@ -547,7 +547,7 @@ export function GroupsScreen() {
                 Failed to Load Groups
               </h2>
               <p className="text-sm text-slate-500 max-w-sm mb-4">{groupsError}</p>
-              <Button size="sm" onClick={() => void loadGroups()}>
+              <Button size="sm" onClick={() => void refetchGroups()}>
                 Retry
               </Button>
             </div>
@@ -563,13 +563,24 @@ export function GroupsScreen() {
         <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
             <div className="text-center py-16 px-8">
-              <Filter className="size-10 text-slate-300 mx-auto mb-4" />
+              {showStaleGroupsError ? (
+                <AlertCircle className="size-10 text-[var(--color-error)] mx-auto mb-4" />
+              ) : (
+                <Filter className="size-10 text-slate-300 mx-auto mb-4" />
+              )}
               <h2 className="text-lg font-bold font-headline text-slate-700 mb-2">
-                No Groups Found
+                {showStaleGroupsError ? "Group Inventory May Be Stale" : "No Groups Found"}
               </h2>
               <p className="text-sm text-slate-500 max-w-sm">
-                No Exchange groups are available for the current connection.
+                {showStaleGroupsError
+                  ? groupsError
+                  : "No Exchange groups are available for the current connection."}
               </p>
+              {showStaleGroupsError && (
+                <Button size="sm" className="mt-4" onClick={() => void refetchGroups()}>
+                  Retry
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -588,6 +599,22 @@ export function GroupsScreen() {
                   Groups <span className="text-slate-400 font-normal ml-1">({groups.length})</span>
                 </h2>
               </div>
+              {showStaleGroupsError && (
+                <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-amber-900">Inventory may be stale</p>
+                    <p className="text-[10px] text-amber-800/80 truncate">{groupsError}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-[10px]"
+                    onClick={() => void refetchGroups()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )}
               <div className="relative">
                 <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 z-10" />
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 size-3" />
