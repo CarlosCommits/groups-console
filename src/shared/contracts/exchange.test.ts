@@ -10,6 +10,8 @@ import {
   exchangeRecipientGetDetailsResultSchema,
   exchangeGetCapabilitiesPayloadSchema,
   guestMembershipTargetResultSchema,
+  groupsGetMembershipsPayloadSchema,
+  groupsGetMembershipsResultSchema,
   groupsAddMembersPayloadSchema,
   groupsAddMembersResultSchema,
   groupsRemoveMembersPayloadSchema,
@@ -68,6 +70,33 @@ describe('exchange contracts', () => {
       }),
     ).not.toThrow();
     expect(() => groupsGetMembersPayloadSchema.parse({})).toThrow();
+  });
+
+  it('accepts strict group memberships payloads', () => {
+    expect(() =>
+      groupsGetMembershipsPayloadSchema.parse({
+        member: {
+          kind: 'exchangeRecipient',
+          exchangeIdentity: 'jane@example.com',
+          objectId: 'recipient-1',
+          primaryEmail: 'jane@example.com',
+          displayName: 'Jane Example',
+        },
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      groupsGetMembershipsPayloadSchema.parse({
+        member: {
+          kind: 'graphGuest',
+          objectId: '00000000-0000-0000-0000-000000000001',
+          primaryEmail: 'guest@example.com',
+          displayName: 'Guest Example',
+        },
+      }),
+    ).not.toThrow();
+
+    expect(() => groupsGetMembershipsPayloadSchema.parse({})).toThrow();
   });
 
   it('accepts strict add-members payloads and rejects duplicates', () => {
@@ -245,6 +274,31 @@ describe('exchange contracts', () => {
     });
 
     expect(result.items[0]?.groupKind).toBe('distributionList');
+  });
+
+  it('accepts a group memberships result payload', () => {
+    const result = groupsGetMembershipsResultSchema.parse({
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+      items: [
+        {
+          objectId: 'group-1',
+          exchangeIdentity: 'finance-group',
+          displayName: 'Finance Distribution',
+          alias: 'finance',
+          primaryEmail: 'finance@example.com',
+          groupKind: 'distributionList',
+          managedByDisplayNames: ['Owner One'],
+          whenChangedUtc: '2026-04-01T12:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(result.member.exchangeIdentity).toBe('jane@example.com');
+    expect(result.items[0]?.exchangeIdentity).toBe('finance-group');
   });
 
   it('accepts an exchange recipient details result payload', () => {

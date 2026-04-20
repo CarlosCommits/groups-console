@@ -81,6 +81,16 @@ export const guestMembershipTargetResultSchema = z
     detail: z.string().min(1),
   })
   .strict();
+export const groupsGetMembershipsPayloadSchema = z
+  .object({
+    member: groupMemberSelectionRefSchema,
+  })
+  .strict();
+export const resolvedGroupsGetMembershipsPayloadSchema = z
+  .object({
+    member: groupMemberWriteRefSchema,
+  })
+  .strict();
 export const groupsAddMembersPayloadSchema = z
   .object({
     group: exchangeGroupRefSchema,
@@ -217,6 +227,11 @@ export const exchangeListGroupsResultSchema = z.object({
   items: z.array(exchangeGroupListItemSchema),
 });
 
+export const groupsGetMembershipsResultSchema = z.object({
+  member: groupMemberWriteRefSchema,
+  items: z.array(exchangeGroupListItemSchema),
+});
+
 export const exchangeRecipientDetailsSchema = z
   .object({
     exchangeIdentity: z.string().min(1),
@@ -326,6 +341,11 @@ export type ExchangeMemberSelectionRef = z.infer<typeof exchangeMemberSelectionR
 export type GraphGuestMemberSelectionRef = z.infer<typeof graphGuestMemberSelectionRefSchema>;
 export type GroupMemberSelectionRef = z.infer<typeof groupMemberSelectionRefSchema>;
 export type GuestMembershipTargetResult = z.infer<typeof guestMembershipTargetResultSchema>;
+export type GroupsGetMembershipsPayload = z.infer<typeof groupsGetMembershipsPayloadSchema>;
+export type ResolvedGroupsGetMembershipsPayload = z.infer<
+  typeof resolvedGroupsGetMembershipsPayloadSchema
+>;
+export type GroupsGetMembershipsResult = z.infer<typeof groupsGetMembershipsResultSchema>;
 export type GroupsAddMembersPayload = z.infer<typeof groupsAddMembersPayloadSchema>;
 export type ResolvedGroupsAddMembersPayload = z.infer<typeof resolvedGroupsAddMembersPayloadSchema>;
 export type GroupsAddMembersResult = z.infer<typeof groupsAddMembersResultSchema>;
