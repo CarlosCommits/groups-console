@@ -711,11 +711,8 @@ export function GroupsScreen() {
                         <span className="text-[10px] uppercase font-bold text-slate-400">
                           Total Members:
                         </span>
-                        <span className="text-xs font-extrabold font-headline flex items-center gap-2">
+                        <span className="text-xs font-extrabold font-headline">
                           {membersLoading ? "…" : members.length}
-                          {membersFetching && !membersLoading && (
-                            <Loader2 className="size-3.5 animate-spin text-[var(--color-primary)]" />
-                          )}
                         </span>
                       </div>
                     <div className="flex items-center gap-2">
