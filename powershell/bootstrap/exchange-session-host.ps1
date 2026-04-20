@@ -12,6 +12,7 @@
 . "$PSScriptRoot\..\commands\search-recipients.ps1"
 . "$PSScriptRoot\..\commands\get-groups.ps1"
 . "$PSScriptRoot\..\commands\get-group-members.ps1"
+. "$PSScriptRoot\..\commands\get-group-memberships.ps1"
 . "$PSScriptRoot\..\commands\export-report-data.ps1"
 
 $ErrorActionPreference = 'Stop'
@@ -128,6 +129,9 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
             }
             'getGroupMembers' {
                 $data = Invoke-RadAppGetGroupMembers -Payload $payload
+            }
+            'getGroupMemberships' {
+                $data = Invoke-RadAppGetGroupMemberships -Payload $payload
             }
             'exportReportData' {
                 $data = Invoke-RadAppExportReportData -Payload $payload
