@@ -2,7 +2,10 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 
 import { invalidateContactDetailsQuery } from "@/renderer/hooks/use-contact-details";
 import { invalidateRecipientsSearchQueryForConnection } from "@/renderer/hooks/use-recipients-search";
-import { getExchangeConnectionIdentity, getGraphConnectionIdentity } from "@/renderer/lib/query-keys";
+import {
+  getCombinedRecipientsConnectionIdentity,
+  getExchangeConnectionIdentity,
+} from "@/renderer/lib/query-keys";
 import type {
   ContactsCreatePayload,
   ContactsUpdateCompanyPayload,
@@ -15,21 +18,11 @@ type ExchangeConnectionIdentityInput = Pick<
   "state" | "tenantId" | "connectionId" | "userPrincipalName"
 >;
 
-type GraphConnectionIdentityInput = Pick<
-  GraphConnectionStatus,
-  "state" | "tenantId" | "configuredTenantId" | "accountUsername"
->;
+type GraphConnectionIdentityInput = Pick<GraphConnectionStatus, "state" | "tenantId" | "configuredTenantId" | "accountUsername">;
 
 export interface UpdateContactCompanyMutationVariables {
   payload: ContactsUpdateCompanyPayload;
   stableKey: string;
-}
-
-function getCombinedRecipientsConnectionIdentity(
-  exchangeConnection?: ExchangeConnectionIdentityInput | null,
-  graphConnection?: GraphConnectionIdentityInput | null,
-) {
-  return `${getExchangeConnectionIdentity(exchangeConnection)}|${getGraphConnectionIdentity(graphConnection)}`;
 }
 
 async function invalidateContactMutationSearches(
