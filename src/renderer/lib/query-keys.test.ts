@@ -178,6 +178,27 @@ describe("query keys", () => {
     ]);
   });
 
+  it("builds exchange group memberships root keys under the shared exchange scope", () => {
+    expect(queryKeys.exchangeGroupMembershipsRoot("tenant-a")).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "group-memberships",
+    ]);
+  });
+
+  it("builds exchange group memberships list keys under the shared exchange scope", () => {
+    expect(
+      queryKeys.exchangeGroupMembershipsList("tenant-a", "exchangeRecipient:jane@example.com"),
+    ).toEqual([
+      queryKeyNamespace,
+      "exchange",
+      "tenant-a",
+      "group-memberships",
+      "exchangeRecipient:jane@example.com",
+    ]);
+  });
+
   it("builds recipients search root keys under the recipients scope", () => {
     expect(queryKeys.recipientsSearchRoot("tenant-a")).toEqual([
       queryKeyNamespace,
