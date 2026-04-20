@@ -179,6 +179,44 @@ const initialShellState: ShellState = {
   loadError: null,
 };
 
+export function getExchangeUpnPreset(
+  shell: Pick<ShellState, "exchangeConnection" | "graphConnection">,
+) {
+  return shell.exchangeConnection?.userPrincipalName ?? shell.graphConnection?.accountUsername ?? "";
+}
+
+interface ResolveAutoExchangeUpnAfterGraphConnectOptions {
+  graphResult: GraphConnectionStatus;
+  exchangeConnection: ExchangeConnectionStatus | null;
+  exchangeUpn: string;
+  userEditedUpn: boolean;
+}
+
+export function resolveAutoExchangeUpnAfterGraphConnect({
+  graphResult,
+  exchangeConnection,
+  exchangeUpn,
+  userEditedUpn,
+}: ResolveAutoExchangeUpnAfterGraphConnectOptions): string | null {
+  if (graphResult.state !== "connected" || exchangeConnection?.state === "connected") {
+    return null;
+  }
+
+  const trimmedExchangeUpn = exchangeUpn.trim();
+
+  if (userEditedUpn && trimmedExchangeUpn.length > 0) {
+    return trimmedExchangeUpn;
+  }
+
+  const graphAccountUsername = graphResult.accountUsername?.trim() ?? "";
+
+  if (graphAccountUsername.length > 0) {
+    return graphAccountUsername;
+  }
+
+  return trimmedExchangeUpn.length > 0 ? trimmedExchangeUpn : null;
+}
+
 export function getShellConnectionBoundary(shell: Pick<ShellState, "graphConnection" | "exchangeConnection">) {
   const exchangeBoundary = [
     shell.exchangeConnection?.state ?? "disconnected",
@@ -206,14 +244,12 @@ export function AppProvider({ children }: AppProviderProps) {
     initialMembershipMatrixGenerationState,
   );
 
-  const exchangeUpnPreset =
-    shell.exchangeConnection?.userPrincipalName ??
-    shell.graphConnection?.accountUsername ??
-    "";
+  const exchangeUpnPreset = getExchangeUpnPreset(shell);
   const [exchangeUpn, setExchangeUpn] = useState(exchangeUpnPreset);
   const userEditedUpn = useRef(false);
   const previousExchangeUpnPreset = useRef(exchangeUpnPreset);
   const shellConnectionBoundaryRef = useRef(getShellConnectionBoundary(initialShellState));
+  const exchangeConnectInFlight = useRef(false);
 
   useEffect(() => {
     if (previousExchangeUpnPreset.current !== exchangeUpnPreset) {
@@ -309,6 +345,42 @@ export function AppProvider({ children }: AppProviderProps) {
     void refreshShellState();
   }, [refreshShellState]);
 
+  const attemptExchangeConnect = useCallback(async (userPrincipalName: string): Promise<boolean> => {
+    const trimmedUserPrincipalName = userPrincipalName.trim();
+
+    if (trimmedUserPrincipalName.length === 0 || exchangeConnectInFlight.current) {
+      return false;
+    }
+
+    if (!requireBridge("exchange")) {
+      setActionErrors((prev) => ({
+        ...prev,
+        exchange: "Application bridge is not available. Please restart the application.",
+      }));
+      return false;
+    }
+
+    setExchangeUpn(trimmedUserPrincipalName);
+    setPendingAction("exchangeConnect");
+    clearError("exchange");
+    exchangeConnectInFlight.current = true;
+
+    try {
+      const result = await window.radApp.exchange.connect(trimmedUserPrincipalName);
+      if (result.state === "error") {
+        setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
+      }
+    } catch (err) {
+      const presented = presentCommandFailure(err, "Exchange Connect Error", "Exchange connect failed.");
+      setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
+    } finally {
+      exchangeConnectInFlight.current = false;
+      setPendingAction(null);
+    }
+
+    return true;
+  }, [clearError]);
+
   const connectGraph = useCallback(async () => {
     if (!requireBridge("graph")) {
       setActionErrors((prev) => ({
@@ -323,6 +395,18 @@ export function AppProvider({ children }: AppProviderProps) {
       const result = await window.radApp.graph.connect();
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, graph: result.detail }));
+        return;
+      }
+
+      const autoExchangeUpn = resolveAutoExchangeUpnAfterGraphConnect({
+        graphResult: result,
+        exchangeConnection: shell.exchangeConnection,
+        exchangeUpn,
+        userEditedUpn: userEditedUpn.current,
+      });
+
+      if (autoExchangeUpn) {
+        await attemptExchangeConnect(autoExchangeUpn);
       }
     } catch (err) {
       const presented = presentCommandFailure(err, "Graph Connect Error", "Graph connect failed.");
@@ -331,7 +415,7 @@ export function AppProvider({ children }: AppProviderProps) {
       setPendingAction(null);
       await refreshShellState();
     }
-  }, [clearError, refreshShellState]);
+  }, [attemptExchangeConnect, clearError, exchangeUpn, refreshShellState, shell.exchangeConnection]);
 
   const disconnectGraph = useCallback(async () => {
     if (!requireBridge("graph")) {
@@ -358,28 +442,12 @@ export function AppProvider({ children }: AppProviderProps) {
   }, [clearError, refreshShellState]);
 
   const connectExchange = useCallback(async () => {
-    if (!requireBridge("exchange")) {
-      setActionErrors((prev) => ({
-        ...prev,
-        exchange: "Application bridge is not available. Please restart the application.",
-      }));
-      return;
-    }
-    setPendingAction("exchangeConnect");
-    clearError("exchange");
-    try {
-      const result = await window.radApp.exchange.connect(exchangeUpn.trim());
-      if (result.state === "error") {
-        setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
-      }
-    } catch (err) {
-      const presented = presentCommandFailure(err, "Exchange Connect Error", "Exchange connect failed.");
-      setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
-    } finally {
-      setPendingAction(null);
+    const attempted = await attemptExchangeConnect(exchangeUpn);
+
+    if (attempted) {
       await refreshShellState();
     }
-  }, [clearError, exchangeUpn, refreshShellState]);
+  }, [attemptExchangeConnect, exchangeUpn, refreshShellState]);
 
   const disconnectExchange = useCallback(async () => {
     if (!requireBridge("exchange")) {
