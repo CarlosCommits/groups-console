@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   FileDown,
   ShieldCheck,
@@ -52,9 +52,7 @@ import {
 } from "@/renderer/components/console/reports-coverage";
 import type {
   ReportGroupKind,
-  ReportsGenerateMembershipMatrixResult,
 } from "@/shared/contracts/reports";
-import type { ProgressEvent } from "@/shared/contracts/command";
 
 const STATUS_ICON_MAP: Record<CapabilityStatus, typeof CheckCircle> = {
   available: CheckCircle,
@@ -83,10 +81,13 @@ const KIND_LABELS: Record<ReportGroupKind, string> = {
   mailEnabledSecurityGroup: "Security Groups",
 };
 
-type GenerationPhase = "idle" | "generating" | "success" | "error";
-
 export function ReportsScreen() {
-  const { shell } = useApp();
+  const {
+    shell,
+    membershipMatrixGeneration,
+    generateMembershipMatrix,
+    clearMembershipMatrixGeneration,
+  } = useApp();
   const capabilityRows = useMemo(() => deriveCapabilityRows(shell), [shell]);
   const coverage = useMemo(() => deriveCoverageSummary(capabilityRows), [capabilityRows]);
 
@@ -101,13 +102,6 @@ export function ReportsScreen() {
   } = useExchangeGroupsQuery(exchangeConnection);
 
   const [selectedKind, setSelectedKind] = useState<ReportGroupKind>("all");
-  const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("idle");
-  const [progressMessage, setProgressMessage] = useState<string>("");
-  const [progressPercent, setProgressPercent] = useState<number>(0);
-  const [generationResult, setGenerationResult] = useState<ReportsGenerateMembershipMatrixResult | null>(null);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-
-  const activeRequestIdRef = useRef(0);
 
   const distributionCount = useMemo(
     () => groups.filter((g) => g.groupKind === "distributionList").length,
@@ -145,61 +139,17 @@ export function ReportsScreen() {
 
   const handleGenerate = useCallback(async () => {
     if (!exchangeConnected) return;
+    await generateMembershipMatrix(selectedKind);
+  }, [exchangeConnected, generateMembershipMatrix, selectedKind]);
 
-    const requestId = activeRequestIdRef.current + 1;
-    activeRequestIdRef.current = requestId;
-    setGenerationPhase("generating");
-    setProgressMessage("Starting…");
-    setProgressPercent(0);
-    setGenerationResult(null);
-    setGenerationError(null);
-
-    try {
-      const result = await window.radApp.reports.generateMembershipMatrix(
-        { kind: selectedKind },
-        (event: ProgressEvent) => {
-          if (activeRequestIdRef.current !== requestId) return;
-          setProgressMessage(event.message);
-          if (event.percent !== undefined) {
-            setProgressPercent(event.percent);
-          }
-        },
-      );
-
-      if (activeRequestIdRef.current === requestId) {
-        setGenerationResult(result);
-        setGenerationPhase("success");
-      }
-    } catch (err) {
-      if (activeRequestIdRef.current === requestId) {
-        const message = err instanceof Error ? err.message : "Report generation failed.";
-        setGenerationError(message);
-        setGenerationPhase("error");
-      }
-    }
-  }, [exchangeConnected, selectedKind]);
-
-  const handleRetry = useCallback(() => {
-    setGenerationPhase("idle");
-    setGenerationError(null);
-    setProgressMessage("");
-    setProgressPercent(0);
-  }, []);
+  const handleRetry = useCallback(async () => {
+    const retryKind = membershipMatrixGeneration.requestedKind ?? selectedKind;
+    await generateMembershipMatrix(retryKind);
+  }, [generateMembershipMatrix, membershipMatrixGeneration.requestedKind, selectedKind]);
 
   const handleReset = useCallback(() => {
-    activeRequestIdRef.current += 1;
-    setGenerationPhase("idle");
-    setGenerationResult(null);
-    setGenerationError(null);
-    setProgressMessage("");
-    setProgressPercent(0);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      activeRequestIdRef.current += 1;
-    };
-  }, []);
+    clearMembershipMatrixGeneration();
+  }, [clearMembershipMatrixGeneration]);
 
   if (shell.isHydrating && !shell.session) {
     return (
@@ -223,7 +173,7 @@ export function ReportsScreen() {
         description="Capability status and export inventory."
         actions={
           <div className="flex gap-2">
-            {generationPhase === "idle" && (
+            {membershipMatrixGeneration.phase === "idle" && (
               <Button
                 size="sm"
                 className="text-xs"
@@ -234,20 +184,20 @@ export function ReportsScreen() {
                 Generate Matrix
               </Button>
             )}
-            {generationPhase === "generating" && (
+            {membershipMatrixGeneration.phase === "generating" && (
               <Button size="sm" className="text-xs" variant="outline" disabled>
                 <Loader2 className="size-3.5 mr-1.5 animate-spin" />
                 Generating…
               </Button>
             )}
-            {generationPhase === "success" && (
+            {membershipMatrixGeneration.phase === "success" && (
               <Button size="sm" className="text-xs" variant="outline" onClick={handleReset}>
                 <RefreshCw className="size-3.5 mr-1.5" />
                 New Report
               </Button>
             )}
-            {generationPhase === "error" && (
-              <Button size="sm" className="text-xs" onClick={() => void handleGenerate()}>
+            {membershipMatrixGeneration.phase === "error" && (
+              <Button size="sm" className="text-xs" onClick={() => void handleRetry()}>
                 <RefreshCw className="size-3.5 mr-1.5" />
                 Retry
               </Button>
@@ -418,7 +368,7 @@ export function ReportsScreen() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-2">
-              {generationPhase === "idle" && (
+              {membershipMatrixGeneration.phase === "idle" && (
                 <div className="flex flex-col gap-3">
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
@@ -457,7 +407,7 @@ export function ReportsScreen() {
                 </div>
               )}
 
-              {generationPhase === "generating" && (
+              {membershipMatrixGeneration.phase === "generating" && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <Loader2 className="size-4 text-[var(--color-primary)] animate-spin shrink-0" />
@@ -465,18 +415,18 @@ export function ReportsScreen() {
                       Generating…
                     </span>
                   </div>
-                  <Progress value={progressPercent} className="h-1.5" />
+                  <Progress value={membershipMatrixGeneration.progressPercent} className="h-1.5" />
                   <div className="flex justify-between text-[10px] text-slate-400">
-                    <span className="truncate mr-2">{progressMessage}</span>
-                    <span className="shrink-0 font-medium">{progressPercent}%</span>
+                    <span className="truncate mr-2">{membershipMatrixGeneration.progressMessage}</span>
+                    <span className="shrink-0 font-medium">{membershipMatrixGeneration.progressPercent}%</span>
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    Export is in progress. This view will update when the current request finishes.
+                    Export is in progress. You can leave this page and come back to see the latest progress.
                   </p>
                 </div>
               )}
 
-              {generationPhase === "success" && generationResult && (
+              {membershipMatrixGeneration.phase === "success" && membershipMatrixGeneration.result && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="size-4 text-emerald-600 shrink-0" />
@@ -487,12 +437,12 @@ export function ReportsScreen() {
                   <div className="bg-emerald-50 rounded-md p-3 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <FolderOpen className="size-3.5 text-emerald-700 shrink-0" />
-                      <span className="text-[11px] font-medium text-emerald-800 truncate" title={generationResult.outputPath}>
-                        {generationResult.outputPath}
+                      <span className="text-[11px] font-medium text-emerald-800 truncate" title={membershipMatrixGeneration.result.outputPath}>
+                        {membershipMatrixGeneration.result.outputPath}
                       </span>
                     </div>
                     <div className="text-[10px] text-emerald-600">
-                      {generationResult.summary.groupCount} groups · {generationResult.summary.recipientCount} recipients · {generationResult.summary.membershipCount} memberships
+                      {membershipMatrixGeneration.result.summary.groupCount} groups · {membershipMatrixGeneration.result.summary.recipientCount} recipients · {membershipMatrixGeneration.result.summary.membershipCount} memberships
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -508,7 +458,7 @@ export function ReportsScreen() {
                 </div>
               )}
 
-              {generationPhase === "error" && (
+              {membershipMatrixGeneration.phase === "error" && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="size-4 text-[var(--color-error)] shrink-0 mt-0.5" />
@@ -516,17 +466,17 @@ export function ReportsScreen() {
                       <p className="text-xs font-semibold text-slate-700">
                         Generation failed
                       </p>
-                      <p className="text-[11px] text-slate-500 break-words">
-                        {generationError}
-                      </p>
-                    </div>
+                        <p className="text-[11px] text-slate-500 break-words">
+                          {membershipMatrixGeneration.error}
+                        </p>
+                      </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      size="sm"
-                      className="flex-1 text-xs"
-                      onClick={() => void handleGenerate()}
-                    >
+                       size="sm"
+                       className="flex-1 text-xs"
+                       onClick={() => void handleRetry()}
+                     >
                       <RefreshCw className="size-3.5 mr-1.5" />
                       Retry
                     </Button>
@@ -534,7 +484,7 @@ export function ReportsScreen() {
                       variant="outline"
                       size="sm"
                       className="flex-1 text-xs"
-                      onClick={handleRetry}
+                       onClick={() => void handleRetry()}
                     >
                       Dismiss
                     </Button>
