@@ -101,6 +101,14 @@ export const queryKeys = {
     );
   },
 
+  exchangeGroupMembershipsRoot(connectionIdentity?: string | null) {
+    return queryKeys.scoped("exchange", connectionIdentity, "group-memberships");
+  },
+
+  exchangeGroupMembershipsList(connectionIdentity: string | null | undefined, memberIdentity: string) {
+    return queryKeys.scoped("exchange", connectionIdentity, "group-memberships", memberIdentity);
+  },
+
   graphRoot(connectionIdentity?: string | null) {
     return queryKeys.scoped("graph", connectionIdentity);
   },
