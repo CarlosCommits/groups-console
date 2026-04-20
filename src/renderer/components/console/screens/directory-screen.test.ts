@@ -10,6 +10,10 @@ const {
   useContactDetailsQueryMock,
   useGuestDetailsQueryMock,
   useExchangeRecipientDetailsQueryMock,
+  useExchangeGroupsQueryMock,
+  useAddGroupMembersMutationMock,
+  useRemoveGroupMembersMutationMock,
+  useGroupMembershipsQueryMock,
   useCreateContactMutationMock,
   useUpdateContactCompanyMutationMock,
   useInviteGuestMutationMock,
@@ -20,6 +24,10 @@ const {
   useContactDetailsQueryMock: vi.fn(),
   useGuestDetailsQueryMock: vi.fn(),
   useExchangeRecipientDetailsQueryMock: vi.fn(),
+  useExchangeGroupsQueryMock: vi.fn(),
+  useAddGroupMembersMutationMock: vi.fn(),
+  useRemoveGroupMembersMutationMock: vi.fn(),
+  useGroupMembershipsQueryMock: vi.fn(),
   useCreateContactMutationMock: vi.fn(),
   useUpdateContactCompanyMutationMock: vi.fn(),
   useInviteGuestMutationMock: vi.fn(),
@@ -52,6 +60,19 @@ vi.mock('@/renderer/hooks/use-guest-details', () => ({
 
 vi.mock('@/renderer/hooks/use-exchange-recipient-details', () => ({
   useExchangeRecipientDetailsQuery: useExchangeRecipientDetailsQueryMock,
+}));
+
+vi.mock('@/renderer/hooks/use-exchange-groups', () => ({
+  useExchangeGroupsQuery: useExchangeGroupsQueryMock,
+}));
+
+vi.mock('@/renderer/hooks/use-group-member-mutations', () => ({
+  useAddGroupMembersMutation: useAddGroupMembersMutationMock,
+  useRemoveGroupMembersMutation: useRemoveGroupMembersMutationMock,
+}));
+
+vi.mock('@/renderer/hooks/use-group-memberships', () => ({
+  useGroupMembershipsQuery: useGroupMembershipsQueryMock,
 }));
 
 vi.mock('@/renderer/hooks/use-contact-mutations', () => ({
@@ -180,6 +201,27 @@ const defaultExchangeRecipientDetailsQueryResult = {
   refetch: vi.fn(async () => undefined),
 };
 
+const defaultExchangeGroupsQueryResult = {
+  groups: [],
+  appliedKind: 'all',
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  errorPresentation: null,
+  refetch: vi.fn(async () => undefined),
+};
+
+const defaultGroupMembershipsQueryResult = {
+  member: null,
+  groups: [],
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  errorPresentation: null,
+  hasData: false,
+  refetch: vi.fn(async () => undefined),
+};
+
 describe('DirectoryScreen exchange recipient details', () => {
   beforeEach(() => {
     useAppMock.mockReset();
@@ -187,6 +229,10 @@ describe('DirectoryScreen exchange recipient details', () => {
     useContactDetailsQueryMock.mockReset();
     useGuestDetailsQueryMock.mockReset();
     useExchangeRecipientDetailsQueryMock.mockReset();
+    useExchangeGroupsQueryMock.mockReset();
+    useAddGroupMembersMutationMock.mockReset();
+    useRemoveGroupMembersMutationMock.mockReset();
+    useGroupMembershipsQueryMock.mockReset();
     useCreateContactMutationMock.mockReset();
     useUpdateContactCompanyMutationMock.mockReset();
     useInviteGuestMutationMock.mockReset();
@@ -228,6 +274,10 @@ describe('DirectoryScreen exchange recipient details', () => {
     useContactDetailsQueryMock.mockReturnValue({ ...defaultContactDetailsQueryResult });
     useGuestDetailsQueryMock.mockReturnValue({ ...defaultGuestDetailsQueryResult });
     useExchangeRecipientDetailsQueryMock.mockReturnValue({ ...defaultExchangeRecipientDetailsQueryResult });
+    useExchangeGroupsQueryMock.mockReturnValue({ ...defaultExchangeGroupsQueryResult });
+    useAddGroupMembersMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
+    useRemoveGroupMembersMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
+    useGroupMembershipsQueryMock.mockReturnValue({ ...defaultGroupMembershipsQueryResult });
     useCreateContactMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
     useUpdateContactCompanyMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
     useInviteGuestMutationMock.mockReturnValue({ mutateAsync: vi.fn() });
