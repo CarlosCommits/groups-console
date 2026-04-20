@@ -7,6 +7,7 @@ import type { ExchangeRecipientGetDetailsPayload, ExchangeRecipientGetDetailsRes
 import type { GroupMemberSelectionRef } from '@/shared/contracts/exchange';
 import type { GroupMemberWriteRef } from '@/shared/contracts/exchange';
 import type { GroupsAddMembersResult } from '@/shared/contracts/exchange';
+import type { GroupsGetMembershipsResult } from '@/shared/contracts/exchange';
 import type { GroupsGetMembersResult } from '@/shared/contracts/exchange';
 import type { GroupsRemoveMembersResult } from '@/shared/contracts/exchange';
 import type { GraphConnectionStatus } from '@/shared/contracts/graph';
@@ -44,6 +45,7 @@ declare global {
       };
       groups: {
         getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
+        getMemberships: (member: GroupMemberSelectionRef) => Promise<GroupsGetMembershipsResult>;
         addMembers: (
           group: ExchangeGroupRef,
           members: GroupMemberSelectionRef[],

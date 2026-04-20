@@ -65,6 +65,10 @@ vi.mock('@/main/exchange/get-recipient-details', () => ({
   getExchangeRecipientDetails: vi.fn(),
 }));
 
+vi.mock('@/main/exchange/get-group-memberships', () => ({
+  getGroupMemberships: vi.fn(),
+}));
+
 vi.mock('@/main/graph/invite-guest-user', () => ({
   inviteGuestUser: vi.fn(),
 }));
@@ -78,6 +82,7 @@ vi.mock('@/main/recipients/recipient-directory', () => ({
 
 import { readSystemLogEvents, writeOperationalLog, writeSystemLogEvent } from '@/main/logging';
 import { createContact } from '@/main/exchange/create-contact';
+import { getGroupMemberships } from '@/main/exchange/get-group-memberships';
 import { getExchangeRecipientDetails } from '@/main/exchange/get-recipient-details';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
@@ -463,6 +468,72 @@ describe('registerIpcHandlers', () => {
         backendOwner: 'exchange',
       }),
     );
+  });
+
+  it('routes groups.getMemberships through the shared handler', async () => {
+    vi.mocked(getGroupMemberships).mockResolvedValue({
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+      items: [
+        {
+          objectId: 'group-1',
+          exchangeIdentity: 'finance-group',
+          displayName: 'Finance Distribution',
+          alias: 'finance',
+          primaryEmail: 'finance@example.com',
+          groupKind: 'distributionList',
+          managedByDisplayNames: [],
+          whenChangedUtc: null,
+        },
+      ],
+    });
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-7',
+        command: 'groups.getMemberships',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          member: {
+            kind: 'exchangeRecipient',
+            exchangeIdentity: 'jane@example.com',
+            objectId: 'recipient-1',
+            primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example',
+          },
+        },
+      },
+    );
+
+    expect(getGroupMemberships).toHaveBeenCalledWith({
+      member: {
+        kind: 'exchangeRecipient',
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+        displayName: 'Jane Example',
+      },
+    });
+    expect(response).toMatchObject({
+      success: true,
+      data: {
+        member: {
+          exchangeIdentity: 'jane@example.com',
+        },
+        items: [
+          {
+            exchangeIdentity: 'finance-group',
+          },
+        ],
+      },
+    });
   });
 
   it('reads mailbox details through the exchange recipient detail route', async () => {
