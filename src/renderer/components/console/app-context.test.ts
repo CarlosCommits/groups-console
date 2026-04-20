@@ -2,8 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
+import type { ProgressEvent } from "@/shared/contracts/command";
 
-import { getShellConnectionBoundary, type ShellState } from "./app-context";
+import {
+  applyMembershipMatrixProgress,
+  createGeneratingMembershipMatrixState,
+  createMembershipMatrixErrorState,
+  createMembershipMatrixSuccessState,
+  getShellConnectionBoundary,
+  initialMembershipMatrixGenerationState,
+  type ShellState,
+} from "./app-context";
 
 function makeExchangeConnection(
   overrides: Partial<ExchangeConnectionStatus> = {},
@@ -90,5 +99,100 @@ describe("getShellConnectionBoundary", () => {
     });
 
     expect(getShellConnectionBoundary(next)).not.toBe(getShellConnectionBoundary(previous));
+  });
+});
+
+describe("membership matrix generation state", () => {
+  it("creates the expected generating state", () => {
+    expect(createGeneratingMembershipMatrixState("distributionList")).toEqual({
+      requestedKind: "distributionList",
+      phase: "generating",
+      progressMessage: "Starting…",
+      progressPercent: 0,
+      result: null,
+      error: null,
+    });
+  });
+
+  it("applies progress updates without losing existing percent when omitted", () => {
+    const progressEvent: ProgressEvent = {
+      requestId: "req-1",
+      phase: "executing",
+      message: "Reading members.",
+      percent: 42,
+    };
+
+    const next = applyMembershipMatrixProgress(
+      createGeneratingMembershipMatrixState("mailEnabledSecurityGroup"),
+      progressEvent,
+    );
+    expect(next).toEqual({
+      requestedKind: "mailEnabledSecurityGroup",
+      phase: "generating",
+      progressMessage: "Reading members.",
+      progressPercent: 42,
+      result: null,
+      error: null,
+    });
+
+    const withoutPercent = applyMembershipMatrixProgress(next, {
+      requestId: "req-1",
+      phase: "verifying",
+      message: "Building workbook.",
+    });
+
+    expect(withoutPercent.progressPercent).toBe(42);
+    expect(withoutPercent.progressMessage).toBe("Building workbook.");
+  });
+
+  it("creates terminal success and error states", () => {
+    const successState = createMembershipMatrixSuccessState({
+      appliedKind: "distributionList",
+      outputPath: "C:/Reports/membership-matrix.xlsx",
+      generatedAt: "2026-04-20T02:00:00.000Z",
+      summary: {
+        groupCount: 2,
+        recipientCount: 5,
+        membershipCount: 8,
+      },
+    }, "distributionList");
+
+    expect(successState).toEqual({
+      requestedKind: "distributionList",
+      phase: "success",
+      progressMessage: "",
+      progressPercent: 100,
+      result: {
+        appliedKind: "distributionList",
+        outputPath: "C:/Reports/membership-matrix.xlsx",
+        generatedAt: "2026-04-20T02:00:00.000Z",
+        summary: {
+          groupCount: 2,
+          recipientCount: 5,
+          membershipCount: 8,
+        },
+      },
+      error: null,
+    });
+
+    expect(createMembershipMatrixErrorState("Report generation failed.", "all")).toEqual({
+      requestedKind: "all",
+      phase: "error",
+      progressMessage: "",
+      progressPercent: 0,
+      result: null,
+      error: "Report generation failed.",
+    });
+  });
+
+  it("keeps idle state fully cleared", () => {
+    expect(initialMembershipMatrixGenerationState).toEqual({
+      requestedKind: null,
+      phase: "idle",
+      progressMessage: "",
+      progressPercent: 0,
+      result: null,
+      error: null,
+    });
   });
 });

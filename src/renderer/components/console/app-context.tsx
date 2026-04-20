@@ -10,6 +10,11 @@ import {
 import type { SessionStatusSchema } from "@/shared/contracts/session";
 import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
+import type {
+  ReportGroupKind,
+  ReportsGenerateMembershipMatrixResult,
+} from "@/shared/contracts/reports";
+import type { ProgressEvent } from "@/shared/contracts/command";
 import { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
 import { purgeAppQueryCacheForConnectionBoundary } from "@/renderer/lib/query-client";
 
@@ -36,6 +41,80 @@ export interface ShellState {
   loadError: string | null;
 }
 
+export type MembershipMatrixGenerationPhase = "idle" | "generating" | "success" | "error";
+
+export interface MembershipMatrixGenerationState {
+  requestedKind: ReportGroupKind | null;
+  phase: MembershipMatrixGenerationPhase;
+  progressMessage: string;
+  progressPercent: number;
+  result: ReportsGenerateMembershipMatrixResult | null;
+  error: string | null;
+}
+
+export const initialMembershipMatrixGenerationState: MembershipMatrixGenerationState = {
+  requestedKind: null,
+  phase: "idle",
+  progressMessage: "",
+  progressPercent: 0,
+  result: null,
+  error: null,
+};
+
+export function createGeneratingMembershipMatrixState(
+  requestedKind: ReportGroupKind,
+): MembershipMatrixGenerationState {
+  return {
+    requestedKind,
+    phase: "generating",
+    progressMessage: "Starting…",
+    progressPercent: 0,
+    result: null,
+    error: null,
+  };
+}
+
+export function applyMembershipMatrixProgress(
+  previous: MembershipMatrixGenerationState,
+  event: ProgressEvent,
+): MembershipMatrixGenerationState {
+  return {
+    ...previous,
+    phase: "generating",
+    progressMessage: event.message,
+    progressPercent: event.percent ?? previous.progressPercent,
+    error: null,
+  };
+}
+
+export function createMembershipMatrixSuccessState(
+  result: ReportsGenerateMembershipMatrixResult,
+  requestedKind: ReportGroupKind,
+): MembershipMatrixGenerationState {
+  return {
+    requestedKind,
+    phase: "success",
+    progressMessage: "",
+    progressPercent: 100,
+    result,
+    error: null,
+  };
+}
+
+export function createMembershipMatrixErrorState(
+  error: string,
+  requestedKind: ReportGroupKind | null,
+): MembershipMatrixGenerationState {
+  return {
+    requestedKind,
+    phase: "error",
+    progressMessage: "",
+    progressPercent: 0,
+    result: null,
+    error,
+  };
+}
+
 interface AppContextValue {
   currentScreen: Screen;
   setCurrentScreen: (screen: Screen) => void;
@@ -43,12 +122,15 @@ interface AppContextValue {
   refreshShellState: () => Promise<void>;
   pendingAction: PendingAction;
   actionErrors: ActionErrors;
+  membershipMatrixGeneration: MembershipMatrixGenerationState;
   exchangeUpn: string;
   setExchangeUpn: (upn: string) => void;
   connectGraph: () => Promise<void>;
   disconnectGraph: () => Promise<void>;
   connectExchange: () => Promise<void>;
   disconnectExchange: () => Promise<void>;
+  generateMembershipMatrix: (kind: ReportGroupKind) => Promise<void>;
+  clearMembershipMatrixGeneration: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -74,10 +156,13 @@ function requireBridge(service: string): boolean {
   if (service === "session" && !window.radApp.session) {
     return false;
   }
+  if (service === "reports" && !window.radApp.reports) {
+    return false;
+  }
   return true;
 }
 
-function requireServices(...services: Array<"session" | "graph" | "exchange">): boolean {
+function requireServices(...services: Array<"session" | "graph" | "exchange" | "reports">): boolean {
   return services.every((service) => requireBridge(service));
 }
 
@@ -117,6 +202,9 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionErrors, setActionErrors] = useState<ActionErrors>({});
+  const [membershipMatrixGeneration, setMembershipMatrixGeneration] = useState<MembershipMatrixGenerationState>(
+    initialMembershipMatrixGenerationState,
+  );
 
   const exchangeUpnPreset =
     shell.exchangeConnection?.userPrincipalName ??
@@ -317,6 +405,40 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [clearError, refreshShellState]);
 
+  const generateMembershipMatrix = useCallback(async (kind: ReportGroupKind) => {
+    if (!requireBridge("reports")) {
+      setMembershipMatrixGeneration(
+        createMembershipMatrixErrorState(
+          "Application bridge is not available. Please restart the application.",
+          kind,
+        ),
+      );
+      return;
+    }
+
+    setMembershipMatrixGeneration(createGeneratingMembershipMatrixState(kind));
+
+    try {
+      const result = await window.radApp.reports.generateMembershipMatrix(
+        { kind },
+        (event: ProgressEvent) => {
+          setMembershipMatrixGeneration((previous) =>
+            applyMembershipMatrixProgress(previous, event),
+          );
+        },
+      );
+
+      setMembershipMatrixGeneration(createMembershipMatrixSuccessState(result, kind));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Report generation failed.";
+      setMembershipMatrixGeneration(createMembershipMatrixErrorState(message, kind));
+    }
+  }, []);
+
+  const clearMembershipMatrixGeneration = useCallback(() => {
+    setMembershipMatrixGeneration(initialMembershipMatrixGenerationState);
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -326,12 +448,15 @@ export function AppProvider({ children }: AppProviderProps) {
         refreshShellState,
         pendingAction,
         actionErrors,
+        membershipMatrixGeneration,
         exchangeUpn,
         setExchangeUpn: handleSetExchangeUpn,
         connectGraph,
         disconnectGraph,
         connectExchange,
         disconnectExchange,
+        generateMembershipMatrix,
+        clearMembershipMatrixGeneration,
       }}
     >
       {children}
