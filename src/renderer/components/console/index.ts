@@ -7,7 +7,13 @@ export { StatCard } from "./stat-card";
 export { StatusBadge, ConnectionStatus } from "./status-badge";
 export { TableToolbar, FilterSegmentedControl, TableFilterButton } from "./table-toolbar";
 export { AppProvider, useApp } from "./app-context";
-export type { ShellState, PendingAction, ActionErrors } from "./app-context";
+export type {
+  ShellState,
+  PendingAction,
+  ActionErrors,
+  MembershipMatrixGenerationPhase,
+  MembershipMatrixGenerationState,
+} from "./app-context";
 export { deriveShellReadiness, deriveAuthSetupStep } from "./shell-readiness";
 export type { ReadinessLevel, ShellReadinessSummary, AuthSetupStep } from "./shell-readiness";
 export { ShellAuthPanel } from "./shell-auth-panel";
