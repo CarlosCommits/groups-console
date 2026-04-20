@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import {
   Plus,
   Loader2,
@@ -27,6 +27,8 @@ import { Input } from "@/renderer/components/ui/input";
 import { Checkbox } from "@/renderer/components/ui/checkbox";
 import { Alert, AlertTitle, AlertDescription } from "@/renderer/components/ui/alert";
 import { Separator } from "@/renderer/components/ui/separator";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/renderer/components/ui/card";
+import { ScrollArea } from "@/renderer/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -300,6 +302,38 @@ function getUpdateMode(
 ): "contact" | "guest" {
   if (item.recipientType === "mailContact") return "contact";
   return "guest";
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex justify-between py-1.5">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs text-foreground truncate max-w-[60%]">{value}</span>
+    </div>
+  );
+}
+
+function ProfileHeader({ displayName, email, badgeClassName, badgeLabel, avatarKey }: {
+  displayName: string;
+  email: string;
+  badgeClassName: string;
+  badgeLabel: string;
+  avatarKey: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
+      <Avatar className="size-8 text-xs">
+        <AvatarFallback className={avatarColorFor(avatarKey)}>
+          {getInitials(displayName)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-foreground truncate">{displayName}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{email}</p>
+      </div>
+      <Badge className={cn("shrink-0", badgeClassName)}>{badgeLabel}</Badge>
+    </div>
+  );
 }
 
 export function DirectoryScreen() {
@@ -1444,28 +1478,30 @@ export function DirectoryScreen() {
           </DialogHeader>
 
           {detailTarget && (
-            <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="mt-2 flex min-h-0 flex-1 flex-col gap-4">
-              <TabsList className="grid w-full grid-cols-2">
+            <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="mt-2 flex min-h-0 flex-1 flex-col">
+              <TabsList variant="line" className="w-full">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="groups">Groups</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details" className="mt-0 flex-1 overflow-y-auto py-2">
+              <TabsContent value="details" className="mt-0 flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  <div className="flex flex-col gap-4 p-1">
           {detailPending ? (
-            <div className="flex-1 flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Loader2 className="size-8 text-[var(--color-primary)] mx-auto mb-4 animate-spin" />
-                <p className="text-sm text-slate-500">Loading details\u2026</p>
+                <p className="text-sm text-muted-foreground">Loading details\u2026</p>
               </div>
             </div>
           ) : detailError ? (
-            <div className="flex-1 flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <AlertCircle className="size-10 text-[var(--color-error)] mx-auto mb-4" />
-                <h2 className="text-lg font-bold font-headline text-slate-700 mb-2">
+                <h2 className="text-lg font-bold font-headline text-foreground mb-2">
                   Failed to Load Details
                 </h2>
-                <p className="text-sm text-slate-500 max-w-sm mb-4">
+                <p className="text-sm text-muted-foreground max-w-sm mb-4">
                   {detailError}
                 </p>
                 <Button
@@ -1479,374 +1515,242 @@ export function DirectoryScreen() {
               </div>
             </div>
           ) : detailResult ? (
-            <div className="flex flex-col gap-4 py-2">
+            <>
               {detailCanUpdateCompany && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-800">Company name</p>
-                  <p className="mb-3 text-xs text-slate-500">
-                    Update the company value directly from this dialog.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      className="bg-white text-xs"
-                      value={updateCompanyName}
-                      onChange={(e) => setUpdateCompanyName(e.target.value)}
-                      disabled={updatePending}
-                      placeholder="Enter company name"
-                    />
-                    <Button
-                      size="sm"
-                      disabled={updatePending || updateCompanyName.trim().length === 0}
-                      onClick={() => {
-                        void handleUpdateSubmit();
-                      }}
-                    >
-                      {updatePending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
-                      Save
-                    </Button>
-                  </div>
-                  {updateResult && (
-                    <p className="mt-2 text-xs text-emerald-700">
-                      {updateResult.data.verification.detail}
-                    </p>
-                  )}
-                  {updateError && (
-                    <p className="mt-2 text-xs text-[var(--color-error)]">{updateError}</p>
-                  )}
-                </div>
+                <Card className="bg-muted/30 border-border/50">
+                  <CardHeader className="p-4 pb-2 space-y-1">
+                    <CardTitle className="text-sm">Company name</CardTitle>
+                    <CardDescription className="text-xs">
+                      Update the company value directly from this dialog.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-2">
+                    <div className="flex gap-2">
+                      <Input
+                        className="bg-background text-xs"
+                        value={updateCompanyName}
+                        onChange={(e) => setUpdateCompanyName(e.target.value)}
+                        disabled={updatePending}
+                        placeholder="Enter company name"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={updatePending || updateCompanyName.trim().length === 0}
+                        onClick={() => {
+                          void handleUpdateSubmit();
+                        }}
+                      >
+                        {updatePending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
+                        Save
+                      </Button>
+                    </div>
+                    {updateResult && (
+                      <p className="mt-2 text-xs text-emerald-700">
+                        {updateResult.data.verification.detail}
+                      </p>
+                    )}
+                    {updateError && (
+                      <p className="mt-2 text-xs text-[var(--color-error)]">{updateError}</p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
               {detailResult.mode === "contact" ? (
                 <>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
-                    <Avatar className="w-8 h-8 text-xs">
-                      <AvatarFallback className={avatarColorFor(detailTarget?.stableKey ?? "")}>
-                        {getInitials(detailResult.data.displayName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-800 truncate">
-                        {detailResult.data.displayName}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
-                      </p>
-                    </div>
-                    <Badge className={cn("shrink-0", typeBadgeClass("mailContact"))}>
-                      CONTACT
-                    </Badge>
-                  </div>
-                  <div className="space-y-0">
+                  <ProfileHeader
+                    displayName={detailResult.data.displayName}
+                    email={detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
+                    badgeClassName={typeBadgeClass("mailContact")}
+                    badgeLabel="CONTACT"
+                    avatarKey={detailTarget?.stableKey ?? ""}
+                  />
+                  <div className="divide-y divide-slate-100">
                     {detailResult.data.primaryEmail && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.primaryEmail}</span>
-                      </div>
+                      <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                     )}
                     {detailResult.data.alias && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Alias</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.alias}</span>
-                      </div>
+                      <DetailRow label="Alias" value={detailResult.data.alias} />
                     )}
                     {detailResult.data.companyName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Company</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.companyName}</span>
-                      </div>
+                      <DetailRow label="Company" value={detailResult.data.companyName} />
                     )}
                     {detailResult.data.firstName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">First Name</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.firstName}</span>
-                      </div>
+                      <DetailRow label="First Name" value={detailResult.data.firstName} />
                     )}
                     {detailResult.data.lastName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last Name</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.lastName}</span>
-                      </div>
+                      <DetailRow label="Last Name" value={detailResult.data.lastName} />
                     )}
                     {detailResult.data.title && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Title</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.title}</span>
-                      </div>
+                      <DetailRow label="Title" value={detailResult.data.title} />
                     )}
                     {detailResult.data.department && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.department}</span>
-                      </div>
+                      <DetailRow label="Department" value={detailResult.data.department} />
                     )}
                     {detailResult.data.phone && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Phone</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.phone}</span>
-                      </div>
+                      <DetailRow label="Phone" value={detailResult.data.phone} />
                     )}
                     {detailResult.data.office && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Office</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.office}</span>
-                      </div>
+                      <DetailRow label="Office" value={detailResult.data.office} />
                     )}
                     {detailResult.data.streetAddress && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Street Address</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.streetAddress}</span>
-                      </div>
+                      <DetailRow label="Street Address" value={detailResult.data.streetAddress} />
                     )}
                     {detailResult.data.city && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">City</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.city}</span>
-                      </div>
+                      <DetailRow label="City" value={detailResult.data.city} />
                     )}
                     {detailResult.data.stateOrProvince && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">State/Province</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.stateOrProvince}</span>
-                      </div>
+                      <DetailRow label="State/Province" value={detailResult.data.stateOrProvince} />
                     )}
                     {detailResult.data.postalCode && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Postal Code</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.postalCode}</span>
-                      </div>
+                      <DetailRow label="Postal Code" value={detailResult.data.postalCode} />
                     )}
                     {detailResult.data.countryOrRegion && (
-                      <div className="flex justify-between py-1.5">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Country/Region</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.countryOrRegion}</span>
-                      </div>
+                      <DetailRow label="Country/Region" value={detailResult.data.countryOrRegion} />
                     )}
                   </div>
                 </>
               ) : detailResult.mode === "guest" ? (
                 <>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
-                    <Avatar className="w-8 h-8 text-xs">
-                      <AvatarFallback className={avatarColorFor(detailTarget?.stableKey ?? "")}>
-                        {getInitials(detailResult.data.displayName ?? "")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-800 truncate">
-                        {detailResult.data.displayName ?? "\u2014"}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {detailResult.data.primaryEmail ?? detailResult.data.userPrincipalName ?? "\u2014"}
-                      </p>
-                    </div>
-                    <Badge className={cn("shrink-0", typeBadgeClass("guestUser"))}>
-                      GUEST
-                    </Badge>
-                  </div>
-                  <div className="space-y-0">
+                  <ProfileHeader
+                    displayName={detailResult.data.displayName ?? "\u2014"}
+                    email={detailResult.data.primaryEmail ?? detailResult.data.userPrincipalName ?? "\u2014"}
+                    badgeClassName={typeBadgeClass("guestUser")}
+                    badgeLabel="GUEST"
+                    avatarKey={detailTarget?.stableKey ?? ""}
+                  />
+                  <div className="divide-y divide-slate-100">
                     {detailResult.data.primaryEmail && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.primaryEmail}</span>
-                      </div>
+                      <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                     )}
                     {detailResult.data.userPrincipalName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">UPN</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.userPrincipalName}</span>
-                      </div>
+                      <DetailRow label="UPN" value={detailResult.data.userPrincipalName} />
                     )}
                     {detailResult.data.companyName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Company</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.companyName}</span>
-                      </div>
+                      <DetailRow label="Company" value={detailResult.data.companyName} />
                     )}
                     {detailResult.data.givenName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">First Name</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.givenName}</span>
-                      </div>
+                      <DetailRow label="First Name" value={detailResult.data.givenName} />
                     )}
                     {detailResult.data.surname && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last Name</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.surname}</span>
-                      </div>
+                      <DetailRow label="Last Name" value={detailResult.data.surname} />
                     )}
                     {detailResult.data.jobTitle && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Job Title</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.jobTitle}</span>
-                      </div>
+                      <DetailRow label="Job Title" value={detailResult.data.jobTitle} />
                     )}
                     {detailResult.data.department && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.department}</span>
-                      </div>
+                      <DetailRow label="Department" value={detailResult.data.department} />
                     )}
                     {detailResult.data.mobilePhone && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Mobile Phone</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.mobilePhone}</span>
-                      </div>
+                      <DetailRow label="Mobile Phone" value={detailResult.data.mobilePhone} />
                     )}
                     {detailResult.data.officeLocation && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Office Location</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.officeLocation}</span>
-                      </div>
+                      <DetailRow label="Office Location" value={detailResult.data.officeLocation} />
                     )}
                     {detailResult.data.preferredLanguage && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Preferred Language</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.preferredLanguage}</span>
-                      </div>
+                      <DetailRow label="Preferred Language" value={detailResult.data.preferredLanguage} />
                     )}
-                    <div className="flex justify-between py-1.5 border-b border-slate-100">
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</span>
-                      <span className={cn(
-                        "text-xs font-medium",
-                        detailResult.data.externalUserState === "Accepted"
-                          ? "text-emerald-700"
-                          : detailResult.data.externalUserState === "PendingAcceptance"
-                            ? "text-amber-700"
-                            : "text-slate-500",
-                      )}>
-                        {detailResult.data.externalUserState === "Accepted"
-                          ? "Accepted"
-                          : detailResult.data.externalUserState === "PendingAcceptance"
-                            ? "Pending Acceptance"
-                            : "Unknown"}
-                      </span>
-                    </div>
-                    {detailResult.data.accountEnabled !== null && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Account Enabled</span>
+                    <DetailRow
+                      label="Status"
+                      value={
                         <span className={cn(
                           "text-xs font-medium",
-                          detailResult.data.accountEnabled ? "text-emerald-700" : "text-red-600",
+                          detailResult.data.externalUserState === "Accepted"
+                            ? "text-emerald-700"
+                            : detailResult.data.externalUserState === "PendingAcceptance"
+                              ? "text-amber-700"
+                              : "text-muted-foreground",
                         )}>
-                          {detailResult.data.accountEnabled ? "Yes" : "No"}
+                          {detailResult.data.externalUserState === "Accepted"
+                            ? "Accepted"
+                            : detailResult.data.externalUserState === "PendingAcceptance"
+                              ? "Pending Acceptance"
+                              : "Unknown"}
                         </span>
-                      </div>
+                      }
+                    />
+                    {detailResult.data.accountEnabled !== null && (
+                      <DetailRow
+                        label="Account Enabled"
+                        value={
+                          <span className={cn(
+                            "text-xs font-medium",
+                            detailResult.data.accountEnabled ? "text-emerald-700" : "text-red-600",
+                          )}>
+                            {detailResult.data.accountEnabled ? "Yes" : "No"}
+                          </span>
+                        }
+                      />
                     )}
                     {detailResult.data.createdDateTime && (
-                      <div className="flex justify-between py-1.5">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created</span>
-                        <span className="text-xs text-slate-800">
-                          {new Date(detailResult.data.createdDateTime).toLocaleDateString(undefined, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                      </div>
+                      <DetailRow
+                        label="Created"
+                        value={new Date(detailResult.data.createdDateTime).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      />
                     )}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
-                    <Avatar className="w-8 h-8 text-xs">
-                      <AvatarFallback className={avatarColorFor(detailTarget?.stableKey ?? "")}>
-                        {getInitials(detailResult.data.displayName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-800 truncate">
-                        {detailResult.data.displayName}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
-                      </p>
-                    </div>
-                    <Badge className={cn("shrink-0", typeBadgeClass(detailResult.data.recipientType))}>
-                      {TYPE_LABELS[detailResult.data.recipientType]}
-                    </Badge>
-                  </div>
-                  <div className="space-y-0">
+                  <ProfileHeader
+                    displayName={detailResult.data.displayName}
+                    email={detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
+                    badgeClassName={typeBadgeClass(detailResult.data.recipientType)}
+                    badgeLabel={TYPE_LABELS[detailResult.data.recipientType]}
+                    avatarKey={detailTarget?.stableKey ?? ""}
+                  />
+                  <div className="divide-y divide-slate-100">
                     {detailResult.data.primaryEmail && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.primaryEmail}</span>
-                      </div>
+                      <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                     )}
                     {detailResult.data.alias && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Alias</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.alias}</span>
-                      </div>
+                      <DetailRow label="Alias" value={detailResult.data.alias} />
                     )}
                     {detailResult.data.userPrincipalName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">UPN</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.userPrincipalName}</span>
-                      </div>
+                      <DetailRow label="UPN" value={detailResult.data.userPrincipalName} />
                     )}
                     {detailResult.data.externalEmailAddress && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">External Target</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.externalEmailAddress}</span>
-                      </div>
+                      <DetailRow label="External Target" value={detailResult.data.externalEmailAddress} />
                     )}
                     {detailResult.data.companyName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Company</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.companyName}</span>
-                      </div>
+                      <DetailRow label="Company" value={detailResult.data.companyName} />
                     )}
                     {detailResult.data.firstName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">First Name</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.firstName}</span>
-                      </div>
+                      <DetailRow label="First Name" value={detailResult.data.firstName} />
                     )}
                     {detailResult.data.lastName && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last Name</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.lastName}</span>
-                      </div>
+                      <DetailRow label="Last Name" value={detailResult.data.lastName} />
                     )}
                     {detailResult.data.title && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Title</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.title}</span>
-                      </div>
+                      <DetailRow label="Title" value={detailResult.data.title} />
                     )}
                     {detailResult.data.department && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.department}</span>
-                      </div>
+                      <DetailRow label="Department" value={detailResult.data.department} />
                     )}
                     {detailResult.data.phone && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Phone</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.phone}</span>
-                      </div>
+                      <DetailRow label="Phone" value={detailResult.data.phone} />
                     )}
                     {detailResult.data.office && (
-                      <div className="flex justify-between py-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Office</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.office}</span>
-                      </div>
+                      <DetailRow label="Office" value={detailResult.data.office} />
                     )}
                     {detailResult.data.recipientTypeDetails && (
-                      <div className="flex justify-between py-1.5">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type Details</span>
-                        <span className="text-xs text-slate-800 truncate max-w-[60%]">{detailResult.data.recipientTypeDetails}</span>
-                      </div>
+                      <DetailRow label="Type Details" value={detailResult.data.recipientTypeDetails} />
                     )}
                   </div>
                 </>
               )}
-            </div>
+            </>
           ) : null}
+                  </div>
+                </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="groups" className="mt-0 flex-1 overflow-y-auto py-2">
-                <div className="flex flex-col gap-4">
+<TabsContent value="groups" className="mt-0 flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  <div className="flex flex-col gap-4 p-1">
                   {membershipsQuery.error && (
                     <Alert variant="destructive">
                       <AlertCircle className="size-4" />
@@ -1939,54 +1843,57 @@ export function DirectoryScreen() {
                     </div>
                   ) : membershipsQuery.error ? null : (
                     <>
-                      <div className="rounded-lg border border-slate-200 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800">Current groups</p>
-                            <p className="text-xs text-slate-500">
-                              Review memberships and remove this person from a group.
+                      <Card className="border-border/50">
+                        <CardHeader className="p-4 pb-3 space-y-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <CardTitle className="text-sm">Current groups</CardTitle>
+                              <CardDescription className="text-xs">
+                                Review memberships and remove this person from a group.
+                              </CardDescription>
+                            </div>
+                            <Badge variant="secondary">{currentMemberships.length}</Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                          {currentMemberships.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              This person is not currently in any groups.
                             </p>
-                          </div>
-                          <Badge variant="secondary">{currentMemberships.length}</Badge>
-                        </div>
-
-                        {currentMemberships.length === 0 ? (
-                          <p className="text-sm text-slate-500">
-                            This person is not currently in any groups.
-                          </p>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            {currentMemberships.map((group) => (
-                              <div
-                                key={group.exchangeIdentity}
-                                className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-slate-800">
-                                    {group.displayName}
-                                  </p>
-                                  <p className="truncate text-[11px] text-slate-500">
-                                    {group.primaryEmail ?? group.exchangeIdentity}
-                                  </p>
-                                </div>
-                                <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setRemoveGroupError(null);
-                                    setRemoveGroupResult(null);
-                                    setRemoveGroupTarget(group);
-                                  }}
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              {currentMemberships.map((group) => (
+                                <div
+                                  key={group.exchangeIdentity}
+                                  className="flex items-center gap-3 rounded-md border border-border/50 px-3 py-2"
                                 >
-                                  <UserMinus className="mr-1 size-3.5" />
-                                  Remove
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-semibold text-foreground">
+                                      {group.displayName}
+                                    </p>
+                                    <p className="truncate text-[11px] text-muted-foreground">
+                                      {group.primaryEmail ?? group.exchangeIdentity}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setRemoveGroupError(null);
+                                      setRemoveGroupResult(null);
+                                      setRemoveGroupTarget(group);
+                                    }}
+                                  >
+                                    <UserMinus className="mr-1 size-3.5" />
+                                    Remove
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
 
                       {allGroupsError ? (
                         <Alert variant="destructive">
@@ -2010,133 +1917,139 @@ export function DirectoryScreen() {
                           </AlertDescription>
                         </Alert>
                       ) : (
-                      <div className="rounded-lg border border-slate-200 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800">Add to groups</p>
-                            <p className="text-xs text-slate-500">
-                              Select multiple groups and add this person in one pass.
-                            </p>
+                      <Card className="border-border/50">
+                        <CardHeader className="p-4 pb-3 space-y-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <CardTitle className="text-sm">Add to groups</CardTitle>
+                              <CardDescription className="text-xs">
+                                Select multiple groups and add this person in one pass.
+                              </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {selectedGroupsCount > 0 && (
+                                <span className="text-xs font-medium text-[var(--color-primary)]">
+                                  {visibleSelectedGroupsCount}/{selectedGroupsCount} visible selected
+                                </span>
+                              )}
+                              <Badge variant="secondary">
+                                {groupFilterText.trim()
+                                  ? `${filteredAvailableGroups.length}/${availableGroups.length}`
+                                  : availableGroups.length}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {selectedGroupsCount > 0 && (
-                              <span className="text-xs font-medium text-[var(--color-primary)]">
-                                {visibleSelectedGroupsCount}/{selectedGroupsCount} visible selected
-                              </span>
-                            )}
-                            <Badge variant="secondary">
-                              {groupFilterText.trim()
-                                ? `${filteredAvailableGroups.length}/${availableGroups.length}`
-                                : availableGroups.length}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="mb-3 flex gap-2">
-                          <Input
-                            className="text-xs"
-                            placeholder="Filter available groups..."
-                            value={groupFilterText}
-                            onChange={(e) => setGroupFilterText(e.target.value)}
-                            disabled={addGroupPending}
-                          />
-                          <Button
-                            size="sm"
-                            disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
-                            onClick={() => {
-                              void handleAddGroups();
-                            }}
-                          >
-                            {addGroupPending ? (
-                              <Loader2 className="mr-1 size-3.5 animate-spin" />
-                            ) : (
-                              <UserPlus className="mr-1 size-3.5" />
-                            )}
-                            Add selected ({visibleSelectedGroupsCount})
-                          </Button>
-                        </div>
-
-                        {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
-                          <div className="mb-2 flex items-center justify-between text-xs">
-                            <div className="flex gap-1">
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                          <div className="flex flex-col gap-3">
+                            <div className="flex gap-2">
+                              <Input
+                                className="text-xs"
+                                placeholder="Filter available groups..."
+                                value={groupFilterText}
+                                onChange={(e) => setGroupFilterText(e.target.value)}
+                                disabled={addGroupPending}
+                              />
                               <Button
-                                variant="ghost"
                                 size="sm"
-                                className="h-6 px-2 text-xs"
-                                disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
+                                disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
                                 onClick={() => {
-                                  setSelectedGroupKeys((prev) => {
-                                    const next = new Set(prev);
-                                    for (const g of filteredAvailableGroups) {
-                                      next.add(g.exchangeIdentity);
-                                    }
-                                    return next;
-                                  });
+                                  void handleAddGroups();
                                 }}
                               >
-                                Select all filtered
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                disabled={addGroupPending || selectedGroupsCount === 0}
-                                onClick={() => setSelectedGroupKeys(new Set())}
-                              >
-                                Clear selection
+                                {addGroupPending ? (
+                                  <Loader2 className="mr-1 size-3.5 animate-spin" />
+                                ) : (
+                                  <UserPlus className="mr-1 size-3.5" />
+                                )}
+                                Add selected ({visibleSelectedGroupsCount})
                               </Button>
                             </div>
-                            <span className="text-slate-500">
-                              {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
-                              {hasHiddenSelectedGroups ? ` • ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
-                            </span>
-                          </div>
-                        )}
 
-                        {availableGroups.length === 0 ? (
-                          <p className="text-sm text-slate-500">
-                            There are no additional groups available to add.
-                          </p>
-                        ) : filteredAvailableGroups.length === 0 ? (
-                          <p className="text-sm text-slate-500">
-                            No additional groups match the current filter.
-                            {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
-                          </p>
-                        ) : (
-                          <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
-                            {filteredAvailableGroups.map((group) => (
-                              <label
-                                key={group.exchangeIdentity}
-                                className={cn(
-                                  "flex cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0 transition-colors",
-                                  selectedGroupKeys.has(group.exchangeIdentity)
-                                    ? "bg-teal-50/60"
-                                    : "hover:bg-slate-50",
-                                )}
-                              >
-                                <Checkbox
-                                  checked={selectedGroupKeys.has(group.exchangeIdentity)}
-                                  onCheckedChange={() => handleToggleGroupSelection(group.exchangeIdentity)}
-                                  disabled={addGroupPending}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-slate-800">
-                                    {group.displayName}
-                                  </p>
-                                  <p className="truncate text-[11px] text-slate-500">
-                                    {group.primaryEmail ?? group.exchangeIdentity}
-                                  </p>
+                            {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
+                                    onClick={() => {
+                                      setSelectedGroupKeys((prev) => {
+                                        const next = new Set(prev);
+                                        for (const g of filteredAvailableGroups) {
+                                          next.add(g.exchangeIdentity);
+                                        }
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    Select all filtered
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    disabled={addGroupPending || selectedGroupsCount === 0}
+                                    onClick={() => setSelectedGroupKeys(new Set())}
+                                  >
+                                    Clear selection
+                                  </Button>
                                 </div>
-                                <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
-                              </label>
-                            ))}
+                                <span className="text-muted-foreground">
+                                  {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
+                                  {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
+                                </span>
+                              </div>
+                            )}
+
+                            {availableGroups.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                There are no additional groups available to add.
+                              </p>
+                            ) : filteredAvailableGroups.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                No additional groups match the current filter.
+                                {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
+                              </p>
+                            ) : (
+                              <div className="max-h-64 overflow-y-auto rounded-md border border-border/50">
+                                {filteredAvailableGroups.map((group) => (
+                                  <label
+                                    key={group.exchangeIdentity}
+                                    className={cn(
+                                      "flex cursor-pointer items-center gap-3 border-b border-border/30 px-3 py-2 last:border-b-0 transition-colors",
+                                      selectedGroupKeys.has(group.exchangeIdentity)
+                                        ? "bg-primary/5"
+                                        : "hover:bg-muted/50",
+                                    )}
+                                  >
+                                    <Checkbox
+                                      checked={selectedGroupKeys.has(group.exchangeIdentity)}
+                                      onCheckedChange={() => handleToggleGroupSelection(group.exchangeIdentity)}
+                                      disabled={addGroupPending}
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-semibold text-foreground">
+                                        {group.displayName}
+                                      </p>
+                                      <p className="truncate text-[11px] text-muted-foreground">
+                                        {group.primaryEmail ?? group.exchangeIdentity}
+                                      </p>
+                                    </div>
+                                    <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </CardContent>
+                      </Card>
                       )}
                     </>
                   )}
-                </div>
+                  </div>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           )}
