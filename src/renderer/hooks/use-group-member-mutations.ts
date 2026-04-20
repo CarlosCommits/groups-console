@@ -6,6 +6,7 @@ import {
   hasMembersRefreshableAddOutcome,
   hasMembersRefreshableRemoveOutcome,
 } from "@/renderer/components/console/group-members-mutation-outcome";
+import { invalidateGroupMembershipsQueriesForMembers } from "@/renderer/hooks/use-group-memberships";
 import { invalidateExchangeGroupsQueryForConnection } from "@/renderer/hooks/use-exchange-groups";
 import { invalidateGroupMembersQueryForGroup } from "@/renderer/hooks/use-group-members";
 import type {
@@ -47,6 +48,11 @@ export function getAddGroupMembersMutationOptions(
 
       if (hasMembersRefreshableAddOutcome(result)) {
         await invalidateGroupMembersQueryForGroup(queryClient, exchangeConnection, variables.groupRef);
+        await invalidateGroupMembershipsQueriesForMembers(
+          queryClient,
+          exchangeConnection,
+          variables.memberRefs,
+        );
       }
     },
   };
@@ -77,6 +83,11 @@ export function getRemoveGroupMembersMutationOptions(
 
       if (hasMembersRefreshableRemoveOutcome(result)) {
         await invalidateGroupMembersQueryForGroup(queryClient, exchangeConnection, variables.groupRef);
+        await invalidateGroupMembershipsQueriesForMembers(
+          queryClient,
+          exchangeConnection,
+          variables.memberRefs,
+        );
       }
     },
   };
