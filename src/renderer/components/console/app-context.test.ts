@@ -9,8 +9,10 @@ import {
   createGeneratingMembershipMatrixState,
   createMembershipMatrixErrorState,
   createMembershipMatrixSuccessState,
+  getExchangeUpnPreset,
   getShellConnectionBoundary,
   initialMembershipMatrixGenerationState,
+  resolveAutoExchangeUpnAfterGraphConnect,
   type ShellState,
 } from "./app-context";
 
@@ -194,5 +196,83 @@ describe("membership matrix generation state", () => {
       result: null,
       error: null,
     });
+  });
+});
+
+describe("getExchangeUpnPreset", () => {
+  it("prefers the Exchange connection user principal name", () => {
+    const shell = makeShell({
+      exchangeConnection: makeExchangeConnection({ userPrincipalName: "exchange@example.com" }),
+      graphConnection: makeGraphConnection({ accountUsername: "graph@example.com" }),
+    });
+
+    expect(getExchangeUpnPreset(shell)).toBe("exchange@example.com");
+  });
+
+  it("falls back to the Graph account username when Exchange is disconnected", () => {
+    const shell = makeShell({
+      exchangeConnection: makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+      graphConnection: makeGraphConnection({ accountUsername: "graph@example.com" }),
+    });
+
+    expect(getExchangeUpnPreset(shell)).toBe("graph@example.com");
+  });
+});
+
+describe("resolveAutoExchangeUpnAfterGraphConnect", () => {
+  it("uses the Graph account username when the user has not edited the Exchange UPN", () => {
+    const graphResult = makeGraphConnection({ accountUsername: "graph@example.com" });
+
+    expect(
+      resolveAutoExchangeUpnAfterGraphConnect({
+        graphResult,
+        exchangeConnection: makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+        exchangeUpn: "",
+        userEditedUpn: false,
+      }),
+    ).toBe("graph@example.com");
+  });
+
+  it("preserves a user-edited Exchange UPN for the automatic connect attempt", () => {
+    const graphResult = makeGraphConnection({ accountUsername: "graph@example.com" });
+
+    expect(
+      resolveAutoExchangeUpnAfterGraphConnect({
+        graphResult,
+        exchangeConnection: makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+        exchangeUpn: " custom@example.com ",
+        userEditedUpn: true,
+      }),
+    ).toBe("custom@example.com");
+  });
+
+  it("does not auto-connect Exchange when Graph did not connect", () => {
+    const graphResult = makeGraphConnection({
+      state: "error",
+      accountUsername: "graph@example.com",
+      exchangeAlignment: "unknown",
+    });
+
+    expect(
+      resolveAutoExchangeUpnAfterGraphConnect({
+        graphResult,
+        exchangeConnection: makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+        exchangeUpn: "graph@example.com",
+        userEditedUpn: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not auto-connect Exchange when it is already connected", () => {
+    const graphResult = makeGraphConnection({ accountUsername: "graph@example.com" });
+
+    expect(
+      resolveAutoExchangeUpnAfterGraphConnect({
+        graphResult,
+        exchangeConnection: makeExchangeConnection({ state: "connected" }),
+        exchangeUpn: "graph@example.com",
+        userEditedUpn: false,
+      }),
+    ).toBeNull();
   });
 });
