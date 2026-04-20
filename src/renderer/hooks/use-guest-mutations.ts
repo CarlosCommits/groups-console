@@ -2,7 +2,10 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 
 import { invalidateGuestDetailsQuery } from "@/renderer/hooks/use-guest-details";
 import { invalidateRecipientsSearchQueryForConnection } from "@/renderer/hooks/use-recipients-search";
-import { getExchangeConnectionIdentity, getGraphConnectionIdentity } from "@/renderer/lib/query-keys";
+import {
+  getCombinedRecipientsConnectionIdentity,
+  getGraphConnectionIdentity,
+} from "@/renderer/lib/query-keys";
 import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 import type { GuestsInvitePayload, GuestsUpdateCompanyPayload } from "@/shared/contracts/guests";
@@ -20,13 +23,6 @@ type GraphConnectionIdentityInput = Pick<
 export interface UpdateGuestCompanyMutationVariables {
   payload: GuestsUpdateCompanyPayload;
   stableKey: string;
-}
-
-function getCombinedRecipientsConnectionIdentity(
-  exchangeConnection?: ExchangeConnectionIdentityInput | null,
-  graphConnection?: GraphConnectionIdentityInput | null,
-) {
-  return `${getExchangeConnectionIdentity(exchangeConnection)}|${getGraphConnectionIdentity(graphConnection)}`;
 }
 
 async function invalidateGuestMutationSearches(
