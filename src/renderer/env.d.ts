@@ -12,6 +12,7 @@ import type {
     GroupMemberSelectionRef,
     GroupMemberWriteRef,
   GroupsAddMembersResult,
+  GroupsGetMembershipsResult,
   GroupsGetMembersResult,
   GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
@@ -48,6 +49,7 @@ declare global {
       };
       groups: {
         getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
+        getMemberships: (member: GroupMemberSelectionRef) => Promise<GroupsGetMembershipsResult>;
         addMembers: (
           group: ExchangeGroupRef,
           members: GroupMemberSelectionRef[],
