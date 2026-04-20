@@ -54,6 +54,7 @@ import {
   type ExchangeRecipientGetDetailsResult,
   exchangeListGroupsResultSchema,
   groupsAddMembersResultSchema,
+  groupsGetMembershipsResultSchema,
   groupsGetMembersResultSchema,
   groupsRemoveMembersResultSchema,
   type ExchangeCapabilities,
@@ -62,6 +63,7 @@ import {
   type GroupMemberSelectionRef,
   type GroupMemberWriteRef,
   type GroupsAddMembersResult,
+  type GroupsGetMembershipsResult,
   type GroupsGetMembersResult,
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
@@ -225,6 +227,17 @@ const radAppApi = {
       }
 
       return groupsGetMembersResultSchema.parse(response.data);
+    },
+    async getMemberships(member: GroupMemberSelectionRef): Promise<GroupsGetMembershipsResult> {
+      const request = createCommandRequest('groups.getMemberships', { member });
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw createCommandFailure(response.error, 'Unable to read group memberships.');
+      }
+
+      return groupsGetMembershipsResultSchema.parse(response.data);
     },
     async addMembers(
       group: ExchangeGroupRef,
