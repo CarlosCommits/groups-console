@@ -56,6 +56,8 @@ import {
   exchangeListGroupsResultSchema,
   groupsAddMembersPayloadSchema,
   groupsAddMembersResultSchema,
+  groupsGetMembershipsPayloadSchema,
+  groupsGetMembershipsResultSchema,
   groupsGetMembersPayloadSchema,
   groupsGetMembersResultSchema,
   groupsRemoveMembersPayloadSchema,
@@ -83,6 +85,7 @@ import { updateGuestCompany } from '@/main/graph/update-guest-company';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import { getGroupMemberships } from '@/main/exchange/get-group-memberships';
 import { getGroupMembers } from '@/main/exchange/get-group-members';
 import { listExchangeGroups } from '@/main/exchange/list-exchange-groups';
 import { generateMembershipMatrixReport } from '@/main/reports/generate-membership-matrix';
@@ -534,6 +537,17 @@ async function executeCommand(
     case 'groups.getMembers': {
       const payload = groupsGetMembersPayloadSchema.parse(request.payload);
       const result = groupsGetMembersResultSchema.parse(await getGroupMembers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'groups.getMemberships': {
+      const payload = groupsGetMembershipsPayloadSchema.parse(request.payload);
+      const result = groupsGetMembershipsResultSchema.parse(await getGroupMemberships(payload));
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
