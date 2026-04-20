@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getCombinedRecipientsConnectionIdentity,
   getExchangeConnectionIdentity,
+  getGraphConnectionIdentity,
   getSystemLogScopeKey,
   disconnectedConnectionScope,
   normalizeConnectionScope,
@@ -74,6 +76,37 @@ describe("query keys", () => {
         userPrincipalName: "admin@example.com",
       }),
     ).toBe("connected:tenant-a:exchange-connection-a:admin@example.com");
+  });
+
+  it("builds the combined recipients connection identity from exchange and graph identities", () => {
+    expect(
+      getCombinedRecipientsConnectionIdentity(
+        {
+          state: "connected",
+          tenantId: "tenant-a",
+          connectionId: "exchange-connection-a",
+          userPrincipalName: "admin@example.com",
+        },
+        {
+          state: "connected",
+          tenantId: "tenant-a",
+          configuredTenantId: "tenant-a",
+          accountUsername: "graph-admin@example.com",
+        },
+      ),
+    ).toBe(
+      `${getExchangeConnectionIdentity({
+        state: "connected",
+        tenantId: "tenant-a",
+        connectionId: "exchange-connection-a",
+        userPrincipalName: "admin@example.com",
+      })}|${getGraphConnectionIdentity({
+        state: "connected",
+        tenantId: "tenant-a",
+        configuredTenantId: "tenant-a",
+        accountUsername: "graph-admin@example.com",
+      })}`,
+    );
   });
 
   it("builds the all-scope system logs identity with a stable shared key", () => {

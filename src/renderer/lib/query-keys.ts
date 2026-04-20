@@ -43,6 +43,13 @@ export function getGraphConnectionIdentity(
   ].join(":");
 }
 
+export function getCombinedRecipientsConnectionIdentity(
+  exchangeConnection?: ExchangeConnectionIdentityInput | null,
+  graphConnection?: GraphConnectionIdentityInput | null,
+) {
+  return `${getExchangeConnectionIdentity(exchangeConnection)}|${getGraphConnectionIdentity(graphConnection)}`;
+}
+
 export function getSystemLogScopeKey(scope: SystemLogScope) {
   if (scope.kind === "all") {
     return "all";
