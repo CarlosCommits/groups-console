@@ -1,23 +1,47 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/main/logging/logger', () => ({
+  writeSystemLogEvent: vi.fn(),
+}));
+
 vi.mock('@/main/recipients/resolve-recipient-for-membership', () => ({
   resolveRecipientForMembership: vi.fn(),
+}));
+
+vi.mock('./get-exchange-connection-status', () => ({
+  getExchangeConnectionStatus: vi.fn(),
 }));
 
 vi.mock('./exchange-session-manager', () => ({
   exchangeSessionManager: {
     getGroupMemberships: vi.fn(),
+    listGroups: vi.fn(),
+    getGroupMembers: vi.fn(),
   },
 }));
 
 import { resolveRecipientForMembership } from '@/main/recipients/resolve-recipient-for-membership';
+import { writeSystemLogEvent } from '@/main/logging/logger';
+import { runWithOperationContext } from '@/main/logging/operation-context';
 
 import { exchangeSessionManager } from './exchange-session-manager';
+import { getExchangeConnectionStatus } from './get-exchange-connection-status';
 import { getGroupMemberships } from './get-group-memberships';
 
 describe('getGroupMemberships', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'connected',
+      detail: 'Connected to Exchange Online.',
+      runtime: null,
+      userPrincipalName: 'admin@example.com',
+      connectionId: 'connection-1',
+      tenantId: 'tenant-1',
+      tokenStatus: 'Active',
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
   });
 
   it('resolves the requested member before delegating to the exchange session manager', async () => {
@@ -89,5 +113,212 @@ describe('getGroupMemberships', () => {
     );
 
     expect(exchangeSessionManager.getGroupMemberships).not.toHaveBeenCalled();
+  });
+
+  it('falls back to listing groups and members when the session host lacks the memberships command', async () => {
+    vi.mocked(resolveRecipientForMembership).mockResolvedValue({
+      kind: 'exchangeDirect',
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+    });
+    vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
+      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+    );
+    vi.mocked(exchangeSessionManager.listGroups).mockResolvedValue({
+      appliedKind: 'all',
+      items: [
+        {
+          objectId: 'group-1',
+          exchangeIdentity: 'finance-group',
+          displayName: 'Finance Distribution',
+          alias: 'finance',
+          primaryEmail: 'finance@example.com',
+          groupKind: 'distributionList',
+          managedByDisplayNames: [],
+          whenChangedUtc: null,
+        },
+        {
+          objectId: 'group-2',
+          exchangeIdentity: 'engineering-group',
+          displayName: 'Engineering Distribution',
+          alias: 'engineering',
+          primaryEmail: 'engineering@example.com',
+          groupKind: 'distributionList',
+          managedByDisplayNames: [],
+          whenChangedUtc: null,
+        },
+      ],
+    });
+    vi.mocked(exchangeSessionManager.getGroupMembers)
+      .mockResolvedValueOnce({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: 'group-1',
+          groupKind: 'distributionList',
+        },
+        items: [
+          {
+            objectId: 'recipient-1',
+            exchangeIdentity: 'jane@example.com',
+            displayName: 'Jane Example',
+            primaryEmail: 'jane@example.com',
+            alias: 'jexample',
+            recipientType: 'mailbox',
+            recipientTypeDetails: 'UserMailbox',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        group: {
+          exchangeIdentity: 'engineering-group',
+          objectId: 'group-2',
+          groupKind: 'distributionList',
+        },
+        items: [
+          {
+            objectId: 'recipient-2',
+            exchangeIdentity: 'alex@example.com',
+            displayName: 'Alex Example',
+            primaryEmail: 'alex@example.com',
+            alias: 'aexample',
+            recipientType: 'mailbox',
+            recipientTypeDetails: 'UserMailbox',
+          },
+        ],
+      });
+
+    const result = await runWithOperationContext(
+      {
+        operationId: 'operation-1',
+        ipcRequestId: 'ipc-request-1',
+        commandName: 'groups.getMemberships',
+        backendOwner: 'exchange',
+      },
+      async () =>
+        await getGroupMemberships({
+          member: {
+            kind: 'exchangeRecipient',
+            exchangeIdentity: 'jane@example.com',
+            objectId: 'recipient-1',
+            primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example',
+          },
+        }),
+    );
+
+    expect(exchangeSessionManager.listGroups).toHaveBeenCalledWith({ kind: 'all' });
+    expect(exchangeSessionManager.getGroupMembers).toHaveBeenCalledTimes(2);
+    expect(result.member.exchangeIdentity).toBe('jane@example.com');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.exchangeIdentity).toBe('finance-group');
+    expect(writeSystemLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationId: 'operation-1',
+        ipcRequestId: 'ipc-request-1',
+        actorUpn: 'admin@example.com',
+        tenantId: 'tenant-1',
+        operationType: 'groups.getMemberships',
+        targetObjectType: 'exchangeRecipient',
+        targetObjectId: 'jane@example.com',
+        result: 'partial',
+        authoritative: false,
+        summary:
+          'Loaded 1 group membership(s) via fallback because Invoke-RadAppGetGroupMemberships was unavailable.',
+      }),
+    );
+  });
+
+  it('writes a failed fallback system log when fallback execution also fails', async () => {
+    vi.mocked(resolveRecipientForMembership).mockResolvedValue({
+      kind: 'exchangeDirect',
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+    });
+    vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
+      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+    );
+    vi.mocked(exchangeSessionManager.listGroups).mockRejectedValue(
+      new Error('Exchange session host is not running. Connect to Exchange Online first.'),
+    );
+
+    await expect(
+      runWithOperationContext(
+        {
+          operationId: 'operation-2',
+          ipcRequestId: 'ipc-request-2',
+          commandName: 'groups.getMemberships',
+          backendOwner: 'exchange',
+        },
+        async () =>
+          await getGroupMemberships({
+            member: {
+              kind: 'exchangeRecipient',
+              exchangeIdentity: 'jane@example.com',
+              objectId: 'recipient-1',
+              primaryEmail: 'jane@example.com',
+              displayName: 'Jane Example',
+            },
+          }),
+      ),
+    ).rejects.toThrow('Exchange session host is not running. Connect to Exchange Online first.');
+
+    expect(writeSystemLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationId: 'operation-2',
+        ipcRequestId: 'ipc-request-2',
+        operationType: 'groups.getMemberships',
+        targetObjectId: 'jane@example.com',
+        result: 'failed',
+        authoritative: false,
+        summary:
+          'Fallback was triggered because Invoke-RadAppGetGroupMemberships was unavailable, but loading group memberships still failed.',
+      }),
+    );
+  });
+
+  it('does not write a fallback system log when the primary memberships command succeeds', async () => {
+    vi.mocked(resolveRecipientForMembership).mockResolvedValue({
+      kind: 'exchangeDirect',
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+    });
+    vi.mocked(exchangeSessionManager.getGroupMemberships).mockResolvedValue({
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+      items: [],
+    });
+
+    await runWithOperationContext(
+      {
+        operationId: 'operation-3',
+        ipcRequestId: 'ipc-request-3',
+        commandName: 'groups.getMemberships',
+        backendOwner: 'exchange',
+      },
+      async () =>
+        await getGroupMemberships({
+          member: {
+            kind: 'exchangeRecipient',
+            exchangeIdentity: 'jane@example.com',
+            objectId: 'recipient-1',
+            primaryEmail: 'jane@example.com',
+            displayName: 'Jane Example',
+          },
+        }),
+    );
+
+    expect(writeSystemLogEvent).not.toHaveBeenCalled();
   });
 });
