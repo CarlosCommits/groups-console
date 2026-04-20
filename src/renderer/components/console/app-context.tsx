@@ -119,6 +119,7 @@ interface AppContextValue {
   currentScreen: Screen;
   setCurrentScreen: (screen: Screen) => void;
   shell: ShellState;
+  lastExchangeConnectFailure: string | null;
   refreshShellState: () => Promise<void>;
   pendingAction: PendingAction;
   actionErrors: ActionErrors;
@@ -234,9 +235,29 @@ export function getShellConnectionBoundary(shell: Pick<ShellState, "graphConnect
   return `exchange:${exchangeBoundary}|graph:${graphBoundary}`;
 }
 
+export function resolveLastExchangeConnectFailureAfterRefresh(
+  currentFailure: string | null,
+  previousExchangeConnection: ExchangeConnectionStatus | null,
+  exchangeConnection: ExchangeConnectionStatus | null,
+) {
+  if (exchangeConnection?.state === "connected") {
+    return null;
+  }
+
+  if (
+    previousExchangeConnection?.state === "connected" &&
+    exchangeConnection?.state === "disconnected"
+  ) {
+    return null;
+  }
+
+  return currentFailure;
+}
+
 export function AppProvider({ children }: AppProviderProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>("dashboard");
   const [shell, setShell] = useState<ShellState>(initialShellState);
+  const [lastExchangeConnectFailure, setLastExchangeConnectFailure] = useState<string | null>(null);
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionErrors, setActionErrors] = useState<ActionErrors>({});
@@ -316,6 +337,14 @@ export function AppProvider({ children }: AppProviderProps) {
           window.radApp.exchange.getConnectionStatus(),
         ]);
 
+      setLastExchangeConnectFailure((currentFailure) =>
+        resolveLastExchangeConnectFailureAfterRefresh(
+          currentFailure,
+          shell.exchangeConnection,
+          exchangeConnection,
+        ),
+      );
+
       applyShellState({
         session,
         exchangeCapabilities,
@@ -353,10 +382,12 @@ export function AppProvider({ children }: AppProviderProps) {
     }
 
     if (!requireBridge("exchange")) {
+      const message = "Application bridge is not available. Please restart the application.";
       setActionErrors((prev) => ({
         ...prev,
-        exchange: "Application bridge is not available. Please restart the application.",
+        exchange: message,
       }));
+      setLastExchangeConnectFailure(message);
       return false;
     }
 
@@ -369,10 +400,13 @@ export function AppProvider({ children }: AppProviderProps) {
       const result = await window.radApp.exchange.connect(trimmedUserPrincipalName);
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
+        setLastExchangeConnectFailure(result.detail);
       }
     } catch (err) {
       const presented = presentCommandFailure(err, "Exchange Connect Error", "Exchange connect failed.");
-      setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
+      const message = formatPresentedCommandFailure(presented);
+      setActionErrors((prev) => ({ ...prev, exchange: message }));
+      setLastExchangeConnectFailure(message);
     } finally {
       exchangeConnectInFlight.current = false;
       setPendingAction(null);
@@ -463,6 +497,8 @@ export function AppProvider({ children }: AppProviderProps) {
       const result = await window.radApp.exchange.disconnect();
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
+      } else {
+        setLastExchangeConnectFailure(null);
       }
     } catch (err) {
       const presented = presentCommandFailure(err, "Exchange Disconnect Error", "Exchange disconnect failed.");
@@ -513,6 +549,7 @@ export function AppProvider({ children }: AppProviderProps) {
         currentScreen,
         setCurrentScreen,
         shell,
+        lastExchangeConnectFailure,
         refreshShellState,
         pendingAction,
         actionErrors,

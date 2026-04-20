@@ -10,6 +10,7 @@ import {
   createMembershipMatrixErrorState,
   createMembershipMatrixSuccessState,
   getExchangeUpnPreset,
+  resolveLastExchangeConnectFailureAfterRefresh,
   getShellConnectionBoundary,
   initialMembershipMatrixGenerationState,
   resolveAutoExchangeUpnAfterGraphConnect,
@@ -273,6 +274,48 @@ describe("resolveAutoExchangeUpnAfterGraphConnect", () => {
         exchangeUpn: "graph@example.com",
         userEditedUpn: false,
       }),
+    ).toBeNull();
+  });
+});
+
+describe("resolveLastExchangeConnectFailureAfterRefresh", () => {
+  it("clears the last exchange connect failure after a connected refresh", () => {
+    expect(
+      resolveLastExchangeConnectFailureAfterRefresh(
+        "Authentication failed for admin@example.com",
+        makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+        makeExchangeConnection({ state: "connected" }),
+      ),
+    ).toBeNull();
+  });
+
+  it("preserves the last exchange connect failure while exchange remains disconnected", () => {
+    expect(
+      resolveLastExchangeConnectFailureAfterRefresh(
+        "Authentication failed for admin@example.com",
+        makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+        makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+      ),
+    ).toBe("Authentication failed for admin@example.com");
+  });
+
+  it("preserves a null last exchange connect failure during refresh", () => {
+    expect(
+      resolveLastExchangeConnectFailureAfterRefresh(
+        null,
+        makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+        makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+      ),
+    ).toBeNull();
+  });
+
+  it("clears the last exchange connect failure when refresh transitions from connected to disconnected", () => {
+    expect(
+      resolveLastExchangeConnectFailureAfterRefresh(
+        "Authentication failed for admin@example.com",
+        makeExchangeConnection({ state: "connected" }),
+        makeExchangeConnection({ state: "disconnected", userPrincipalName: null }),
+      ),
     ).toBeNull();
   });
 });
