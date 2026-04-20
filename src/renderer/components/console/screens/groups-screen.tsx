@@ -71,6 +71,7 @@ import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
+import { toGroupMemberSelectionRef } from "@/renderer/lib/group-member-selection";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
 import {
@@ -418,23 +419,9 @@ export function GroupsScreen() {
       (c) => isCandidateSelectable(c) && addSelectedKeys.has(c.stableKey),
     );
     if (selectable.length === 0) return;
-    const memberRefs: GroupMemberSelectionRef[] = selectable.map((c) => {
-      if (c.membershipSupport === "graphBridgeable") {
-        return {
-          kind: "graphGuest" as const,
-          objectId: c.objectId!,
-          primaryEmail: c.primaryEmail,
-          displayName: c.displayName,
-        };
-      }
-      return {
-        kind: "exchangeRecipient" as const,
-        exchangeIdentity: c.exchangeIdentity!,
-        objectId: c.objectId,
-        primaryEmail: c.primaryEmail,
-        displayName: c.displayName,
-      };
-    });
+    const memberRefs: GroupMemberSelectionRef[] = selectable
+      .map((candidate) => toGroupMemberSelectionRef(candidate))
+      .filter((candidate): candidate is GroupMemberSelectionRef => candidate !== null);
     const groupRef = groupRefFromListItem(selectedGroup);
     setAddPending(true);
     setAddError(null);
