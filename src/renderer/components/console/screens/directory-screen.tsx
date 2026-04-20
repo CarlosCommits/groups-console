@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Plus,
-  Edit,
   Loader2,
   AlertCircle,
   WifiOff,
@@ -9,6 +8,9 @@ import {
   Info,
   CheckCircle2,
   ShieldAlert,
+  UserMinus,
+  UserPlus,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Table,
@@ -33,6 +35,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/renderer/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/renderer/components/ui/tabs";
 import {
   AppShell,
   TableToolbar,
@@ -61,6 +69,17 @@ import {
   useUpdateGuestCompanyMutation,
 } from "@/renderer/hooks/use-guest-mutations";
 import {
+  useExchangeGroupsQuery,
+} from "@/renderer/hooks/use-exchange-groups";
+import {
+  useAddGroupMembersMutation,
+  useRemoveGroupMembersMutation,
+} from "@/renderer/hooks/use-group-member-mutations";
+import {
+  useGroupMembershipsQuery,
+} from "@/renderer/hooks/use-group-memberships";
+import { toGroupMemberSelectionRef } from "@/renderer/lib/group-member-selection";
+import {
   getCombinedRecipientsConnectionIdentity,
   getExchangeConnectionIdentity,
   getGraphConnectionIdentity,
@@ -74,6 +93,13 @@ import type {
   RecipientSearchItem,
   RecipientSearchType,
 } from "@/shared/contracts/recipients";
+import type {
+  ExchangeGroupListItem,
+  ExchangeGroupRef,
+  GroupMemberSelectionRef,
+  GroupsAddMembersResult,
+  GroupsRemoveMembersResult,
+} from "@/shared/contracts/exchange";
 import type {
   ContactsCreateResult,
   ContactsUpdateCompanyResult,
@@ -94,14 +120,39 @@ type CreateResult =
   | { mode: "contact"; data: ContactsCreateResult }
   | { mode: "guest"; data: GuestsInviteResult };
 
-type UpdateResult =
-  | { mode: "contact"; data: ContactsUpdateCompanyResult }
-  | { mode: "guest"; data: GuestsUpdateCompanyResult };
-
 type DetailResult =
   | { mode: "contact"; data: ContactDetails }
   | { mode: "guest"; data: GuestDetails }
   | { mode: "exchangeRecipient"; data: ExchangeRecipientDetails };
+
+type GroupAddBatchResult = {
+  group: ExchangeGroupListItem;
+  result: GroupsAddMembersResult;
+};
+
+const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"], string> = {
+  added: "Added",
+  alreadyMember: "Already a member",
+  invalid: "Invalid",
+  verificationFailed: "Verification failed",
+  failed: "Failed",
+};
+
+const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["status"], string> = {
+  removed: "Removed",
+  notMember: "Not a member",
+  invalid: "Invalid",
+  verificationFailed: "Verification failed",
+  failed: "Failed",
+};
+
+function isAddStatusClean(status: GroupsAddMembersResult["items"][number]["status"]): boolean {
+  return status === "added" || status === "alreadyMember";
+}
+
+function isRemoveStatusClean(status: GroupsRemoveMembersResult["items"][number]["status"]): boolean {
+  return status === "removed" || status === "notMember";
+}
 
 const TAB_TYPES: Record<string, RecipientSearchType[]> = {
   all: [
@@ -148,6 +199,19 @@ const CONFLICT_CATEGORY_LABELS: Record<string, string> = {
   eventualConsistencyDelay: "Eventual Consistency Delay",
   preflightUnavailable: "Preflight Unavailable",
 };
+
+const GROUP_KIND_LABELS: Record<ExchangeGroupListItem["groupKind"], string> = {
+  distributionList: "Distribution",
+  mailEnabledSecurityGroup: "Security",
+};
+
+function groupRefFromListItem(group: ExchangeGroupListItem): ExchangeGroupRef {
+  return {
+    exchangeIdentity: group.exchangeIdentity,
+    objectId: group.objectId,
+    groupKind: group.groupKind,
+  };
+}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -272,15 +336,31 @@ export function DirectoryScreen() {
   const [createResult, setCreateResult] = useState<CreateResult | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [updateTarget, setUpdateTarget] = useState<RecipientSearchItem | null>(null);
   const [updateCompanyName, setUpdateCompanyName] = useState("");
   const [updatePending, setUpdatePending] = useState(false);
-  const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null);
+  const [updateResult, setUpdateResult] = useState<
+    | { mode: "contact"; data: ContactsUpdateCompanyResult }
+    | { mode: "guest"; data: GuestsUpdateCompanyResult }
+    | null
+  >(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
+
+  const [recipientDialogTab, setRecipientDialogTab] = useState("details");
+
+  const [removeGroupTarget, setRemoveGroupTarget] = useState<ExchangeGroupListItem | null>(null);
+  const [removeGroupPending, setRemoveGroupPending] = useState(false);
+  const [removeGroupResult, setRemoveGroupResult] = useState<GroupsRemoveMembersResult | null>(null);
+  const [removeGroupError, setRemoveGroupError] = useState<string | null>(null);
+  const [removedGroupName, setRemovedGroupName] = useState<string | null>(null);
+
+  const [groupFilterText, setGroupFilterText] = useState("");
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
+  const [addGroupPending, setAddGroupPending] = useState(false);
+  const [addGroupResult, setAddGroupResult] = useState<GroupAddBatchResult[] | null>(null);
+  const [addGroupError, setAddGroupError] = useState<string | null>(null);
 
   const canCreateContact = exchangeConnected;
   const canCreateGuest = graphConnected && graphTenantMatched;
@@ -346,6 +426,69 @@ export function DirectoryScreen() {
     detailDialogOpen &&
       (detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"),
   );
+
+  const memberSelectionRef = useMemo((): GroupMemberSelectionRef | null => {
+    if (!detailTarget) return null;
+    return toGroupMemberSelectionRef(detailTarget);
+  }, [detailTarget]);
+
+  const membershipsQuery = useGroupMembershipsQuery(
+    shell.exchangeConnection,
+    memberSelectionRef,
+    detailDialogOpen && !!memberSelectionRef,
+  );
+
+  const {
+    groups: allGroups,
+    isLoading: allGroupsLoading,
+    error: allGroupsError,
+    refetch: refetchAllGroups,
+  } = useExchangeGroupsQuery(shell.exchangeConnection);
+
+  const currentMemberRef = membershipsQuery.member;
+  const currentMemberships = membershipsQuery.groups;
+
+  const availableGroups = useMemo(() => {
+    const currentMembershipKeys = new Set(
+      currentMemberships.map((group) => group.exchangeIdentity),
+    );
+
+    return allGroups.filter(
+      (group) => !currentMembershipKeys.has(group.exchangeIdentity),
+    );
+  }, [allGroups, currentMemberships]);
+
+  const filteredAvailableGroups = useMemo(() => {
+    const filter = groupFilterText.trim().toLowerCase();
+
+    if (!filter) {
+      return availableGroups;
+    }
+
+    return availableGroups.filter((group) => {
+      const searchable = [
+        group.displayName,
+        group.exchangeIdentity,
+        group.primaryEmail ?? "",
+        group.alias ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(filter);
+    });
+  }, [availableGroups, groupFilterText]);
+
+  const visibleSelectedGroupsCount = useMemo(
+    () =>
+      filteredAvailableGroups.filter((group) => selectedGroupKeys.has(group.exchangeIdentity)).length,
+    [filteredAvailableGroups, selectedGroupKeys],
+  );
+
+  const hasHiddenSelectedGroups = selectedGroupKeys.size > visibleSelectedGroupsCount;
+
+  const addGroupMembersMutation = useAddGroupMembersMutation(shell.exchangeConnection);
+  const removeGroupMembersMutation = useRemoveGroupMembersMutation(shell.exchangeConnection);
 
   const activeDetailState = useMemo(() => {
     if (detailTarget?.recipientType === "mailContact") {
@@ -495,37 +638,28 @@ export function DirectoryScreen() {
     setCreateError(null);
   };
 
-  const openUpdateDialog = (item: RecipientSearchItem) => {
-    setUpdateTarget(item);
-    setUpdateCompanyName(item.companyName ?? "");
-    setUpdatePending(false);
-    setUpdateResult(null);
-    setUpdateError(null);
-    setUpdateDialogOpen(true);
-  };
-
   const handleUpdateSubmit = async () => {
-    if (!updateTarget) return;
+    if (!detailTarget) return;
     setUpdatePending(true);
     setUpdateError(null);
     try {
-      const mode = getUpdateMode(updateTarget);
+      const mode = getUpdateMode(detailTarget);
       if (mode === "contact") {
         const result = await updateContactCompanyMutation.mutateAsync({
           payload: {
-            exchangeIdentity: updateTarget.exchangeIdentity!,
+            exchangeIdentity: detailTarget.exchangeIdentity!,
             companyName: updateCompanyName.trim(),
           },
-          stableKey: updateTarget.stableKey,
+          stableKey: detailTarget.stableKey,
         });
         setUpdateResult({ mode: "contact", data: result });
       } else {
         const result = await updateGuestCompanyMutation.mutateAsync({
           payload: {
-            guestUserId: updateTarget.objectId!,
+            guestUserId: detailTarget.objectId!,
             companyName: updateCompanyName.trim(),
           },
-          stableKey: updateTarget.stableKey,
+          stableKey: detailTarget.stableKey,
         });
         setUpdateResult({ mode: "guest", data: result });
       }
@@ -540,22 +674,143 @@ export function DirectoryScreen() {
     }
   };
 
-  const handleUpdateClose = () => {
-    setUpdateDialogOpen(false);
-    setUpdateTarget(null);
+  const handleUpdateClose = useCallback(() => {
     setUpdateResult(null);
     setUpdateError(null);
-  };
+    setUpdatePending(false);
+  }, []);
 
-  const openDetailDialog = useCallback((item: RecipientSearchItem) => {
+  const openRecipientDialog = useCallback((item: RecipientSearchItem) => {
     setDetailTarget(item);
     setDetailDialogOpen(true);
+    setRecipientDialogTab("details");
+    setUpdateCompanyName(item.companyName ?? "");
+    setUpdatePending(false);
+    setUpdateResult(null);
+    setUpdateError(null);
+    setGroupFilterText("");
+    setSelectedGroupKeys(new Set());
+    setAddGroupPending(false);
+    setAddGroupResult(null);
+    setAddGroupError(null);
+    setRemoveGroupTarget(null);
+    setRemoveGroupPending(false);
+    setRemoveGroupResult(null);
+    setRemoveGroupError(null);
+    setRemovedGroupName(null);
   }, []);
 
   const handleDetailClose = useCallback(() => {
+    handleUpdateClose();
     setDetailDialogOpen(false);
     setDetailTarget(null);
+    setRecipientDialogTab("details");
+    setUpdateCompanyName("");
+    setGroupFilterText("");
+    setSelectedGroupKeys(new Set());
+    setAddGroupPending(false);
+    setAddGroupResult(null);
+    setAddGroupError(null);
+    setRemoveGroupTarget(null);
+    setRemoveGroupPending(false);
+    setRemoveGroupResult(null);
+    setRemoveGroupError(null);
+    setRemovedGroupName(null);
+  }, [handleUpdateClose]);
+
+  const handleToggleGroupSelection = useCallback((exchangeIdentity: string) => {
+    setSelectedGroupKeys((previous) => {
+      const next = new Set(previous);
+
+      if (next.has(exchangeIdentity)) {
+        next.delete(exchangeIdentity);
+      } else {
+        next.add(exchangeIdentity);
+      }
+
+      return next;
+    });
   }, []);
+
+  const handleAddGroups = useCallback(async () => {
+    if (!memberSelectionRef || visibleSelectedGroupsCount === 0) {
+      return;
+    }
+
+    const groupsToAdd = filteredAvailableGroups.filter((group) =>
+      selectedGroupKeys.has(group.exchangeIdentity),
+    );
+
+    if (groupsToAdd.length === 0) {
+      return;
+    }
+
+    setAddGroupPending(true);
+    setAddGroupError(null);
+    setAddGroupResult(null);
+
+    try {
+      const batchResults: GroupAddBatchResult[] = [];
+
+      for (const group of groupsToAdd) {
+        const result = await addGroupMembersMutation.mutateAsync({
+          groupRef: groupRefFromListItem(group),
+          memberRefs: [memberSelectionRef],
+        });
+
+        batchResults.push({ group, result });
+      }
+
+      setAddGroupResult(batchResults);
+      setSelectedGroupKeys(new Set());
+      await membershipsQuery.refetch();
+    } catch (err: unknown) {
+      setAddGroupError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Add to Groups Error", "Failed to add to selected groups."),
+        ),
+      );
+    } finally {
+      setAddGroupPending(false);
+    }
+  }, [
+    addGroupMembersMutation,
+    filteredAvailableGroups,
+    memberSelectionRef,
+    membershipsQuery,
+    selectedGroupKeys,
+    visibleSelectedGroupsCount,
+  ]);
+
+  const handleRemoveGroup = useCallback(async () => {
+    if (!removeGroupTarget || !currentMemberRef) {
+      return;
+    }
+
+    setRemoveGroupPending(true);
+    setRemoveGroupError(null);
+    setRemoveGroupResult(null);
+
+    try {
+      const result = await removeGroupMembersMutation.mutateAsync({
+        groupRef: groupRefFromListItem(removeGroupTarget),
+        memberRefs: [currentMemberRef],
+      });
+
+      setRemoveGroupResult(result);
+      setRemovedGroupName(removeGroupTarget.displayName);
+      setRemoveGroupTarget(null);
+      await membershipsQuery.refetch();
+    } catch (err: unknown) {
+      setRemoveGroupError(
+        formatPresentedCommandFailure(
+          presentCommandFailure(err, "Remove From Group Error", "Failed to remove from group."),
+        ),
+      );
+    } finally {
+      setRemoveGroupPending(false);
+    }
+  }, [currentMemberRef, membershipsQuery, removeGroupMembersMutation, removeGroupTarget]);
 
   const tabs = [
     { label: "All", value: "all" },
@@ -589,6 +844,26 @@ export function DirectoryScreen() {
         createEmail.trim().length > 0 &&
         createCompanyName.trim().length > 0
       : createEmail.trim().length > 0;
+
+  const detailCanUpdateCompany = detailTarget
+    ? canUpdateCompany(
+        detailTarget,
+        exchangeConnected,
+        graphConnected,
+        graphTenantMatched,
+      )
+    : false;
+
+  const selectedGroupsCount = selectedGroupKeys.size;
+  const recipientDialogPending = addGroupPending || updatePending;
+  const addGroupIssues = addGroupResult?.flatMap(({ group, result }) =>
+    result.items
+      .filter((item) => !isAddStatusClean(item.status))
+      .map((item) => ({ groupName: group.displayName, status: item.status, detail: item.detail })),
+  ) ?? [];
+  const addGroupHadIssues = addGroupIssues.length > 0;
+  const removeGroupStatus = removeGroupResult?.items[0]?.status ?? null;
+  const removeGroupHadIssues = removeGroupStatus !== null && !isRemoveStatusClean(removeGroupStatus);
 
   return (
     <AppShell>
@@ -749,21 +1024,31 @@ export function DirectoryScreen() {
                         <TableHead className="w-[14%] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           Membership
                         </TableHead>
-                        <TableHead className="text-right w-20"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {results?.items.map((item) => {
-                        const editable = canUpdateCompany(
-                          item,
-                          exchangeConnected,
-                          graphConnected,
-                          graphTenantMatched,
-                        );
+                        const inspectable = canInspect(item);
                         return (
                           <TableRow
                             key={item.stableKey}
-                            className="hover:bg-teal-50/30 transition-colors group"
+                            className={cn(
+                              "transition-colors",
+                              inspectable
+                                ? "cursor-pointer hover:bg-teal-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]/40"
+                                : "hover:bg-slate-50/30",
+                            )}
+                            tabIndex={inspectable ? 0 : undefined}
+                            role={inspectable ? "button" : undefined}
+                            onClick={inspectable ? () => openRecipientDialog(item) : undefined}
+                            onKeyDown={inspectable
+                              ? (e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    openRecipientDialog(item);
+                                  }
+                                }
+                              : undefined}
                           >
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -796,34 +1081,6 @@ export function DirectoryScreen() {
                             <TableCell className="text-sm text-slate-500">
                               {MEMBERSHIP_LABELS[item.membershipSupport] ??
                                 item.membershipSupport}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-0.5">
-                                {canInspect(item) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6 transition-all p-1 opacity-0 group-hover:opacity-100 hover:text-[var(--color-primary)]"
-                                    onClick={() => { void openDetailDialog(item); }}
-                                  >
-                                    <Info className="size-3" />
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn(
-                                    "size-6 transition-all p-1",
-                                    editable
-                                      ? "opacity-0 group-hover:opacity-100 hover:text-[var(--color-primary)]"
-                                      : "opacity-0 cursor-default",
-                                  )}
-                                  disabled={!editable}
-                                  onClick={editable ? () => openUpdateDialog(item) : undefined}
-                                >
-                                  <Edit className="size-3" />
-                                </Button>
-                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -1156,129 +1413,17 @@ export function DirectoryScreen() {
       </Dialog>
 
       <Dialog
-        open={updateDialogOpen}
+        open={detailDialogOpen}
         onOpenChange={(open) => {
-          handleMutationDialogOpenChange(open, updatePending, handleUpdateClose);
+          if (!open && canDismissMutationDialog(recipientDialogPending)) {
+            handleDetailClose();
+          }
         }}
       >
         <DialogContent
-          className="sm:max-w-md"
-          showCloseButton={canDismissMutationDialog(updatePending)}
+          className="sm:max-w-3xl max-h-[85vh] flex flex-col"
+          showCloseButton={canDismissMutationDialog(recipientDialogPending)}
         >
-          <DialogHeader>
-            <DialogTitle>Update Company</DialogTitle>
-            <DialogDescription>
-              {updateTarget
-                ? `Update the company name for ${updateTarget.displayName}.`
-                : "Update the company name for this identity."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {updateTarget && !updateResult && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md text-xs">
-                <Avatar className="w-6 h-6 text-[10px]">
-                  <AvatarFallback className={avatarColorFor(updateTarget.stableKey)}>
-                    {getInitials(updateTarget.displayName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="font-semibold text-slate-800 truncate">
-                    {updateTarget.displayName}
-                  </p>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    {emailOrId(updateTarget)}
-                  </p>
-                </div>
-                <Badge className={cn("ml-auto shrink-0", typeBadgeClass(updateTarget.recipientType))}>
-                  {TYPE_LABELS[updateTarget.recipientType]}
-                </Badge>
-              </div>
-              {updateTarget.companyName && (
-                <p className="text-[11px] text-slate-500">
-                  Current company: <span className="font-medium text-slate-700">{updateTarget.companyName}</span>
-                </p>
-              )}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
-                  New Company Name <span className="text-[var(--color-error)]">*</span>
-                </label>
-                <Input
-                  className="bg-slate-50 border-slate-200 text-xs"
-                  placeholder="Enter new company name"
-                  value={updateCompanyName}
-                  onChange={(e) => setUpdateCompanyName(e.target.value)}
-                  disabled={updatePending}
-                />
-              </div>
-            </div>
-          )}
-
-          {updateResult && (
-            <div className="space-y-2 py-2">
-              <div className="flex items-start gap-2 rounded-md px-3 py-2 text-xs bg-emerald-50 text-emerald-800">
-                <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
-                <div className="min-w-0">
-                  <p className="font-semibold">Company updated</p>
-                  {updateResult.mode === "contact" ? (
-                    <p className="text-[11px] opacity-80">
-                      {updateResult.data.contact.companyName ?? "Cleared"}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] opacity-80">
-                      {updateResult.data.companyName ?? "Cleared"}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {updateResult.mode === "contact" ? (
-                <div className="text-[11px] text-slate-500">
-                  Verification: {updateResult.data.verification.detail}
-                </div>
-              ) : (
-                <div className="text-[11px] text-slate-500">
-                  Verification: {updateResult.data.verification.detail}
-                </div>
-              )}
-            </div>
-          )}
-
-          {updateError && (
-            <div className="flex items-center gap-2 text-xs text-[var(--color-error)] bg-red-50 rounded-md px-3 py-2">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>{updateError}</span>
-            </div>
-          )}
-
-          <DialogFooter>
-            {updateResult ? (
-              <Button size="sm" onClick={handleUpdateClose}>
-                Close
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={handleUpdateClose} disabled={updatePending}>
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={updateCompanyName.trim().length === 0 || updatePending}
-                  onClick={() => { void handleUpdateSubmit(); }}
-                >
-                  {updatePending && <Loader2 className="size-3.5 mr-1 animate-spin" />}
-                  Update Company
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={detailDialogOpen}
-        onOpenChange={(open) => { if (!open) handleDetailClose(); }}
-      >
-        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {detailTarget
@@ -1298,6 +1443,14 @@ export function DirectoryScreen() {
             </DialogDescription>
           </DialogHeader>
 
+          {detailTarget && (
+            <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="mt-2 flex min-h-0 flex-1 flex-col gap-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="groups">Groups</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="mt-0 flex-1 overflow-y-auto py-2">
           {detailPending ? (
             <div className="flex-1 flex items-center justify-center py-12">
               <div className="text-center">
@@ -1326,7 +1479,42 @@ export function DirectoryScreen() {
               </div>
             </div>
           ) : detailResult ? (
-            <div className="flex-1 overflow-y-auto space-y-3 py-2">
+            <div className="flex flex-col gap-4 py-2">
+              {detailCanUpdateCompany && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-800">Company name</p>
+                  <p className="mb-3 text-xs text-slate-500">
+                    Update the company value directly from this dialog.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      className="bg-white text-xs"
+                      value={updateCompanyName}
+                      onChange={(e) => setUpdateCompanyName(e.target.value)}
+                      disabled={updatePending}
+                      placeholder="Enter company name"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={updatePending || updateCompanyName.trim().length === 0}
+                      onClick={() => {
+                        void handleUpdateSubmit();
+                      }}
+                    >
+                      {updatePending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
+                      Save
+                    </Button>
+                  </div>
+                  {updateResult && (
+                    <p className="mt-2 text-xs text-emerald-700">
+                      {updateResult.data.verification.detail}
+                    </p>
+                  )}
+                  {updateError && (
+                    <p className="mt-2 text-xs text-[var(--color-error)]">{updateError}</p>
+                  )}
+                </div>
+              )}
               {detailResult.mode === "contact" ? (
                 <>
                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-md">
@@ -1655,10 +1843,357 @@ export function DirectoryScreen() {
               )}
             </div>
           ) : null}
+              </TabsContent>
+
+              <TabsContent value="groups" className="mt-0 flex-1 overflow-y-auto py-2">
+                <div className="flex flex-col gap-4">
+                  {membershipsQuery.error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="size-4" />
+                      <AlertTitle>Failed to load memberships</AlertTitle>
+                      <AlertDescription>
+                        <div className="flex flex-col gap-3">
+                          <span>{membershipsQuery.error}</span>
+                          <div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                void membershipsQuery.refetch();
+                              }}
+                            >
+                              Retry memberships
+                            </Button>
+                          </div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {removeGroupResult && (
+                    removeGroupHadIssues ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="size-4" />
+                        <AlertTitle>Remove from group needs attention</AlertTitle>
+                        <AlertDescription>
+                          {REMOVE_STATUS_LABELS[removeGroupStatus ?? "failed"]}: {removeGroupResult.items[0]?.detail ?? "Membership update failed."}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                        <span>
+                          {REMOVE_STATUS_LABELS[removeGroupStatus ?? "removed"]} — <span className="font-semibold">{removedGroupName ?? "group"}</span>.
+                        </span>
+                      </div>
+                    )
+                  )}
+
+                  {addGroupResult && addGroupResult.length > 0 && (
+                    addGroupHadIssues ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="size-4" />
+                        <AlertTitle>Some group updates need attention</AlertTitle>
+                        <AlertDescription>
+                          <div className="flex flex-col gap-1">
+                            {addGroupIssues.map((issue) => (
+                              <span key={`${issue.groupName}:${issue.status}:${issue.detail}`}>
+                                <span className="font-semibold">{issue.groupName}</span>: {ADD_STATUS_LABELS[issue.status]} — {issue.detail}
+                              </span>
+                            ))}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                        <div className="flex flex-col gap-1">
+                          {addGroupResult.map(({ group, result }) => {
+                            const status = result.items[0]?.status ?? "failed";
+                            return (
+                              <span key={group.exchangeIdentity}>
+                                <span className="font-semibold">{group.displayName}</span>: {ADD_STATUS_LABELS[status]}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {addGroupError && (
+                    <p className="text-xs text-[var(--color-error)]">{addGroupError}</p>
+                  )}
+
+                  {!memberSelectionRef ? (
+                    <Alert>
+                      <AlertTriangle className="size-4" />
+                      <AlertTitle>Membership unavailable</AlertTitle>
+                      <AlertDescription>
+                        This directory entry cannot be resolved into a membership target.
+                      </AlertDescription>
+                    </Alert>
+                  ) : membershipsQuery.isLoading || allGroupsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
+                    </div>
+                  ) : membershipsQuery.error ? null : (
+                    <>
+                      <div className="rounded-lg border border-slate-200 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">Current groups</p>
+                            <p className="text-xs text-slate-500">
+                              Review memberships and remove this person from a group.
+                            </p>
+                          </div>
+                          <Badge variant="secondary">{currentMemberships.length}</Badge>
+                        </div>
+
+                        {currentMemberships.length === 0 ? (
+                          <p className="text-sm text-slate-500">
+                            This person is not currently in any groups.
+                          </p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {currentMemberships.map((group) => (
+                              <div
+                                key={group.exchangeIdentity}
+                                className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-slate-800">
+                                    {group.displayName}
+                                  </p>
+                                  <p className="truncate text-[11px] text-slate-500">
+                                    {group.primaryEmail ?? group.exchangeIdentity}
+                                  </p>
+                                </div>
+                                <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setRemoveGroupError(null);
+                                    setRemoveGroupResult(null);
+                                    setRemoveGroupTarget(group);
+                                  }}
+                                >
+                                  <UserMinus className="mr-1 size-3.5" />
+                                  Remove
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {allGroupsError ? (
+                        <Alert variant="destructive">
+                          <AlertCircle className="size-4" />
+                          <AlertTitle>Failed to load available groups</AlertTitle>
+                          <AlertDescription>
+                            <div className="flex flex-col gap-3">
+                              <span>{allGroupsError}</span>
+                              <div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    void refetchAllGroups();
+                                  }}
+                                >
+                                  Retry groups list
+                                </Button>
+                              </div>
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                      <div className="rounded-lg border border-slate-200 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">Add to groups</p>
+                            <p className="text-xs text-slate-500">
+                              Select multiple groups and add this person in one pass.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedGroupsCount > 0 && (
+                              <span className="text-xs font-medium text-[var(--color-primary)]">
+                                {visibleSelectedGroupsCount}/{selectedGroupsCount} visible selected
+                              </span>
+                            )}
+                            <Badge variant="secondary">
+                              {groupFilterText.trim()
+                                ? `${filteredAvailableGroups.length}/${availableGroups.length}`
+                                : availableGroups.length}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="mb-3 flex gap-2">
+                          <Input
+                            className="text-xs"
+                            placeholder="Filter available groups..."
+                            value={groupFilterText}
+                            onChange={(e) => setGroupFilterText(e.target.value)}
+                            disabled={addGroupPending}
+                          />
+                          <Button
+                            size="sm"
+                            disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
+                            onClick={() => {
+                              void handleAddGroups();
+                            }}
+                          >
+                            {addGroupPending ? (
+                              <Loader2 className="mr-1 size-3.5 animate-spin" />
+                            ) : (
+                              <UserPlus className="mr-1 size-3.5" />
+                            )}
+                            Add selected ({visibleSelectedGroupsCount})
+                          </Button>
+                        </div>
+
+                        {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
+                          <div className="mb-2 flex items-center justify-between text-xs">
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
+                                onClick={() => {
+                                  setSelectedGroupKeys((prev) => {
+                                    const next = new Set(prev);
+                                    for (const g of filteredAvailableGroups) {
+                                      next.add(g.exchangeIdentity);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              >
+                                Select all filtered
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                disabled={addGroupPending || selectedGroupsCount === 0}
+                                onClick={() => setSelectedGroupKeys(new Set())}
+                              >
+                                Clear selection
+                              </Button>
+                            </div>
+                            <span className="text-slate-500">
+                              {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
+                              {hasHiddenSelectedGroups ? ` • ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
+                            </span>
+                          </div>
+                        )}
+
+                        {availableGroups.length === 0 ? (
+                          <p className="text-sm text-slate-500">
+                            There are no additional groups available to add.
+                          </p>
+                        ) : filteredAvailableGroups.length === 0 ? (
+                          <p className="text-sm text-slate-500">
+                            No additional groups match the current filter.
+                            {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
+                          </p>
+                        ) : (
+                          <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                            {filteredAvailableGroups.map((group) => (
+                              <label
+                                key={group.exchangeIdentity}
+                                className={cn(
+                                  "flex cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0 transition-colors",
+                                  selectedGroupKeys.has(group.exchangeIdentity)
+                                    ? "bg-teal-50/60"
+                                    : "hover:bg-slate-50",
+                                )}
+                              >
+                                <Checkbox
+                                  checked={selectedGroupKeys.has(group.exchangeIdentity)}
+                                  onCheckedChange={() => handleToggleGroupSelection(group.exchangeIdentity)}
+                                  disabled={addGroupPending}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-slate-800">
+                                    {group.displayName}
+                                  </p>
+                                  <p className="truncate text-[11px] text-slate-500">
+                                    {group.primaryEmail ?? group.exchangeIdentity}
+                                  </p>
+                                </div>
+                                <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
 
           <DialogFooter>
-            <Button size="sm" onClick={handleDetailClose}>
+            <Button size="sm" onClick={handleDetailClose} disabled={recipientDialogPending}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={removeGroupTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && canDismissMutationDialog(removeGroupPending)) {
+            setRemoveGroupTarget(null);
+            setRemoveGroupError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" showCloseButton={canDismissMutationDialog(removeGroupPending)}>
+          <DialogHeader>
+            <DialogTitle>Remove from group</DialogTitle>
+            <DialogDescription>
+              {removeGroupTarget && detailTarget
+                ? `Remove ${detailTarget.displayName} from ${removeGroupTarget.displayName}?`
+                : "Remove this membership?"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {removeGroupError && (
+            <Alert variant="destructive">
+              <AlertCircle className="size-4" />
+              <AlertTitle>Remove failed</AlertTitle>
+              <AlertDescription>{removeGroupError}</AlertDescription>
+            </Alert>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={removeGroupPending}
+              onClick={() => setRemoveGroupTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={removeGroupPending || !currentMemberRef}
+              onClick={() => {
+                void handleRemoveGroup();
+              }}
+            >
+              {removeGroupPending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
+              Remove from group
             </Button>
           </DialogFooter>
         </DialogContent>
