@@ -9,7 +9,10 @@ export interface AttentionItem {
   description: string;
 }
 
-export function deriveAttentionItems(shell: ShellState): AttentionItem[] {
+export function deriveAttentionItems(
+  shell: ShellState,
+  lastExchangeConnectFailure: string | null = null,
+): AttentionItem[] {
   const items: AttentionItem[] = [];
 
   if (shell.loadError) {
@@ -56,12 +59,21 @@ export function deriveAttentionItems(shell: ShellState): AttentionItem[] {
       description: exchange.detail,
     });
   } else if (exchange?.state === "disconnected") {
-    items.push({
-      id: "exchange-disconnected",
-      severity: "info",
-      title: "Exchange not connected",
-      description: "Connect to Exchange Online to manage groups.",
-    });
+    if (lastExchangeConnectFailure) {
+      items.push({
+        id: "exchange-connect-failure",
+        severity: "warning",
+        title: "Exchange connection failed",
+        description: lastExchangeConnectFailure,
+      });
+    } else {
+      items.push({
+        id: "exchange-disconnected",
+        severity: "info",
+        title: "Exchange not connected",
+        description: "Connect to Exchange Online to manage groups.",
+      });
+    }
   }
 
   if (shell.session?.checks) {

@@ -140,6 +140,56 @@ describe("deriveAttentionItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].id).toBe("exchange-disconnected");
     expect(items[0].severity).toBe("info");
+    expect(items[0].description).toBe("Connect to Exchange Online to manage groups.");
+  });
+
+  it("returns persisted exchange connect failure detail when disconnected", () => {
+    const shell = makeShell({
+      exchangeConnection: makeExchange({ state: "disconnected", detail: "Not connected" }),
+    });
+    const items = deriveAttentionItems(shell, "Authentication failed for admin@example.com");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({
+      id: "exchange-connect-failure",
+      severity: "warning",
+      title: "Exchange connection failed",
+      description: "Authentication failed for admin@example.com",
+    });
+  });
+
+  it("prefers exchange state error over persisted connect failure detail", () => {
+    const shell = makeShell({
+      exchangeConnection: makeExchange({ state: "error", detail: "Token expired" }),
+    });
+    const items = deriveAttentionItems(shell, "Authentication failed for admin@example.com");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({
+      id: "exchange-error",
+      severity: "error",
+      title: "Exchange connection error",
+      description: "Token expired",
+    });
+  });
+
+  it("ignores persisted exchange connect failure when exchange is connected", () => {
+    const shell = makeShell({
+      exchangeConnection: makeExchange(),
+    });
+    expect(deriveAttentionItems(shell, "Authentication failed for admin@example.com")).toEqual([]);
+  });
+
+  it("falls back to generic disconnected info when persisted exchange connect failure is null", () => {
+    const shell = makeShell({
+      exchangeConnection: makeExchange({ state: "disconnected", detail: "Not connected" }),
+    });
+    const items = deriveAttentionItems(shell, null);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({
+      id: "exchange-disconnected",
+      severity: "info",
+      title: "Exchange not connected",
+      description: "Connect to Exchange Online to manage groups.",
+    });
   });
 
   it("returns warning items for missing session checks", () => {

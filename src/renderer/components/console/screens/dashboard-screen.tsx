@@ -95,9 +95,9 @@ const shortcuts: ShortcutItem[] = [
 ];
 
 export function DashboardScreen() {
-  const { shell, refreshShellState, setCurrentScreen } = useApp();
+  const { shell, lastExchangeConnectFailure, refreshShellState, setCurrentScreen } = useApp();
   const readiness = deriveShellReadiness(shell);
-  const attentionItems = deriveAttentionItems(shell);
+  const attentionItems = deriveAttentionItems(shell, lastExchangeConnectFailure);
   const { ready: readyChecks, total: totalChecks } = countReadyChecks(shell);
 
   const exchangeConnection = shell.exchangeConnection;
