@@ -5,6 +5,7 @@ import {
   type ExchangeConnectionStatus,
   exchangeListGroupsResultSchema,
   guestMembershipTargetResultSchema,
+  groupsGetMembershipsResultSchema,
   groupsGetMembersResultSchema,
   groupsAddMembersResultSchema,
   groupsRemoveMembersResultSchema,
@@ -13,6 +14,8 @@ import {
   type ExchangeRecipientGetDetailsResult,
   type GuestMembershipTargetResult,
   type GroupsAddMembersResult,
+  type GroupsGetMembershipsResult,
+  type ResolvedGroupsGetMembershipsPayload,
   type GroupsGetMembersPayload,
   type GroupsGetMembersResult,
   type ResolvedGroupsAddMembersPayload,
@@ -180,6 +183,20 @@ export class ExchangeSessionManager {
       const rawResult = await this.host.request('getGroupMembers', payload);
 
       return groupsGetMembersResultSchema.parse(rawResult);
+    });
+  }
+
+  async getGroupMemberships(
+    payload: ResolvedGroupsGetMembershipsPayload,
+  ): Promise<GroupsGetMembershipsResult> {
+    return await this.runExclusive(async () => {
+      if (!this.host) {
+        throw new Error('Exchange session host is not running. Connect to Exchange Online first.');
+      }
+
+      const rawResult = await this.host.request('getGroupMemberships', payload);
+
+      return groupsGetMembershipsResultSchema.parse(rawResult);
     });
   }
 
