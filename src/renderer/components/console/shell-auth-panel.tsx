@@ -1,4 +1,4 @@
-import { Plug, Unplug, AlertTriangle, ShieldCheck, ArrowRight } from "lucide-react";
+import { Plug, Unplug, AlertTriangle, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/renderer/components/ui/button";
 import { Input } from "@/renderer/components/ui/input";
 import { StatusBadge } from "./status-badge";
@@ -153,10 +153,24 @@ export function ShellAuthPanel({ setupStep, blocking, onNavigateSettings }: Shel
               disabled={isBusy || exchangeUpn.trim().length === 0}
               onClick={() => { void connectExchange(); }}
             >
-              <Plug className="size-3.5" />
-              Connect Exchange
+              {pendingAction === "exchangeConnect" ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Connecting…
+                </>
+              ) : (
+                <>
+                  <Plug className="size-3.5" />
+                  Connect Exchange
+                </>
+              )}
             </Button>
           </div>
+          {pendingAction === "exchangeConnect" && (
+            <p className="text-xs text-[var(--color-outline)]" aria-live="polite">
+              Connecting to Exchange Online…
+            </p>
+          )}
           {actionErrors.exchange && (
             <p className="text-xs text-[var(--color-error)]">{actionErrors.exchange}</p>
           )}
