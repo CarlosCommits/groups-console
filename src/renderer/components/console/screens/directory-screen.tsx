@@ -61,6 +61,7 @@ import {
   useUpdateGuestCompanyMutation,
 } from "@/renderer/hooks/use-guest-mutations";
 import {
+  getCombinedRecipientsConnectionIdentity,
   getExchangeConnectionIdentity,
   getGraphConnectionIdentity,
 } from "@/renderer/lib/query-keys";
@@ -308,7 +309,7 @@ export function DirectoryScreen() {
     }
 
     if (activeTab === "all") {
-      return `${exchangeConnectionIdentity}|${graphConnectionIdentity}`;
+      return getCombinedRecipientsConnectionIdentity(shell.exchangeConnection, shell.graphConnection);
     }
 
     return exchangeConnectionIdentity;
