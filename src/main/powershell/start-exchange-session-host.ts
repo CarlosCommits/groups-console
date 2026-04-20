@@ -20,6 +20,7 @@ export type ExchangeSessionHostCommand =
   | 'exportReportData'
   | 'listGroups'
   | 'getGroupMembers'
+  | 'getGroupMemberships'
   | 'addGroupMembers'
   | 'removeGroupMembers'
   | 'shutdown';
