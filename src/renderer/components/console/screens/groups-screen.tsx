@@ -4,7 +4,7 @@ import {
   Filter,
   UserPlus,
   UserMinus,
-  Settings,
+  RefreshCw,
   Wrench,
   Loader2,
   AlertCircle,
@@ -693,9 +693,16 @@ export function GroupsScreen() {
                         <UserPlus className="size-4 mr-1" />
                         Add Member
                       </Button>
-                      <Button variant="outline" size="sm" className="text-xs" disabled>
-                        <Settings className="size-4 mr-1" />
-                        Settings
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        className="text-xs"
+                        disabled={!selectedGroup || membersFetching}
+                        onClick={() => void refetchMembers()}
+                        aria-label="Refresh members"
+                        title="Refresh members"
+                      >
+                        <RefreshCw className={cn("size-4", membersFetching && "animate-spin")} />
                       </Button>
                     </div>
                   </div>
