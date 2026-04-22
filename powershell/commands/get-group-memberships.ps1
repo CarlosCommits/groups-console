@@ -115,8 +115,10 @@ function Invoke-RadAppGetGroupMemberships {
                 managedByDisplayNames = @($resolvedGroup.ManagedBy | ForEach-Object { [string]$_ })
                 whenChangedUtc = $whenChangedUtc
             }
-        } | Sort-Object DisplayName
+        }
     )
+
+    $items = @($items | Sort-Object DisplayName)
 
     return @{
         member = @{
