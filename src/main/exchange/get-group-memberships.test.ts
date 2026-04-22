@@ -321,4 +321,33 @@ describe('getGroupMemberships', () => {
 
     expect(writeSystemLogEvent).not.toHaveBeenCalled();
   });
+
+  it('does not fall back when the primary path fails with a bootstrap or parse error', async () => {
+    vi.mocked(resolveRecipientForMembership).mockResolvedValue({
+      kind: 'exchangeDirect',
+      member: {
+        exchangeIdentity: 'jane@example.com',
+        objectId: 'recipient-1',
+        primaryEmail: 'jane@example.com',
+      },
+    });
+    vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
+      new Error('Exchange session host bootstrap failed: Parse error at get-group-memberships.ps1:118'),
+    );
+
+    await expect(
+      getGroupMemberships({
+        member: {
+          kind: 'exchangeRecipient',
+          exchangeIdentity: 'jane@example.com',
+          objectId: 'recipient-1',
+          primaryEmail: 'jane@example.com',
+          displayName: 'Jane Example',
+        },
+      }),
+    ).rejects.toThrow('Exchange session host bootstrap failed: Parse error at get-group-memberships.ps1:118');
+
+    expect(exchangeSessionManager.listGroups).not.toHaveBeenCalled();
+    expect(exchangeSessionManager.getGroupMembers).not.toHaveBeenCalled();
+  });
 });
