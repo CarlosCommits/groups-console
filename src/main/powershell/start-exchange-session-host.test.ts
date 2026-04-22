@@ -13,9 +13,12 @@ vi.mock('node:child_process', () => ({
 
 vi.mock('@/main/app/paths', () => ({
   getRadAppPowerShellAssetRoot: () => 'C:\\GroupsConsole\\powershell',
+  getRadAppLogDirectory: () => 'C:\\GroupsConsole\\logs',
 }));
 
 import { startExchangeSessionHost } from './start-exchange-session-host';
+
+type BootstrapRequest = { requestId: string; command: string };
 
 function createFakeChild() {
   const emitter = new EventEmitter() as EventEmitter & {
@@ -26,6 +29,8 @@ function createFakeChild() {
     exitCode: number | null;
     kill: () => void;
     writes: string[];
+    bootstrapHandled: boolean;
+    bootstrapResponder: (request: BootstrapRequest) => void;
   };
 
   emitter.stdout = new PassThrough();
@@ -42,18 +47,52 @@ function createFakeChild() {
 
       emitter.writes.push(value);
       emitter.emit('stdin:write', value);
+
+      try {
+        const request = JSON.parse(value.trim()) as BootstrapRequest;
+
+        if (
+          !emitter.bootstrapHandled &&
+          request.command === 'getStatus' &&
+          request.requestId === 'host-bootstrap-readiness'
+        ) {
+          emitter.bootstrapHandled = true;
+          emitter.bootstrapResponder(request);
+        }
+      } catch {
+        // Ignore malformed test writes.
+      }
     },
   });
   emitter.killed = false;
   emitter.exitCode = null;
   emitter.writes = [];
+  emitter.bootstrapHandled = false;
+  emitter.bootstrapResponder = (request) => {
+    queueMicrotask(() => {
+      emitter.stdout.write(
+        `${JSON.stringify({ requestId: request.requestId, success: true, data: { state: 'disconnected' } })}\n`,
+      );
+    });
+  };
   emitter.kill = () => {
     emitter.killed = true;
     emitter.exitCode = 0;
     emitter.emit('exit');
+    emitter.emit('close');
   };
 
   return emitter;
+}
+
+function mockSpawnWithChild(child: ReturnType<typeof createFakeChild>) {
+  spawnMock.mockImplementation(() => {
+    queueMicrotask(() => {
+      child.emit('spawn');
+    });
+
+    return child;
+  });
 }
 
 describe('startExchangeSessionHost', () => {
@@ -103,6 +142,111 @@ describe('startExchangeSessionHost', () => {
     );
     expect(spawnMock).toHaveBeenNthCalledWith(2, 'pwsh.exe', expect.any(Array), expect.any(Object));
     expect(host.runtime.command).toBe('pwsh.exe');
+  });
+
+  it('waits for bootstrap readiness before resolving', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+    child.bootstrapResponder = () => {
+      // Defer bootstrap completion until the test explicitly responds.
+    };
+
+    mockSpawnWithChild(child);
+
+    let settled = false;
+    const hostPromise = startExchangeSessionHost().then(() => {
+      settled = true;
+    });
+    const bootstrapWritten = new Promise<void>((resolve) => {
+      child.once('stdin:write', () => resolve());
+    });
+
+    await bootstrapWritten;
+
+    expect(settled).toBe(false);
+    expect(child.writes).toHaveLength(1);
+    expect(JSON.parse(child.writes[0]!.trim())).toMatchObject({
+      requestId: 'host-bootstrap-readiness',
+      command: 'getStatus',
+    });
+
+    child.stdout.write(
+      `${JSON.stringify({ requestId: 'host-bootstrap-readiness', success: true, data: { state: 'disconnected' } })}\n`,
+    );
+
+    await expect(hostPromise).resolves.toBeUndefined();
+    expect(settled).toBe(true);
+  });
+
+  it('rejects startup when bootstrap emits an unknown-request error', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+    child.bootstrapResponder = () => {
+      queueMicrotask(() => {
+        child.stdout.write(
+          `${JSON.stringify({ requestId: 'unknown-request', success: false, error: { message: 'Exchange session host bootstrap failed: Parse error at get-group-memberships.ps1:118' } })}\n`,
+        );
+      });
+    };
+
+    mockSpawnWithChild(child);
+
+    await expect(startExchangeSessionHost()).rejects.toThrow(
+      'Exchange session host bootstrap failed: Parse error at get-group-memberships.ps1:118',
+    );
+  });
+
+  it('rejects startup when the host exits before bootstrap readiness completes', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+    child.bootstrapResponder = () => {
+      queueMicrotask(() => {
+        child.stderr.write('Bootstrap parse failed at get-group-memberships.ps1:118');
+        child.exitCode = 1;
+        child.emit('exit');
+        child.emit('close');
+      });
+    };
+
+    mockSpawnWithChild(child);
+
+    await expect(startExchangeSessionHost()).rejects.toThrow(
+      'Bootstrap parse failed at get-group-memberships.ps1:118',
+    );
+  });
+
+  it('prefers structured bootstrap errors over generic host close errors', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+    });
+
+    const child = createFakeChild();
+    child.bootstrapResponder = () => {
+      queueMicrotask(() => {
+        child.stdout.write(
+          `${JSON.stringify({ requestId: 'unknown-request', success: false, error: { message: 'Exchange session host bootstrap failed: Parse error at get-group-memberships.ps1:118' } })}\n`,
+        );
+        child.stderr.write('Generic host close error');
+        child.exitCode = 1;
+        child.emit('exit');
+        child.emit('close');
+      });
+    };
+
+    mockSpawnWithChild(child);
+
+    await expect(startExchangeSessionHost()).rejects.toThrow(
+      'Exchange session host bootstrap failed: Parse error at get-group-memberships.ps1:118',
+    );
   });
 
   it('sends requests and resolves host responses', async () => {

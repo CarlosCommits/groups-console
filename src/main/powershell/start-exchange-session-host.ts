@@ -77,8 +77,11 @@ export async function startExchangeSessionHost(): Promise<ExchangeSessionHost> {
   for (const candidate of WINDOWS_CANDIDATES) {
     try {
       const child = await spawnCandidate(candidate.command, hostScriptPath);
+      const host = createHostController(child, candidate);
 
-      return createHostController(child, candidate);
+      await host.request('getStatus', {}, undefined, 'host-bootstrap-readiness');
+
+      return host;
     } catch (error) {
       if (
         typeof error === 'object' &&
@@ -201,7 +204,7 @@ function createHostController(
     pending.reject(new Error(parsed.error?.message ?? 'Exchange session host request failed.'));
   });
 
-  child.once('exit', () => {
+  child.once('close', () => {
     const stderrChunk: unknown = stderrBuffer.read();
     const stderr =
       typeof stderrChunk === 'string'
