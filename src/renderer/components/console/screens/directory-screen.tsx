@@ -321,7 +321,7 @@ function ProfileHeader({ displayName, email, badgeClassName, badgeLabel, avatarK
   avatarKey: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/50 px-3 py-2.5">
       <Avatar className="size-8 text-xs">
         <AvatarFallback className={avatarColorFor(avatarKey)}>
           {getInitials(displayName)}
@@ -1478,15 +1478,16 @@ export function DirectoryScreen() {
           </DialogHeader>
 
           {detailTarget && (
-            <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="mt-2 flex min-h-0 flex-1 flex-col">
-              <TabsList variant="line" className="w-full">
+            <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="flex min-h-0 flex-1 flex-col">
+              <Separator className="-mx-4 mb-2" />
+              <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="groups">Groups</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details" className="mt-0 flex-1 min-h-0">
+              <TabsContent value="details" className="mt-4 flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                  <div className="flex flex-col gap-4 p-1">
+                  <div className="flex flex-col gap-4 p-2">
           {detailPending ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -1561,10 +1562,10 @@ export function DirectoryScreen() {
                     displayName={detailResult.data.displayName}
                     email={detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
                     badgeClassName={typeBadgeClass("mailContact")}
-                    badgeLabel="CONTACT"
-                    avatarKey={detailTarget?.stableKey ?? ""}
-                  />
-                  <div className="divide-y divide-slate-100">
+                   badgeLabel="CONTACT"
+                   avatarKey={detailTarget?.stableKey ?? ""}
+                 />
+                 <div className="divide-y divide-slate-100 rounded-lg border border-border/50 px-4 py-1">
                     {detailResult.data.primaryEmail && (
                       <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                     )}
@@ -1615,10 +1616,10 @@ export function DirectoryScreen() {
                     displayName={detailResult.data.displayName ?? "\u2014"}
                     email={detailResult.data.primaryEmail ?? detailResult.data.userPrincipalName ?? "\u2014"}
                     badgeClassName={typeBadgeClass("guestUser")}
-                    badgeLabel="GUEST"
-                    avatarKey={detailTarget?.stableKey ?? ""}
-                  />
-                  <div className="divide-y divide-slate-100">
+                   badgeLabel="GUEST"
+                   avatarKey={detailTarget?.stableKey ?? ""}
+                 />
+                 <div className="divide-y divide-slate-100 rounded-lg border border-border/50 px-4 py-1">
                     {detailResult.data.primaryEmail && (
                       <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                     )}
@@ -1699,10 +1700,10 @@ export function DirectoryScreen() {
                     displayName={detailResult.data.displayName}
                     email={detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
                     badgeClassName={typeBadgeClass(detailResult.data.recipientType)}
-                    badgeLabel={TYPE_LABELS[detailResult.data.recipientType]}
-                    avatarKey={detailTarget?.stableKey ?? ""}
-                  />
-                  <div className="divide-y divide-slate-100">
+                   badgeLabel={TYPE_LABELS[detailResult.data.recipientType]}
+                   avatarKey={detailTarget?.stableKey ?? ""}
+                 />
+                 <div className="divide-y divide-slate-100 rounded-lg border border-border/50 px-4 py-1">
                     {detailResult.data.primaryEmail && (
                       <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                     )}
@@ -1748,9 +1749,9 @@ export function DirectoryScreen() {
                 </ScrollArea>
               </TabsContent>
 
-<TabsContent value="groups" className="mt-0 flex-1 min-h-0">
+<TabsContent value="groups" className="mt-4 flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                  <div className="flex flex-col gap-4 p-1">
+                  <div className="flex flex-col gap-4 p-2">
                   {membershipsQuery.error && (
                     <Alert variant="destructive">
                       <AlertCircle className="size-4" />
