@@ -75,7 +75,6 @@ function Invoke-RadAppGetGroupMemberships {
 
     function Add-RadAppIdentifier {
         param(
-            [Parameter(Mandatory = $true)]
             [System.Collections.Generic.HashSet[string]]$Identifiers,
             [Parameter(Mandatory = $false)]
             [string]$Value
@@ -150,9 +149,7 @@ function Invoke-RadAppGetGroupMemberships {
         param(
             [Parameter(Mandatory = $true)]
             $GroupMember,
-            [Parameter(Mandatory = $true)]
             [System.Collections.Generic.HashSet[string]]$StrongRecipientIdentifiers,
-            [Parameter(Mandatory = $true)]
             [System.Collections.Generic.HashSet[string]]$WeakRecipientIdentifiers
         )
 
