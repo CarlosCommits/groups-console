@@ -231,6 +231,125 @@ describe('getGroupMemberships', () => {
     );
   });
 
+  it('matches fallback memberships by object id when exchange identities differ', async () => {
+    vi.mocked(resolveRecipientForMembership).mockResolvedValue({
+      kind: 'exchangeDirect',
+      member: {
+        exchangeIdentity: '/o=ExchangeLabs/ou=Exchange Administrative Group/cn=Recipients/cn=contact-1',
+        objectId: 'recipient-1',
+        primaryEmail: 'carlos@gmail.com',
+      },
+    });
+    vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
+      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+    );
+    vi.mocked(exchangeSessionManager.listGroups).mockResolvedValue({
+      appliedKind: 'all',
+      items: [
+        {
+          objectId: 'group-1',
+          exchangeIdentity: 'example-directory-group',
+          displayName: 'Example Directory',
+          alias: 'esadir',
+          primaryEmail: 'directory@example.com',
+          groupKind: 'distributionList',
+          managedByDisplayNames: [],
+          whenChangedUtc: null,
+        },
+      ],
+    });
+    vi.mocked(exchangeSessionManager.getGroupMembers).mockResolvedValue({
+      group: {
+        exchangeIdentity: 'example-directory-group',
+        objectId: 'group-1',
+        groupKind: 'distributionList',
+      },
+        items: [
+          {
+            objectId: 'recipient-1',
+            exchangeIdentity: 'MailContact_12345',
+            displayName: 'Carlos Gmail',
+            primaryEmail: 'carlos@gmail.com',
+            alias: 'carlos.gmail',
+            recipientType: 'mailContact',
+            recipientTypeDetails: 'MailContact',
+          },
+        ],
+    });
+
+    const result = await getGroupMemberships({
+      member: {
+        kind: 'exchangeRecipient',
+        exchangeIdentity: '/o=ExchangeLabs/ou=Exchange Administrative Group/cn=Recipients/cn=contact-1',
+        objectId: 'recipient-1',
+        primaryEmail: 'carlos@gmail.com',
+        displayName: 'Carlos Gmail',
+      },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.exchangeIdentity).toBe('example-directory-group');
+  });
+
+  it('does not cross-match fallback memberships on shared primary email when object ids differ', async () => {
+    vi.mocked(resolveRecipientForMembership).mockResolvedValue({
+      kind: 'exchangeDirect',
+      member: {
+        exchangeIdentity: 'Marla Poor',
+        objectId: 'contact-object-id',
+        primaryEmail: 'marlpo01@noa.nintendo.com',
+      },
+    });
+    vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
+      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+    );
+    vi.mocked(exchangeSessionManager.listGroups).mockResolvedValue({
+      appliedKind: 'all',
+      items: [
+        {
+          objectId: 'group-1',
+          exchangeIdentity: 'security-group-1',
+          displayName: 'Security Group 1',
+          alias: 'security-group-1',
+          primaryEmail: 'security-group-1@example.com',
+          groupKind: 'mailEnabledSecurityGroup',
+          managedByDisplayNames: [],
+          whenChangedUtc: null,
+        },
+      ],
+    });
+    vi.mocked(exchangeSessionManager.getGroupMembers).mockResolvedValue({
+      group: {
+        exchangeIdentity: 'security-group-1',
+        objectId: 'group-1',
+        groupKind: 'mailEnabledSecurityGroup',
+      },
+      items: [
+        {
+          objectId: 'guest-object-id',
+          exchangeIdentity: 'f51d4d4a-db63-421d-82bd-c2b612a73ed7',
+          displayName: 'Marla Poor',
+          primaryEmail: 'marlpo01@noa.nintendo.com',
+          alias: 'marlpo01_noa.nintendo.com#EXT#',
+          recipientType: 'guestMailUser',
+          recipientTypeDetails: 'GuestMailUser',
+        },
+      ],
+    });
+
+    const result = await getGroupMemberships({
+      member: {
+        kind: 'exchangeRecipient',
+        exchangeIdentity: 'Marla Poor',
+        objectId: 'contact-object-id',
+        primaryEmail: 'marlpo01@noa.nintendo.com',
+        displayName: 'Marla Poor',
+      },
+    });
+
+    expect(result.items).toHaveLength(0);
+  });
+
   it('writes a failed fallback system log when fallback execution also fails', async () => {
     vi.mocked(resolveRecipientForMembership).mockResolvedValue({
       kind: 'exchangeDirect',
