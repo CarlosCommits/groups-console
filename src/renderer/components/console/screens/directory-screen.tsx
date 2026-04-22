@@ -1479,15 +1479,16 @@ export function DirectoryScreen() {
 
           {detailTarget && (
             <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="flex min-h-0 flex-1 flex-col">
-              <Separator className="-mx-4 mb-2" />
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="groups">Groups</TabsTrigger>
-              </TabsList>
+              <div className="-mx-4 flex border-b border-border/50 px-4 pt-0">
+                <TabsList variant="line" className="h-auto bg-transparent gap-5 p-0">
+                  <TabsTrigger value="details" className="text-xs font-semibold pb-2.5 data-[state=active]:text-[var(--color-primary)] text-muted-foreground hover:text-foreground">Details</TabsTrigger>
+                  <TabsTrigger value="groups" className="text-xs font-semibold pb-2.5 data-[state=active]:text-[var(--color-primary)] text-muted-foreground hover:text-foreground">Groups</TabsTrigger>
+                </TabsList>
+              </div>
 
-              <TabsContent value="details" className="mt-4 flex-1 min-h-0">
+              <TabsContent value="details" className="mt-3 flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                  <div className="flex flex-col gap-4 p-2">
+                  <div className="flex flex-col gap-3 px-1">
           {detailPending ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -1749,9 +1750,9 @@ export function DirectoryScreen() {
                 </ScrollArea>
               </TabsContent>
 
-<TabsContent value="groups" className="mt-4 flex-1 min-h-0">
+<TabsContent value="groups" className="mt-3 flex-1 min-h-0">
                 <ScrollArea className="h-full">
-                  <div className="flex flex-col gap-4 p-2">
+                  <div className="flex flex-col gap-3 px-1">
                   {membershipsQuery.error && (
                     <Alert variant="destructive">
                       <AlertCircle className="size-4" />
@@ -1844,57 +1845,54 @@ export function DirectoryScreen() {
                     </div>
                   ) : membershipsQuery.error ? null : (
                     <>
-                      <Card className="border-border/50">
-                        <CardHeader className="p-4 pb-3 space-y-1">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <CardTitle className="text-sm">Current groups</CardTitle>
-                              <CardDescription className="text-xs">
-                                Review memberships and remove this person from a group.
-                              </CardDescription>
-                            </div>
-                            <Badge variant="secondary">{currentMemberships.length}</Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                          {currentMemberships.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              This person is not currently in any groups.
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold text-foreground">Current groups</h4>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                              Review memberships and remove this person from a group.
                             </p>
-                          ) : (
-                            <div className="flex flex-col gap-2">
-                              {currentMemberships.map((group) => (
-                                <div
-                                  key={group.exchangeIdentity}
-                                  className="flex items-center gap-3 rounded-md border border-border/50 px-3 py-2"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-semibold text-foreground">
-                                      {group.displayName}
-                                    </p>
-                                    <p className="truncate text-[11px] text-muted-foreground">
-                                      {group.primaryEmail ?? group.exchangeIdentity}
-                                    </p>
-                                  </div>
-                                  <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setRemoveGroupError(null);
-                                      setRemoveGroupResult(null);
-                                      setRemoveGroupTarget(group);
-                                    }}
-                                  >
-                                    <UserMinus className="mr-1 size-3.5" />
-                                    Remove
-                                  </Button>
+                          </div>
+                          <Badge variant="secondary">{currentMemberships.length}</Badge>
+                        </div>
+                        {currentMemberships.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-1">
+                            This person is not currently in any groups.
+                          </p>
+                        ) : (
+                          <div className="max-h-48 overflow-y-auto rounded-md border border-border/50">
+                            {currentMemberships.map((group) => (
+                              <div
+                                key={group.exchangeIdentity}
+                                className="flex items-center gap-3 border-b border-border/30 px-2.5 py-1.5 last:border-b-0"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-foreground">
+                                    {group.displayName}
+                                  </p>
+                                  <p className="truncate text-[11px] text-muted-foreground">
+                                    {group.primaryEmail ?? group.exchangeIdentity}
+                                  </p>
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                                <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setRemoveGroupError(null);
+                                    setRemoveGroupResult(null);
+                                    setRemoveGroupTarget(group);
+                                  }}
+                                >
+                                  <UserMinus className="mr-1 size-3.5" />
+                                  Remove
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <Separator />
 
                       {allGroupsError ? (
                         <Alert variant="destructive">
@@ -1918,134 +1916,131 @@ export function DirectoryScreen() {
                           </AlertDescription>
                         </Alert>
                       ) : (
-                      <Card className="border-border/50">
-                        <CardHeader className="p-4 pb-3 space-y-1">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <CardTitle className="text-sm">Add to groups</CardTitle>
-                              <CardDescription className="text-xs">
-                                Select multiple groups and add this person in one pass.
-                              </CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {selectedGroupsCount > 0 && (
-                                <span className="text-xs font-medium text-[var(--color-primary)]">
-                                  {visibleSelectedGroupsCount}/{selectedGroupsCount} visible selected
-                                </span>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold text-foreground">Add to groups</h4>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                              Select multiple groups and add this person in one pass.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedGroupsCount > 0 && (
+                              <span className="text-xs font-medium text-[var(--color-primary)]">
+                                {visibleSelectedGroupsCount}/{selectedGroupsCount} visible selected
+                              </span>
+                            )}
+                            <Badge variant="secondary">
+                              {groupFilterText.trim()
+                                ? `${filteredAvailableGroups.length}/${availableGroups.length}`
+                                : availableGroups.length}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Input
+                              className="text-xs"
+                              aria-label="Filter available groups"
+                              placeholder="Filter available groups..."
+                              value={groupFilterText}
+                              onChange={(e) => setGroupFilterText(e.target.value)}
+                              disabled={addGroupPending}
+                            />
+                            <Button
+                              size="sm"
+                              disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
+                              onClick={() => {
+                                void handleAddGroups();
+                              }}
+                            >
+                              {addGroupPending ? (
+                                <Loader2 className="mr-1 size-3.5 animate-spin" />
+                              ) : (
+                                <UserPlus className="mr-1 size-3.5" />
                               )}
-                              <Badge variant="secondary">
-                                {groupFilterText.trim()
-                                  ? `${filteredAvailableGroups.length}/${availableGroups.length}`
-                                  : availableGroups.length}
-                              </Badge>
-                            </div>
+                              Add selected ({visibleSelectedGroupsCount})
+                            </Button>
                           </div>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                          <div className="flex flex-col gap-3">
-                            <div className="flex gap-2">
-                              <Input
-                                className="text-xs"
-                                placeholder="Filter available groups..."
-                                value={groupFilterText}
-                                onChange={(e) => setGroupFilterText(e.target.value)}
-                                disabled={addGroupPending}
-                              />
-                              <Button
-                                size="sm"
-                                disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
-                                onClick={() => {
-                                  void handleAddGroups();
-                                }}
-                              >
-                                {addGroupPending ? (
-                                  <Loader2 className="mr-1 size-3.5 animate-spin" />
-                                ) : (
-                                  <UserPlus className="mr-1 size-3.5" />
-                                )}
-                                Add selected ({visibleSelectedGroupsCount})
-                              </Button>
+
+                          {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
+                                  onClick={() => {
+                                    setSelectedGroupKeys((prev) => {
+                                      const next = new Set(prev);
+                                      for (const g of filteredAvailableGroups) {
+                                        next.add(g.exchangeIdentity);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  Select all filtered
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  disabled={addGroupPending || selectedGroupsCount === 0}
+                                  onClick={() => setSelectedGroupKeys(new Set())}
+                                >
+                                  Clear selection
+                                </Button>
+                              </div>
+                              <span className="text-muted-foreground">
+                                {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
+                                {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
+                              </span>
                             </div>
+                          )}
 
-                            {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
-                              <div className="flex items-center justify-between text-xs">
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
-                                    onClick={() => {
-                                      setSelectedGroupKeys((prev) => {
-                                        const next = new Set(prev);
-                                        for (const g of filteredAvailableGroups) {
-                                          next.add(g.exchangeIdentity);
-                                        }
-                                        return next;
-                                      });
-                                    }}
-                                  >
-                                    Select all filtered
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    disabled={addGroupPending || selectedGroupsCount === 0}
-                                    onClick={() => setSelectedGroupKeys(new Set())}
-                                  >
-                                    Clear selection
-                                  </Button>
-                                </div>
-                                <span className="text-muted-foreground">
-                                  {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
-                                  {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
-                                </span>
-                              </div>
-                            )}
-
-                            {availableGroups.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                There are no additional groups available to add.
-                              </p>
-                            ) : filteredAvailableGroups.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                No additional groups match the current filter.
-                                {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
-                              </p>
-                            ) : (
-                              <div className="max-h-64 overflow-y-auto rounded-md border border-border/50">
-                                {filteredAvailableGroups.map((group) => (
-                                  <label
-                                    key={group.exchangeIdentity}
-                                    className={cn(
-                                      "flex cursor-pointer items-center gap-3 border-b border-border/30 px-3 py-2 last:border-b-0 transition-colors",
-                                      selectedGroupKeys.has(group.exchangeIdentity)
-                                        ? "bg-primary/5"
-                                        : "hover:bg-muted/50",
-                                    )}
-                                  >
-                                    <Checkbox
-                                      checked={selectedGroupKeys.has(group.exchangeIdentity)}
-                                      onCheckedChange={() => handleToggleGroupSelection(group.exchangeIdentity)}
-                                      disabled={addGroupPending}
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                      <p className="truncate text-sm font-semibold text-foreground">
-                                        {group.displayName}
-                                      </p>
-                                      <p className="truncate text-[11px] text-muted-foreground">
-                                        {group.primaryEmail ?? group.exchangeIdentity}
-                                      </p>
-                                    </div>
-                                    <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {availableGroups.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              There are no additional groups available to add.
+                            </p>
+                          ) : filteredAvailableGroups.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No additional groups match the current filter.
+                              {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
+                            </p>
+                          ) : (
+                            <div className="max-h-64 overflow-y-auto rounded-md border border-border/50">
+                              {filteredAvailableGroups.map((group) => (
+                                <label
+                                  key={group.exchangeIdentity}
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-3 border-b border-border/30 px-2.5 py-1.5 last:border-b-0 transition-colors",
+                                    selectedGroupKeys.has(group.exchangeIdentity)
+                                      ? "bg-primary/5"
+                                      : "hover:bg-muted/50",
+                                  )}
+                                >
+                                  <Checkbox
+                                    checked={selectedGroupKeys.has(group.exchangeIdentity)}
+                                    onCheckedChange={() => handleToggleGroupSelection(group.exchangeIdentity)}
+                                    disabled={addGroupPending}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-semibold text-foreground">
+                                      {group.displayName}
+                                    </p>
+                                    <p className="truncate text-[11px] text-muted-foreground">
+                                      {group.primaryEmail ?? group.exchangeIdentity}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       )}
                     </>
                   )}
