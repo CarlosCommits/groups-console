@@ -1,21 +1,37 @@
-. "$PSScriptRoot\..\commands\get-exchange-connection-status.ps1"
-. "$PSScriptRoot\..\commands\connect-exchange.ps1"
-. "$PSScriptRoot\..\commands\disconnect-exchange.ps1"
-. "$PSScriptRoot\..\commands\lookup-recipient-ownership.ps1"
-. "$PSScriptRoot\..\commands\resolve-guest-mail-user.ps1"
-. "$PSScriptRoot\..\commands\create-contact.ps1"
-. "$PSScriptRoot\..\commands\get-recipient-details.ps1"
-. "$PSScriptRoot\..\commands\get-contact-details.ps1"
-. "$PSScriptRoot\..\commands\update-contact-company.ps1"
-. "$PSScriptRoot\..\commands\add-group-member.ps1"
-. "$PSScriptRoot\..\commands\remove-group-member.ps1"
-. "$PSScriptRoot\..\commands\search-recipients.ps1"
-. "$PSScriptRoot\..\commands\get-groups.ps1"
-. "$PSScriptRoot\..\commands\get-group-members.ps1"
-. "$PSScriptRoot\..\commands\get-group-memberships.ps1"
-. "$PSScriptRoot\..\commands\export-report-data.ps1"
-
 $ErrorActionPreference = 'Stop'
+
+try {
+    . "$PSScriptRoot\..\commands\get-exchange-connection-status.ps1"
+    . "$PSScriptRoot\..\commands\connect-exchange.ps1"
+    . "$PSScriptRoot\..\commands\disconnect-exchange.ps1"
+    . "$PSScriptRoot\..\commands\lookup-recipient-ownership.ps1"
+    . "$PSScriptRoot\..\commands\resolve-guest-mail-user.ps1"
+    . "$PSScriptRoot\..\commands\create-contact.ps1"
+    . "$PSScriptRoot\..\commands\get-recipient-details.ps1"
+    . "$PSScriptRoot\..\commands\get-contact-details.ps1"
+    . "$PSScriptRoot\..\commands\update-contact-company.ps1"
+    . "$PSScriptRoot\..\commands\add-group-member.ps1"
+    . "$PSScriptRoot\..\commands\remove-group-member.ps1"
+    . "$PSScriptRoot\..\commands\search-recipients.ps1"
+    . "$PSScriptRoot\..\commands\get-groups.ps1"
+    . "$PSScriptRoot\..\commands\get-group-members.ps1"
+    . "$PSScriptRoot\..\commands\get-group-memberships.ps1"
+    . "$PSScriptRoot\..\commands\export-report-data.ps1"
+
+    Get-Command Invoke-RadAppGetGroupMemberships -ErrorAction Stop | Out-Null
+}
+catch {
+    [Console]::Out.WriteLine((@{
+        requestId = 'unknown-request'
+        success = $false
+        error = @{
+            message = "Exchange session host bootstrap failed: $($_.Exception.Message)"
+        }
+    } | ConvertTo-Json -Compress -Depth 6))
+
+    exit 1
+}
+
 $script:RadAppExchangeConnectionContext = $null
 $script:RadAppCurrentRequestId = $null
 
@@ -158,7 +174,7 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
         } | ConvertTo-Json -Compress -Depth 6
     }
     catch {
-        @{ 
+        @{
             requestId = $requestId
             success = $false
             error = @{
