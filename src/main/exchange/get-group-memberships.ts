@@ -65,7 +65,11 @@ async function getGroupMembershipsFallback(
   payload: ResolvedGroupsGetMembershipsPayload,
 ): Promise<GroupsGetMembershipsResult> {
   const groupsResult = await exchangeSessionManager.listGroups({ kind: 'all' });
-  const normalizedIdentity = memberExchangeIdentity.toLowerCase();
+  const membershipTarget = {
+    exchangeIdentity: memberExchangeIdentity,
+    objectId: payload.member.objectId,
+    primaryEmail: payload.member.primaryEmail,
+  };
 
   const memberships: ExchangeGroupListItem[] = [];
 
@@ -74,7 +78,7 @@ async function getGroupMembershipsFallback(
       group: toExchangeGroupRef(group),
     });
 
-    if (hasMemberIdentity(membersResult, normalizedIdentity)) {
+    if (hasMemberIdentity(membersResult, membershipTarget)) {
       memberships.push(group);
     }
   }
@@ -93,14 +97,53 @@ function toExchangeGroupRef(group: ExchangeGroupListItem): ExchangeGroupRef {
   };
 }
 
-function hasMemberIdentity(result: GroupsGetMembersResult, normalizedIdentity: string): boolean {
-  return result.items.some((member) => {
-    const candidates = [member.exchangeIdentity, member.primaryEmail, member.alias]
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      .map((value) => value.toLowerCase());
+function hasMemberIdentity(result: GroupsGetMembersResult, member: {
+  exchangeIdentity?: string | null;
+  objectId?: string | null;
+  primaryEmail?: string | null;
+  alias?: string | null;
+}): boolean {
+  const strongMemberIdentifiers = getStrongMembershipIdentifiers(member);
+  const weakMemberIdentifiers = getWeakMembershipIdentifiers(member);
 
-    return candidates.includes(normalizedIdentity);
+  return result.items.some((member) => {
+    const strongCandidateIdentifiers = getStrongMembershipIdentifiers({
+      exchangeIdentity: member.exchangeIdentity,
+      objectId: member.objectId,
+    });
+    const weakCandidateIdentifiers = getWeakMembershipIdentifiers({
+      primaryEmail: member.primaryEmail,
+      alias: member.alias,
+    });
+
+    if (strongMemberIdentifiers.size > 0 || strongCandidateIdentifiers.size > 0) {
+      return [...strongCandidateIdentifiers].some((candidate) => strongMemberIdentifiers.has(candidate));
+    }
+
+    return [...weakCandidateIdentifiers].some((candidate) => weakMemberIdentifiers.has(candidate));
   });
+}
+
+function getStrongMembershipIdentifiers(input: {
+  exchangeIdentity?: string | null;
+  objectId?: string | null;
+}): Set<string> {
+  return new Set(
+    [input.exchangeIdentity, input.objectId]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.toLowerCase()),
+  );
+}
+
+function getWeakMembershipIdentifiers(input: {
+  primaryEmail?: string | null;
+  alias?: string | null;
+}): Set<string> {
+  return new Set(
+    [input.primaryEmail, input.alias]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.toLowerCase()),
+  );
 }
 
 function isMissingMembershipsCommandError(error: unknown): error is Error {
