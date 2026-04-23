@@ -28,7 +28,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/renderer/components/ui/dialog";
@@ -157,11 +156,13 @@ interface DetailRowProps {
 
 function DetailRow({ label, value }: DetailRowProps) {
   return (
-    <div className="flex justify-between py-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="flex items-start gap-3 py-1.5">
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <span className="text-xs text-foreground truncate max-w-[60%]">{value}</span>
+      <span className="min-w-0 flex-1 text-right text-xs text-foreground break-words whitespace-normal">
+        {value}
+      </span>
     </div>
   );
 }
@@ -279,8 +280,6 @@ export function RecipientDetailDialog({
   removeGroupResult,
   removedGroupName,
   onRequestRemoveGroup,
-  onClose,
-  recipientDialogPending,
 }: RecipientDetailDialogProps) {
   const dialogTitle = useMemo(() => {
     if (!detailTarget) return "Details";
@@ -310,7 +309,7 @@ export function RecipientDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[1000px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
+        className="sm:max-w-[1280px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
         showCloseButton={canDismiss}
       >
         <DialogHeader className="px-6 py-4 border-b border-border/50">
@@ -324,14 +323,14 @@ export function RecipientDetailDialog({
 
         {detailTarget && (
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            <aside className="w-72 flex-shrink-0 flex flex-col border-r border-border/50 bg-muted/30">
+            <aside className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-r border-border/50 bg-muted/30">
               <ScrollArea className="flex-1">
                 <div className="p-4 flex flex-col gap-4">
                   {detailPending ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
                         <Loader2 className="size-6 text-[var(--color-primary)] animate-spin mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Loading details\u2026</p>
+                        <p className="text-sm text-muted-foreground">Loading details…</p>
                       </div>
                     </div>
                   ) : detailError ? (
@@ -356,7 +355,10 @@ export function RecipientDetailDialog({
                           {detailCanUpdateCompany && (
                             <div className="flex flex-col gap-2">
                               <div>
-                                <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                <label
+                                  htmlFor="contact-company-name"
+                                  className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                >
                                   Company name
                                 </label>
                                 <p className="text-[11px] text-muted-foreground leading-tight">
@@ -365,6 +367,7 @@ export function RecipientDetailDialog({
                               </div>
                               <div className="flex flex-col gap-2">
                                 <Input
+                                  id="contact-company-name"
                                   className="bg-background text-xs"
                                   value={updateCompanyName}
                                   onChange={(e) => onUpdateCompanyNameChange(e.target.value)}
@@ -448,7 +451,10 @@ export function RecipientDetailDialog({
                           {detailCanUpdateCompany && (
                             <div className="flex flex-col gap-2">
                               <div>
-                                <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                <label
+                                  htmlFor="guest-company-name"
+                                  className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                >
                                   Company name
                                 </label>
                                 <p className="text-[11px] text-muted-foreground leading-tight">
@@ -457,6 +463,7 @@ export function RecipientDetailDialog({
                               </div>
                               <div className="flex flex-col gap-2">
                                 <Input
+                                  id="guest-company-name"
                                   className="bg-background text-xs"
                                   value={updateCompanyName}
                                   onChange={(e) => onUpdateCompanyNameChange(e.target.value)}
@@ -618,9 +625,22 @@ export function RecipientDetailDialog({
               </ScrollArea>
             </aside>
 
-            <main className="flex-1 flex flex-col overflow-hidden bg-background">
+            <section className="w-[400px] flex-shrink-0 flex flex-col overflow-hidden border-r border-border/50 bg-background">
+              <div className="px-4 py-3 border-b border-border/50 flex items-end justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
+                    Current groups
+                  </h3>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {currentMemberships.length}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Review and manage existing memberships.
+                </p>
+              </div>
               <ScrollArea className="flex-1">
-                <div className="p-5 flex flex-col gap-6">
+                <div className="p-4 flex flex-col gap-4">
                   {membershipsError && (
                     <Alert variant="destructive">
                       <AlertCircle className="size-4" />
@@ -657,6 +677,102 @@ export function RecipientDetailDialog({
                     )
                   )}
 
+                  {!memberSelectionRef ? (
+                    <Alert>
+                      <AlertTriangle className="size-4" />
+                      <AlertTitle>Membership unavailable</AlertTitle>
+                      <AlertDescription>
+                        This directory entry cannot be resolved into a membership target.
+                      </AlertDescription>
+                    </Alert>
+                  ) : membershipsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
+                    </div>
+                  ) : (
+                    <>
+                      {currentMemberships.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2">
+                          This person is not currently in any groups.
+                        </p>
+                      ) : (
+                        <div className="border border-border/20 rounded-sm overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-full">
+                                  Group
+                                </TableHead>
+                                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Type
+                                </TableHead>
+                                <TableHead className="w-12"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {currentMemberships.map((group) => (
+                                <TableRow
+                                  key={group.exchangeIdentity}
+                                  className="group hover:bg-muted/30"
+                                >
+                                  <TableCell>
+                                    <div className="flex flex-col">
+                                      <span className="text-xs font-semibold text-foreground">
+                                        {group.displayName}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {group.primaryEmail ?? group.exchangeIdentity}
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                      {GROUP_KIND_LABELS[group.groupKind]}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-xs"
+                                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-[var(--color-error)]"
+                                      aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
+                                      onClick={() => {
+                                        onRequestRemoveGroup(group);
+                                      }}
+                                    >
+                                      <UserMinus className="size-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </section>
+
+            <section className="min-w-0 flex-1 flex flex-col overflow-hidden bg-background">
+              <div className="px-4 py-3 border-b border-border/50 flex items-end justify-between shrink-0">
+                <div className="flex flex-col">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
+                    Add to groups
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Bulk membership assignment.
+                  </p>
+                </div>
+                {selectedGroupsCount > 0 && (
+                  <span className="text-[11px] font-bold text-[var(--color-primary)]">
+                    {visibleSelectedGroupsCount} of {selectedGroupsCount} selected
+                  </span>
+                )}
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-4 flex flex-col gap-4">
                   {addGroupResult && addGroupResult.length > 0 && (
                     addGroupHadIssues ? (
                       <Alert variant="destructive">
@@ -693,6 +809,23 @@ export function RecipientDetailDialog({
                     <p className="text-xs text-[var(--color-error)]">{addGroupError}</p>
                   )}
 
+                  {allGroupsError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="size-4" />
+                      <AlertTitle>Failed to load available groups</AlertTitle>
+                      <AlertDescription>
+                        <div className="flex flex-col gap-3">
+                          <span>{allGroupsError}</span>
+                          <div>
+                            <Button variant="outline" size="sm" onClick={onRefetchAllGroups}>
+                              Retry groups list
+                            </Button>
+                          </div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {!memberSelectionRef ? (
                     <Alert>
                       <AlertTriangle className="size-4" />
@@ -701,256 +834,141 @@ export function RecipientDetailDialog({
                         This directory entry cannot be resolved into a membership target.
                       </AlertDescription>
                     </Alert>
-                  ) : membershipsLoading || allGroupsLoading ? (
+                  ) : allGroupsLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
                     </div>
-                  ) : membershipsError ? null : (
-                    <>
-                      <section className="flex flex-col gap-3">
-                        <header className="flex items-end justify-between border-b border-border/20 pb-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
-                              Current groups
-                            </h3>
-                            <Badge variant="secondary" className="text-[10px]">
-                              {currentMemberships.length}
-                            </Badge>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3" />
+                            <Input
+                              className="w-full bg-muted/30 border-border/30 rounded-sm pl-8 pr-3 py-1.5 text-xs"
+                              placeholder="Filter available groups..."
+                              type="text"
+                              value={groupFilterText}
+                              onChange={(e) => onGroupFilterTextChange(e.target.value)}
+                              disabled={addGroupPending}
+                              aria-label="Filter available groups"
+                            />
                           </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            Review and manage existing memberships.
-                          </p>
-                        </header>
+                          <Button
+                            size="sm"
+                            disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
+                            onClick={onAddGroups}
+                          >
+                            {addGroupPending ? (
+                              <Loader2 className="mr-1 size-3.5 animate-spin" />
+                            ) : (
+                              <UserPlus className="mr-1 size-3.5" />
+                            )}
+                            Add selected ({visibleSelectedGroupsCount})
+                          </Button>
+                        </div>
 
-                        {currentMemberships.length === 0 ? (
+                        {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
+                                onClick={onSelectAllFiltered}
+                              >
+                                Select all filtered
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                disabled={addGroupPending || selectedGroupsCount === 0}
+                                onClick={onClearSelection}
+                              >
+                                Clear selection
+                              </Button>
+                            </div>
+                            <span className="text-muted-foreground text-[10px]">
+                              {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
+                              {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
+                            </span>
+                          </div>
+                        )}
+
+                        {availableGroups.length === 0 ? (
                           <p className="text-sm text-muted-foreground py-2">
-                            This person is not currently in any groups.
+                            There are no additional groups available to add.
+                          </p>
+                        ) : filteredAvailableGroups.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-2">
+                            No additional groups match the current filter.
+                            {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
                           </p>
                         ) : (
                           <div className="border border-border/20 rounded-sm overflow-hidden">
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                  <TableHead className="w-10"></TableHead>
                                   <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-full">
                                     Group
                                   </TableHead>
                                   <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                     Type
                                   </TableHead>
-                                  <TableHead className="w-12"></TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {currentMemberships.map((group) => (
-                                  <TableRow
-                                    key={group.exchangeIdentity}
-                                    className="group hover:bg-muted/30"
-                                  >
-                                    <TableCell>
-                                      <div className="flex flex-col">
-                                        <span className="text-xs font-semibold text-foreground">
-                                          {group.displayName}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                          {group.primaryEmail ?? group.exchangeIdentity}
-                                        </span>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                                        {GROUP_KIND_LABELS[group.groupKind]}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-[var(--color-error)]"
-                                        aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
-                                        onClick={() => {
-                                          onRequestRemoveGroup(group);
-                                        }}
-                                      >
-                                        <UserMinus className="size-4" />
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
+                                {filteredAvailableGroups.map((group) => {
+                                  const selected = selectedGroupKeys.has(group.exchangeIdentity);
+                                  return (
+                                    <TableRow
+                                      key={group.exchangeIdentity}
+                                      className={cn(
+                                        "transition-colors",
+                                        selected ? "bg-primary/5" : "hover:bg-muted/30",
+                                      )}
+                                    >
+                                      <TableCell>
+                                        <Checkbox
+                                          checked={selected}
+                                          onCheckedChange={() => onToggleGroupSelection(group.exchangeIdentity)}
+                                          disabled={addGroupPending}
+                                          aria-label={`Select ${group.displayName} for group membership add`}
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-semibold text-foreground">
+                                            {group.displayName}
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground">
+                                            {group.primaryEmail ?? group.exchangeIdentity}
+                                          </span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                          {GROUP_KIND_LABELS[group.groupKind]}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
                               </TableBody>
                             </Table>
                           </div>
                         )}
-                      </section>
-
-                      {allGroupsError ? (
-                        <Alert variant="destructive">
-                          <AlertCircle className="size-4" />
-                          <AlertTitle>Failed to load available groups</AlertTitle>
-                          <AlertDescription>
-                            <div className="flex flex-col gap-3">
-                              <span>{allGroupsError}</span>
-                              <div>
-                                <Button variant="outline" size="sm" onClick={onRefetchAllGroups}>
-                                  Retry groups list
-                                </Button>
-                              </div>
-                            </div>
-                          </AlertDescription>
-                        </Alert>
-                      ) : (
-                        <section className="flex flex-col gap-3">
-                          <header className="flex items-end justify-between border-b border-border/20 pb-2">
-                            <div className="flex flex-col">
-                              <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
-                                Add to groups
-                              </h3>
-                              <p className="text-[11px] text-muted-foreground">
-                                Bulk membership assignment.
-                              </p>
-                            </div>
-                            {selectedGroupsCount > 0 && (
-                              <span className="text-[11px] font-bold text-[var(--color-primary)]">
-                                {visibleSelectedGroupsCount} of {selectedGroupsCount} selected
-                              </span>
-                            )}
-                          </header>
-
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="relative flex-1">
-                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3" />
-                                <Input
-                                  className="w-full bg-muted/30 border-border/30 rounded-sm pl-8 pr-3 py-1.5 text-xs"
-                                  placeholder="Filter available groups..."
-                                  type="text"
-                                  value={groupFilterText}
-                                  onChange={(e) => onGroupFilterTextChange(e.target.value)}
-                                  disabled={addGroupPending}
-                                  aria-label="Filter available groups"
-                                />
-                              </div>
-                              <Button
-                                size="sm"
-                                disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
-                                onClick={onAddGroups}
-                              >
-                                {addGroupPending ? (
-                                  <Loader2 className="mr-1 size-3.5 animate-spin" />
-                                ) : (
-                                  <UserPlus className="mr-1 size-3.5" />
-                                )}
-                                Add selected ({visibleSelectedGroupsCount})
-                              </Button>
-                            </div>
-
-                            {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
-                              <div className="flex items-center justify-between text-xs">
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
-                                    onClick={onSelectAllFiltered}
-                                  >
-                                    Select all filtered
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    disabled={addGroupPending || selectedGroupsCount === 0}
-                                    onClick={onClearSelection}
-                                  >
-                                    Clear selection
-                                  </Button>
-                                </div>
-                                <span className="text-muted-foreground text-[10px]">
-                                  {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
-                                  {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
-                                </span>
-                              </div>
-                            )}
-
-                            {availableGroups.length === 0 ? (
-                              <p className="text-sm text-muted-foreground py-2">
-                                There are no additional groups available to add.
-                              </p>
-                            ) : filteredAvailableGroups.length === 0 ? (
-                              <p className="text-sm text-muted-foreground py-2">
-                                No additional groups match the current filter.
-                                {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
-                              </p>
-                            ) : (
-                              <div className="border border-border/20 rounded-sm overflow-hidden">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                      <TableHead className="w-10"></TableHead>
-                                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-full">
-                                        Group
-                                      </TableHead>
-                                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                        Type
-                                      </TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {filteredAvailableGroups.map((group) => {
-                                      const selected = selectedGroupKeys.has(group.exchangeIdentity);
-                                      return (
-                                        <TableRow
-                                          key={group.exchangeIdentity}
-                                          className={cn(
-                                            "transition-colors",
-                                            selected ? "bg-primary/5" : "hover:bg-muted/30",
-                                          )}
-                                        >
-                                          <TableCell>
-                                            <Checkbox
-                                              checked={selected}
-                                              onCheckedChange={() => onToggleGroupSelection(group.exchangeIdentity)}
-                                              disabled={addGroupPending}
-                                            />
-                                          </TableCell>
-                                          <TableCell>
-                                            <div className="flex flex-col">
-                                              <span className="text-xs font-semibold text-foreground">
-                                                {group.displayName}
-                                              </span>
-                                              <span className="text-[10px] text-muted-foreground">
-                                                {group.primaryEmail ?? group.exchangeIdentity}
-                                              </span>
-                                            </div>
-                                          </TableCell>
-                                          <TableCell>
-                                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                                              {GROUP_KIND_LABELS[group.groupKind]}
-                                            </Badge>
-                                          </TableCell>
-                                        </TableRow>
-                                      );
-                                    })}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            )}
-                          </div>
-                        </section>
-                      )}
-                    </>
+                      </div>
+                    </div>
                   )}
                 </div>
               </ScrollArea>
-            </main>
+            </section>
           </div>
         )}
-
-        <DialogFooter className="px-6 py-4 border-t border-border/50">
-          <Button size="sm" onClick={onClose} disabled={recipientDialogPending}>
-            Close
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
