@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Plus,
   Loader2,
@@ -8,9 +8,6 @@ import {
   Info,
   CheckCircle2,
   ShieldAlert,
-  UserMinus,
-  UserPlus,
-  AlertTriangle,
 } from "lucide-react";
 import {
   Table,
@@ -27,8 +24,6 @@ import { Input } from "@/renderer/components/ui/input";
 import { Checkbox } from "@/renderer/components/ui/checkbox";
 import { Alert, AlertTitle, AlertDescription } from "@/renderer/components/ui/alert";
 import { Separator } from "@/renderer/components/ui/separator";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/renderer/components/ui/card";
-import { ScrollArea } from "@/renderer/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -38,17 +33,12 @@ import {
   DialogTitle,
 } from "@/renderer/components/ui/dialog";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/renderer/components/ui/tabs";
-import {
   AppShell,
   TableToolbar,
   FilterSegmentedControl,
   TableFilterButton,
 } from "@/renderer/components/console";
+import { RecipientDetailDialog } from "@/renderer/components/console/directory/recipient-detail-dialog";
 import { useApp } from "@/renderer/components/console/app-context";
 import {
   formatPresentedCommandFailure,
@@ -132,14 +122,6 @@ type GroupAddBatchResult = {
   result: GroupsAddMembersResult;
 };
 
-const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"], string> = {
-  added: "Added",
-  alreadyMember: "Already a member",
-  invalid: "Invalid",
-  verificationFailed: "Verification failed",
-  failed: "Failed",
-};
-
 const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["status"], string> = {
   removed: "Removed",
   notMember: "Not a member",
@@ -147,14 +129,6 @@ const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["s
   verificationFailed: "Verification failed",
   failed: "Failed",
 };
-
-function isAddStatusClean(status: GroupsAddMembersResult["items"][number]["status"]): boolean {
-  return status === "added" || status === "alreadyMember";
-}
-
-function isRemoveStatusClean(status: GroupsRemoveMembersResult["items"][number]["status"]): boolean {
-  return status === "removed" || status === "notMember";
-}
 
 const TAB_TYPES: Record<string, RecipientSearchType[]> = {
   all: [
@@ -200,11 +174,6 @@ const CONFLICT_CATEGORY_LABELS: Record<string, string> = {
   tenantMismatch: "Tenant Mismatch",
   eventualConsistencyDelay: "Eventual Consistency Delay",
   preflightUnavailable: "Preflight Unavailable",
-};
-
-const GROUP_KIND_LABELS: Record<ExchangeGroupListItem["groupKind"], string> = {
-  distributionList: "Distribution",
-  mailEnabledSecurityGroup: "Security",
 };
 
 function groupRefFromListItem(group: ExchangeGroupListItem): ExchangeGroupRef {
@@ -304,38 +273,6 @@ function getUpdateMode(
   return "guest";
 }
 
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex justify-between py-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="text-xs text-foreground truncate max-w-[60%]">{value}</span>
-    </div>
-  );
-}
-
-function ProfileHeader({ displayName, email, badgeClassName, badgeLabel, avatarKey }: {
-  displayName: string;
-  email: string;
-  badgeClassName: string;
-  badgeLabel: string;
-  avatarKey: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/50 px-3 py-2.5">
-      <Avatar className="size-8 text-xs">
-        <AvatarFallback className={avatarColorFor(avatarKey)}>
-          {getInitials(displayName)}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-foreground truncate">{displayName}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{email}</p>
-      </div>
-      <Badge className={cn("shrink-0", badgeClassName)}>{badgeLabel}</Badge>
-    </div>
-  );
-}
-
 export function DirectoryScreen() {
   const { shell } = useApp();
   const exchangeConnected = shell.exchangeConnection?.state === "connected";
@@ -382,13 +319,11 @@ export function DirectoryScreen() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
 
-  const [recipientDialogTab, setRecipientDialogTab] = useState("details");
-
   const [removeGroupTarget, setRemoveGroupTarget] = useState<ExchangeGroupListItem | null>(null);
   const [removeGroupPending, setRemoveGroupPending] = useState(false);
   const [removeGroupResult, setRemoveGroupResult] = useState<GroupsRemoveMembersResult | null>(null);
-  const [removeGroupError, setRemoveGroupError] = useState<string | null>(null);
   const [removedGroupName, setRemovedGroupName] = useState<string | null>(null);
+  const [removeGroupError, setRemoveGroupError] = useState<string | null>(null);
 
   const [groupFilterText, setGroupFilterText] = useState("");
   const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
@@ -427,7 +362,13 @@ export function DirectoryScreen() {
     }
 
     return exchangeConnectionIdentity;
-  }, [activeTab, exchangeConnectionIdentity, graphConnectionIdentity]);
+  }, [
+    activeTab,
+    exchangeConnectionIdentity,
+    graphConnectionIdentity,
+    shell.exchangeConnection,
+    shell.graphConnection,
+  ]);
 
   const searchQuery = useRecipientsSearchQuery(
     searchConnectionIdentity,
@@ -562,7 +503,7 @@ export function DirectoryScreen() {
       pending: false,
       error: null,
       result: null,
-      refetch: async () => undefined,
+      refetch: () => Promise.resolve(undefined),
     };
   }, [
     contactDetailsQuery.contact,
@@ -717,7 +658,6 @@ export function DirectoryScreen() {
   const openRecipientDialog = useCallback((item: RecipientSearchItem) => {
     setDetailTarget(item);
     setDetailDialogOpen(true);
-    setRecipientDialogTab("details");
     setUpdateCompanyName(item.companyName ?? "");
     setUpdatePending(false);
     setUpdateResult(null);
@@ -727,29 +667,28 @@ export function DirectoryScreen() {
     setAddGroupPending(false);
     setAddGroupResult(null);
     setAddGroupError(null);
+    setRemoveGroupResult(null);
+    setRemovedGroupName(null);
     setRemoveGroupTarget(null);
     setRemoveGroupPending(false);
-    setRemoveGroupResult(null);
     setRemoveGroupError(null);
-    setRemovedGroupName(null);
   }, []);
 
   const handleDetailClose = useCallback(() => {
     handleUpdateClose();
     setDetailDialogOpen(false);
     setDetailTarget(null);
-    setRecipientDialogTab("details");
     setUpdateCompanyName("");
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
     setAddGroupPending(false);
     setAddGroupResult(null);
     setAddGroupError(null);
+    setRemoveGroupResult(null);
+    setRemovedGroupName(null);
     setRemoveGroupTarget(null);
     setRemoveGroupPending(false);
-    setRemoveGroupResult(null);
     setRemoveGroupError(null);
-    setRemovedGroupName(null);
   }, [handleUpdateClose]);
 
   const handleToggleGroupSelection = useCallback((exchangeIdentity: string) => {
@@ -764,6 +703,20 @@ export function DirectoryScreen() {
 
       return next;
     });
+  }, []);
+
+  const handleSelectAllFiltered = useCallback(() => {
+    setSelectedGroupKeys((previous) => {
+      const next = new Set(previous);
+      for (const g of filteredAvailableGroups) {
+        next.add(g.exchangeIdentity);
+      }
+      return next;
+    });
+  }, [filteredAvailableGroups]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedGroupKeys(new Set());
   }, []);
 
   const handleAddGroups = useCallback(async () => {
@@ -823,7 +776,6 @@ export function DirectoryScreen() {
 
     setRemoveGroupPending(true);
     setRemoveGroupError(null);
-    setRemoveGroupResult(null);
 
     try {
       const result = await removeGroupMembersMutation.mutateAsync({
@@ -832,9 +784,23 @@ export function DirectoryScreen() {
       });
 
       setRemoveGroupResult(result);
-      setRemovedGroupName(removeGroupTarget.displayName);
-      setRemoveGroupTarget(null);
-      await membershipsQuery.refetch();
+
+      const status = result.items[0]?.status ?? "failed";
+      const detail = result.items[0]?.detail ?? "Membership update failed.";
+
+      if (status === "removed") {
+        setRemovedGroupName(removeGroupTarget.displayName);
+        setRemoveGroupTarget(null);
+        await membershipsQuery.refetch();
+        return;
+      }
+
+      if (status === "notMember") {
+        await membershipsQuery.refetch();
+      }
+
+      setRemoveGroupError(`${REMOVE_STATUS_LABELS[status]}: ${detail}`);
+
     } catch (err: unknown) {
       setRemoveGroupError(
         formatPresentedCommandFailure(
@@ -890,14 +856,6 @@ export function DirectoryScreen() {
 
   const selectedGroupsCount = selectedGroupKeys.size;
   const recipientDialogPending = addGroupPending || updatePending;
-  const addGroupIssues = addGroupResult?.flatMap(({ group, result }) =>
-    result.items
-      .filter((item) => !isAddStatusClean(item.status))
-      .map((item) => ({ groupName: group.displayName, status: item.status, detail: item.detail })),
-  ) ?? [];
-  const addGroupHadIssues = addGroupIssues.length > 0;
-  const removeGroupStatus = removeGroupResult?.items[0]?.status ?? null;
-  const removeGroupHadIssues = removeGroupStatus !== null && !isRemoveStatusClean(removeGroupStatus);
 
   return (
     <AppShell>
@@ -1446,621 +1404,74 @@ export function DirectoryScreen() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <RecipientDetailDialog
         open={detailDialogOpen}
         onOpenChange={(open) => {
           if (!open && canDismissMutationDialog(recipientDialogPending)) {
             handleDetailClose();
           }
         }}
-      >
-        <DialogContent
-          className="sm:max-w-3xl max-h-[85vh] flex flex-col"
-          showCloseButton={canDismissMutationDialog(recipientDialogPending)}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              {detailTarget
-                ? detailTarget.recipientType === "mailContact"
-                  ? "Contact Details"
-                  : detailTarget.recipientType === "guestUser"
-                    ? "Guest Details"
-                    : detailTarget.recipientType === "mailbox"
-                      ? "Mailbox Details"
-                      : "Mail User Details"
-                : "Details"}
-            </DialogTitle>
-            <DialogDescription>
-              {detailTarget
-                ? `Inspecting ${detailTarget.displayName}`
-                : "Viewing directory entry details."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {detailTarget && (
-            <Tabs value={recipientDialogTab} onValueChange={setRecipientDialogTab} className="flex min-h-0 flex-1 flex-col">
-              <div className="-mx-4 flex border-b border-border/50 px-4 pt-0">
-                <TabsList variant="line" className="h-auto bg-transparent gap-5 p-0">
-                  <TabsTrigger value="details" className="text-xs font-semibold pb-2.5 data-[state=active]:text-[var(--color-primary)] text-muted-foreground hover:text-foreground">Details</TabsTrigger>
-                  <TabsTrigger value="groups" className="text-xs font-semibold pb-2.5 data-[state=active]:text-[var(--color-primary)] text-muted-foreground hover:text-foreground">Groups</TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent value="details" className="mt-3 flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <div className="flex flex-col gap-3 px-1">
-          {detailPending ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <Loader2 className="size-8 text-[var(--color-primary)] mx-auto mb-4 animate-spin" />
-                <p className="text-sm text-muted-foreground">Loading details\u2026</p>
-              </div>
-            </div>
-          ) : detailError ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <AlertCircle className="size-10 text-[var(--color-error)] mx-auto mb-4" />
-                <h2 className="text-lg font-bold font-headline text-foreground mb-2">
-                  Failed to Load Details
-                </h2>
-                <p className="text-sm text-muted-foreground max-w-sm mb-4">
-                  {detailError}
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    void activeDetailState.refetch();
-                  }}
-                >
-                  Retry
-                </Button>
-              </div>
-            </div>
-          ) : detailResult ? (
-            <>
-              {detailCanUpdateCompany && (
-                <Card className="bg-muted/30 border-border/50">
-                  <CardHeader className="p-4 pb-2 space-y-1">
-                    <CardTitle className="text-sm">Company name</CardTitle>
-                    <CardDescription className="text-xs">
-                      Update the company value directly from this dialog.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-2">
-                    <div className="flex gap-2">
-                      <Input
-                        className="bg-background text-xs"
-                        value={updateCompanyName}
-                        onChange={(e) => setUpdateCompanyName(e.target.value)}
-                        disabled={updatePending}
-                        placeholder="Enter company name"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={updatePending || updateCompanyName.trim().length === 0}
-                        onClick={() => {
-                          void handleUpdateSubmit();
-                        }}
-                      >
-                        {updatePending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
-                        Save
-                      </Button>
-                    </div>
-                    {updateResult && (
-                      <p className="mt-2 text-xs text-emerald-700">
-                        {updateResult.data.verification.detail}
-                      </p>
-                    )}
-                    {updateError && (
-                      <p className="mt-2 text-xs text-[var(--color-error)]">{updateError}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-              {detailResult.mode === "contact" ? (
-                <>
-                  <ProfileHeader
-                    displayName={detailResult.data.displayName}
-                    email={detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
-                    badgeClassName={typeBadgeClass("mailContact")}
-                   badgeLabel="CONTACT"
-                   avatarKey={detailTarget?.stableKey ?? ""}
-                 />
-                 <div className="divide-y divide-slate-100 rounded-lg border border-border/50 px-4 py-1">
-                    {detailResult.data.primaryEmail && (
-                      <DetailRow label="Email" value={detailResult.data.primaryEmail} />
-                    )}
-                    {detailResult.data.alias && (
-                      <DetailRow label="Alias" value={detailResult.data.alias} />
-                    )}
-                    {detailResult.data.companyName && (
-                      <DetailRow label="Company" value={detailResult.data.companyName} />
-                    )}
-                    {detailResult.data.firstName && (
-                      <DetailRow label="First Name" value={detailResult.data.firstName} />
-                    )}
-                    {detailResult.data.lastName && (
-                      <DetailRow label="Last Name" value={detailResult.data.lastName} />
-                    )}
-                    {detailResult.data.title && (
-                      <DetailRow label="Title" value={detailResult.data.title} />
-                    )}
-                    {detailResult.data.department && (
-                      <DetailRow label="Department" value={detailResult.data.department} />
-                    )}
-                    {detailResult.data.phone && (
-                      <DetailRow label="Phone" value={detailResult.data.phone} />
-                    )}
-                    {detailResult.data.office && (
-                      <DetailRow label="Office" value={detailResult.data.office} />
-                    )}
-                    {detailResult.data.streetAddress && (
-                      <DetailRow label="Street Address" value={detailResult.data.streetAddress} />
-                    )}
-                    {detailResult.data.city && (
-                      <DetailRow label="City" value={detailResult.data.city} />
-                    )}
-                    {detailResult.data.stateOrProvince && (
-                      <DetailRow label="State/Province" value={detailResult.data.stateOrProvince} />
-                    )}
-                    {detailResult.data.postalCode && (
-                      <DetailRow label="Postal Code" value={detailResult.data.postalCode} />
-                    )}
-                    {detailResult.data.countryOrRegion && (
-                      <DetailRow label="Country/Region" value={detailResult.data.countryOrRegion} />
-                    )}
-                  </div>
-                </>
-              ) : detailResult.mode === "guest" ? (
-                <>
-                  <ProfileHeader
-                    displayName={detailResult.data.displayName ?? "\u2014"}
-                    email={detailResult.data.primaryEmail ?? detailResult.data.userPrincipalName ?? "\u2014"}
-                    badgeClassName={typeBadgeClass("guestUser")}
-                   badgeLabel="GUEST"
-                   avatarKey={detailTarget?.stableKey ?? ""}
-                 />
-                 <div className="divide-y divide-slate-100 rounded-lg border border-border/50 px-4 py-1">
-                    {detailResult.data.primaryEmail && (
-                      <DetailRow label="Email" value={detailResult.data.primaryEmail} />
-                    )}
-                    {detailResult.data.userPrincipalName && (
-                      <DetailRow label="UPN" value={detailResult.data.userPrincipalName} />
-                    )}
-                    {detailResult.data.companyName && (
-                      <DetailRow label="Company" value={detailResult.data.companyName} />
-                    )}
-                    {detailResult.data.givenName && (
-                      <DetailRow label="First Name" value={detailResult.data.givenName} />
-                    )}
-                    {detailResult.data.surname && (
-                      <DetailRow label="Last Name" value={detailResult.data.surname} />
-                    )}
-                    {detailResult.data.jobTitle && (
-                      <DetailRow label="Job Title" value={detailResult.data.jobTitle} />
-                    )}
-                    {detailResult.data.department && (
-                      <DetailRow label="Department" value={detailResult.data.department} />
-                    )}
-                    {detailResult.data.mobilePhone && (
-                      <DetailRow label="Mobile Phone" value={detailResult.data.mobilePhone} />
-                    )}
-                    {detailResult.data.officeLocation && (
-                      <DetailRow label="Office Location" value={detailResult.data.officeLocation} />
-                    )}
-                    {detailResult.data.preferredLanguage && (
-                      <DetailRow label="Preferred Language" value={detailResult.data.preferredLanguage} />
-                    )}
-                    <DetailRow
-                      label="Status"
-                      value={
-                        <span className={cn(
-                          "text-xs font-medium",
-                          detailResult.data.externalUserState === "Accepted"
-                            ? "text-emerald-700"
-                            : detailResult.data.externalUserState === "PendingAcceptance"
-                              ? "text-amber-700"
-                              : "text-muted-foreground",
-                        )}>
-                          {detailResult.data.externalUserState === "Accepted"
-                            ? "Accepted"
-                            : detailResult.data.externalUserState === "PendingAcceptance"
-                              ? "Pending Acceptance"
-                              : "Unknown"}
-                        </span>
-                      }
-                    />
-                    {detailResult.data.accountEnabled !== null && (
-                      <DetailRow
-                        label="Account Enabled"
-                        value={
-                          <span className={cn(
-                            "text-xs font-medium",
-                            detailResult.data.accountEnabled ? "text-emerald-700" : "text-red-600",
-                          )}>
-                            {detailResult.data.accountEnabled ? "Yes" : "No"}
-                          </span>
-                        }
-                      />
-                    )}
-                    {detailResult.data.createdDateTime && (
-                      <DetailRow
-                        label="Created"
-                        value={new Date(detailResult.data.createdDateTime).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      />
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <ProfileHeader
-                    displayName={detailResult.data.displayName}
-                    email={detailResult.data.primaryEmail ?? detailResult.data.alias ?? "\u2014"}
-                    badgeClassName={typeBadgeClass(detailResult.data.recipientType)}
-                   badgeLabel={TYPE_LABELS[detailResult.data.recipientType]}
-                   avatarKey={detailTarget?.stableKey ?? ""}
-                 />
-                 <div className="divide-y divide-slate-100 rounded-lg border border-border/50 px-4 py-1">
-                    {detailResult.data.primaryEmail && (
-                      <DetailRow label="Email" value={detailResult.data.primaryEmail} />
-                    )}
-                    {detailResult.data.alias && (
-                      <DetailRow label="Alias" value={detailResult.data.alias} />
-                    )}
-                    {detailResult.data.userPrincipalName && (
-                      <DetailRow label="UPN" value={detailResult.data.userPrincipalName} />
-                    )}
-                    {detailResult.data.externalEmailAddress && (
-                      <DetailRow label="External Target" value={detailResult.data.externalEmailAddress} />
-                    )}
-                    {detailResult.data.companyName && (
-                      <DetailRow label="Company" value={detailResult.data.companyName} />
-                    )}
-                    {detailResult.data.firstName && (
-                      <DetailRow label="First Name" value={detailResult.data.firstName} />
-                    )}
-                    {detailResult.data.lastName && (
-                      <DetailRow label="Last Name" value={detailResult.data.lastName} />
-                    )}
-                    {detailResult.data.title && (
-                      <DetailRow label="Title" value={detailResult.data.title} />
-                    )}
-                    {detailResult.data.department && (
-                      <DetailRow label="Department" value={detailResult.data.department} />
-                    )}
-                    {detailResult.data.phone && (
-                      <DetailRow label="Phone" value={detailResult.data.phone} />
-                    )}
-                    {detailResult.data.office && (
-                      <DetailRow label="Office" value={detailResult.data.office} />
-                    )}
-                    {detailResult.data.recipientTypeDetails && (
-                      <DetailRow label="Type Details" value={detailResult.data.recipientTypeDetails} />
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          ) : null}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-<TabsContent value="groups" className="mt-3 flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <div className="flex flex-col gap-3 px-1">
-                  {membershipsQuery.error && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="size-4" />
-                      <AlertTitle>Failed to load memberships</AlertTitle>
-                      <AlertDescription>
-                        <div className="flex flex-col gap-3">
-                          <span>{membershipsQuery.error}</span>
-                          <div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                void membershipsQuery.refetch();
-                              }}
-                            >
-                              Retry memberships
-                            </Button>
-                          </div>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {removeGroupResult && (
-                    removeGroupHadIssues ? (
-                      <Alert variant="destructive">
-                        <AlertCircle className="size-4" />
-                        <AlertTitle>Remove from group needs attention</AlertTitle>
-                        <AlertDescription>
-                          {REMOVE_STATUS_LABELS[removeGroupStatus ?? "failed"]}: {removeGroupResult.items[0]?.detail ?? "Membership update failed."}
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <span>
-                          {REMOVE_STATUS_LABELS[removeGroupStatus ?? "removed"]} — <span className="font-semibold">{removedGroupName ?? "group"}</span>.
-                        </span>
-                      </div>
-                    )
-                  )}
-
-                  {addGroupResult && addGroupResult.length > 0 && (
-                    addGroupHadIssues ? (
-                      <Alert variant="destructive">
-                        <AlertCircle className="size-4" />
-                        <AlertTitle>Some group updates need attention</AlertTitle>
-                        <AlertDescription>
-                          <div className="flex flex-col gap-1">
-                            {addGroupIssues.map((issue) => (
-                              <span key={`${issue.groupName}:${issue.status}:${issue.detail}`}>
-                                <span className="font-semibold">{issue.groupName}</span>: {ADD_STATUS_LABELS[issue.status]} — {issue.detail}
-                              </span>
-                            ))}
-                          </div>
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <div className="flex flex-col gap-1">
-                          {addGroupResult.map(({ group, result }) => {
-                            const status = result.items[0]?.status ?? "failed";
-                            return (
-                              <span key={group.exchangeIdentity}>
-                                <span className="font-semibold">{group.displayName}</span>: {ADD_STATUS_LABELS[status]}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {addGroupError && (
-                    <p className="text-xs text-[var(--color-error)]">{addGroupError}</p>
-                  )}
-
-                  {!memberSelectionRef ? (
-                    <Alert>
-                      <AlertTriangle className="size-4" />
-                      <AlertTitle>Membership unavailable</AlertTitle>
-                      <AlertDescription>
-                        This directory entry cannot be resolved into a membership target.
-                      </AlertDescription>
-                    </Alert>
-                  ) : membershipsQuery.isLoading || allGroupsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
-                    </div>
-                  ) : membershipsQuery.error ? null : (
-                    <>
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <h4 className="text-sm font-semibold text-foreground">Current groups</h4>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                              Review memberships and remove this person from a group.
-                            </p>
-                          </div>
-                          <Badge variant="secondary">{currentMemberships.length}</Badge>
-                        </div>
-                        {currentMemberships.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-1">
-                            This person is not currently in any groups.
-                          </p>
-                        ) : (
-                          <div className="max-h-48 overflow-y-auto rounded-md border border-border/50">
-                            {currentMemberships.map((group) => (
-                              <div
-                                key={group.exchangeIdentity}
-                                className="flex items-center gap-3 border-b border-border/30 px-2.5 py-1.5 last:border-b-0"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-foreground">
-                                    {group.displayName}
-                                  </p>
-                                  <p className="truncate text-[11px] text-muted-foreground">
-                                    {group.primaryEmail ?? group.exchangeIdentity}
-                                  </p>
-                                </div>
-                                <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setRemoveGroupError(null);
-                                    setRemoveGroupResult(null);
-                                    setRemoveGroupTarget(group);
-                                  }}
-                                >
-                                  <UserMinus className="mr-1 size-3.5" />
-                                  Remove
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <Separator />
-
-                      {allGroupsError ? (
-                        <Alert variant="destructive">
-                          <AlertCircle className="size-4" />
-                          <AlertTitle>Failed to load available groups</AlertTitle>
-                          <AlertDescription>
-                            <div className="flex flex-col gap-3">
-                              <span>{allGroupsError}</span>
-                              <div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    void refetchAllGroups();
-                                  }}
-                                >
-                                  Retry groups list
-                                </Button>
-                              </div>
-                            </div>
-                          </AlertDescription>
-                        </Alert>
-                      ) : (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <h4 className="text-sm font-semibold text-foreground">Add to groups</h4>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                              Select multiple groups and add this person in one pass.
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {selectedGroupsCount > 0 && (
-                              <span className="text-xs font-medium text-[var(--color-primary)]">
-                                {visibleSelectedGroupsCount}/{selectedGroupsCount} visible selected
-                              </span>
-                            )}
-                            <Badge variant="secondary">
-                              {groupFilterText.trim()
-                                ? `${filteredAvailableGroups.length}/${availableGroups.length}`
-                                : availableGroups.length}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex gap-2">
-                            <Input
-                              className="text-xs"
-                              aria-label="Filter available groups"
-                              placeholder="Filter available groups..."
-                              value={groupFilterText}
-                              onChange={(e) => setGroupFilterText(e.target.value)}
-                              disabled={addGroupPending}
-                            />
-                            <Button
-                              size="sm"
-                              disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
-                              onClick={() => {
-                                void handleAddGroups();
-                              }}
-                            >
-                              {addGroupPending ? (
-                                <Loader2 className="mr-1 size-3.5 animate-spin" />
-                              ) : (
-                                <UserPlus className="mr-1 size-3.5" />
-                              )}
-                              Add selected ({visibleSelectedGroupsCount})
-                            </Button>
-                          </div>
-
-                          {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
-                            <div className="flex items-center justify-between text-xs">
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs"
-                                  disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
-                                  onClick={() => {
-                                    setSelectedGroupKeys((prev) => {
-                                      const next = new Set(prev);
-                                      for (const g of filteredAvailableGroups) {
-                                        next.add(g.exchangeIdentity);
-                                      }
-                                      return next;
-                                    });
-                                  }}
-                                >
-                                  Select all filtered
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs"
-                                  disabled={addGroupPending || selectedGroupsCount === 0}
-                                  onClick={() => setSelectedGroupKeys(new Set())}
-                                >
-                                  Clear selection
-                                </Button>
-                              </div>
-                              <span className="text-muted-foreground">
-                                {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
-                                {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
-                              </span>
-                            </div>
-                          )}
-
-                          {availableGroups.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              There are no additional groups available to add.
-                            </p>
-                          ) : filteredAvailableGroups.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              No additional groups match the current filter.
-                              {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
-                            </p>
-                          ) : (
-                            <div className="max-h-64 overflow-y-auto rounded-md border border-border/50">
-                              {filteredAvailableGroups.map((group) => (
-                                <label
-                                  key={group.exchangeIdentity}
-                                  className={cn(
-                                    "flex cursor-pointer items-center gap-3 border-b border-border/30 px-2.5 py-1.5 last:border-b-0 transition-colors",
-                                    selectedGroupKeys.has(group.exchangeIdentity)
-                                      ? "bg-primary/5"
-                                      : "hover:bg-muted/50",
-                                  )}
-                                >
-                                  <Checkbox
-                                    checked={selectedGroupKeys.has(group.exchangeIdentity)}
-                                    onCheckedChange={() => handleToggleGroupSelection(group.exchangeIdentity)}
-                                    disabled={addGroupPending}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-semibold text-foreground">
-                                      {group.displayName}
-                                    </p>
-                                    <p className="truncate text-[11px] text-muted-foreground">
-                                      {group.primaryEmail ?? group.exchangeIdentity}
-                                    </p>
-                                  </div>
-                                  <Badge variant="outline">{GROUP_KIND_LABELS[group.groupKind]}</Badge>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      )}
-                    </>
-                  )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          )}
-
-          <DialogFooter>
-            <Button size="sm" onClick={handleDetailClose} disabled={recipientDialogPending}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        canDismiss={canDismissMutationDialog(recipientDialogPending)}
+        detailTarget={detailTarget}
+        detailPending={detailPending}
+        detailError={detailError}
+        detailResult={detailResult}
+        onRefetchDetails={() => {
+          void activeDetailState.refetch();
+        }}
+        detailCanUpdateCompany={detailCanUpdateCompany}
+        updateCompanyName={updateCompanyName}
+        onUpdateCompanyNameChange={setUpdateCompanyName}
+        updatePending={updatePending}
+        onUpdateSubmit={() => {
+          void handleUpdateSubmit();
+        }}
+        updateResult={updateResult}
+        updateError={updateError}
+        memberSelectionRef={memberSelectionRef}
+        membershipsLoading={membershipsQuery.isLoading}
+        membershipsError={membershipsQuery.error}
+        currentMemberships={currentMemberships}
+        onRefetchMemberships={() => {
+          void membershipsQuery.refetch();
+        }}
+        allGroupsLoading={allGroupsLoading}
+        allGroupsError={allGroupsError}
+        onRefetchAllGroups={() => {
+          void refetchAllGroups();
+        }}
+        availableGroups={availableGroups}
+        filteredAvailableGroups={filteredAvailableGroups}
+        groupFilterText={groupFilterText}
+        onGroupFilterTextChange={setGroupFilterText}
+        selectedGroupKeys={selectedGroupKeys}
+        onToggleGroupSelection={handleToggleGroupSelection}
+        onSelectAllFiltered={handleSelectAllFiltered}
+        onClearSelection={handleClearSelection}
+        visibleSelectedGroupsCount={visibleSelectedGroupsCount}
+        hasHiddenSelectedGroups={hasHiddenSelectedGroups}
+        selectedGroupsCount={selectedGroupsCount}
+        addGroupPending={addGroupPending}
+        onAddGroups={() => {
+          void handleAddGroups();
+        }}
+        addGroupResult={addGroupResult}
+        addGroupError={addGroupError}
+        removeGroupResult={removeGroupResult}
+        removedGroupName={removedGroupName}
+        onRequestRemoveGroup={(group) => {
+          setRemoveGroupError(null);
+          setRemoveGroupResult(null);
+          setRemovedGroupName(null);
+          setRemoveGroupTarget(group);
+        }}
+        onClose={handleDetailClose}
+        recipientDialogPending={recipientDialogPending}
+      />
 
       <Dialog
         open={removeGroupTarget !== null}
-        onOpenChange={(open) => {
+        onOpenChange={(open): void => {
           if (!open && canDismissMutationDialog(removeGroupPending)) {
             setRemoveGroupTarget(null);
             setRemoveGroupError(null);
@@ -2097,7 +1508,7 @@ export function DirectoryScreen() {
             <Button
               size="sm"
               disabled={removeGroupPending || !currentMemberRef}
-              onClick={() => {
+              onClick={(): void => {
                 void handleRemoveGroup();
               }}
             >
