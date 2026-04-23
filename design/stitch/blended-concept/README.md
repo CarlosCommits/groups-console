@@ -10,6 +10,7 @@ These files are imported for local reference while building real React + shadcn 
 Imported screens:
 
 - `dashboard-admin-operations.html`
+- `directory-detail-modal-admin-ops-density.html`
 - `groups-workspace-high-density-layout.html`
 - `directory-workspace-polished-density.html`
 - `reports-high-density-workspace.html`
