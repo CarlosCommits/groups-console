@@ -1465,8 +1465,6 @@ export function DirectoryScreen() {
           setRemovedGroupName(null);
           setRemoveGroupTarget(group);
         }}
-        onClose={handleDetailClose}
-        recipientDialogPending={recipientDialogPending}
       />
 
       <Dialog

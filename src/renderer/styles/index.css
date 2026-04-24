@@ -155,6 +155,10 @@
   padding: 0.125rem;
 }
 
+.directory-detail-pane-scroll [data-slot="scroll-area-viewport"] {
+  overflow-x: hidden;
+}
+
 .directory-detail-left-pane-scroll [data-radix-scroll-area-viewport] > div {
   display: block !important;
   width: 100% !important;

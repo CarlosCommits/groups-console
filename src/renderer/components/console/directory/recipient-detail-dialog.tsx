@@ -19,6 +19,7 @@ import { ScrollArea } from "@/renderer/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/renderer/components/ui/dialog";
 import { cn } from "@/renderer/lib/utils";
 import type {
@@ -225,8 +226,6 @@ interface RecipientDetailDialogProps {
   removeGroupResult: GroupsRemoveMembersResult | null;
   removedGroupName: string | null;
   onRequestRemoveGroup: (group: ExchangeGroupListItem) => void;
-  onClose: () => void;
-  recipientDialogPending: boolean;
 }
 
 export function RecipientDetailDialog({
@@ -287,6 +286,9 @@ export function RecipientDetailDialog({
         className="sm:max-w-[1280px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden text-base"
         showCloseButton={canDismiss}
       >
+        <DialogTitle className="sr-only">
+          {detailTarget ? `${detailTarget.displayName} recipient details` : "Recipient details"}
+        </DialogTitle>
         {detailTarget && (
           <div className="flex flex-1 min-h-0 overflow-hidden">
             <aside className="flex min-h-0 w-80 max-w-80 flex-shrink-0 basis-80 flex-col overflow-hidden border-r border-border/50 bg-muted/30">
