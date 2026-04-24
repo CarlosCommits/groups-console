@@ -283,6 +283,7 @@ export function RecipientDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className="sm:max-w-[1280px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden text-base"
         showCloseButton={canDismiss}
       >

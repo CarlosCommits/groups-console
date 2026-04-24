@@ -264,8 +264,6 @@ const defaultProps = {
   removeGroupResult: null,
   removedGroupName: null,
   onRequestRemoveGroup: vi.fn(),
-  onClose: vi.fn(),
-  recipientDialogPending: false,
 };
 
 describe('RecipientDetailDialog', () => {
