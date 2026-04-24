@@ -1465,8 +1465,6 @@ export function DirectoryScreen() {
           setRemovedGroupName(null);
           setRemoveGroupTarget(group);
         }}
-        onClose={handleDetailClose}
-        recipientDialogPending={recipientDialogPending}
       />
 
       <Dialog
@@ -1506,7 +1504,9 @@ export function DirectoryScreen() {
               Cancel
             </Button>
             <Button
+              variant="destructive"
               size="sm"
+              className="!bg-[var(--color-error)] !text-white hover:!bg-[#93000a] focus-visible:!ring-[var(--color-error)]/30 disabled:!bg-[var(--color-error)] disabled:!text-white disabled:!opacity-100"
               disabled={removeGroupPending || !currentMemberRef}
               onClick={(): void => {
                 void handleRemoveGroup();

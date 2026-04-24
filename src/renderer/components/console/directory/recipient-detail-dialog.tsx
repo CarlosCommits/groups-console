@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   Loader2,
   AlertCircle,
@@ -8,14 +8,6 @@ import {
   UserMinus,
   Search,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/renderer/components/ui/table";
 import { Button } from "@/renderer/components/ui/button";
 import { Badge } from "@/renderer/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/renderer/components/ui/avatar";
@@ -27,8 +19,6 @@ import { ScrollArea } from "@/renderer/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/renderer/components/ui/dialog";
 import { cn } from "@/renderer/lib/utils";
@@ -128,14 +118,14 @@ function typeBadgeClass(type: RecipientSearchType): string {
     case "mailbox":
     case "mailContact":
     case "mailUser":
-      return "border border-teal-200 bg-teal-50 text-[11px] font-semibold text-[var(--color-primary)]";
+      return "border border-teal-200 bg-teal-50 text-xs font-semibold text-[var(--color-primary)]";
     case "distributionList":
     case "mailEnabledSecurityGroup":
-      return "border-transparent bg-[var(--color-primary)] text-white text-[11px] font-semibold";
+      return "border-transparent bg-[var(--color-primary)] text-white text-xs font-semibold";
     case "guestUser":
-      return "border border-orange-200 bg-orange-50 text-[11px] font-semibold text-[var(--color-tertiary)]";
+      return "border border-orange-200 bg-orange-50 text-xs font-semibold text-[var(--color-tertiary)]";
     default:
-      return "border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500";
+      return "border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500";
   }
 }
 
@@ -156,11 +146,11 @@ interface DetailRowProps {
 
 function DetailRow({ label, value }: DetailRowProps) {
   return (
-    <div className="flex items-start gap-3 py-1.5">
-      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="flex min-w-0 max-w-full flex-col gap-1 py-2">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <span className="min-w-0 flex-1 text-right text-xs text-foreground break-words whitespace-normal">
+      <span className="block min-w-0 max-w-full whitespace-normal text-sm leading-snug text-foreground [overflow-wrap:anywhere] [word-break:break-word]">
         {value}
       </span>
     </div>
@@ -177,17 +167,19 @@ interface ProfileHeaderProps {
 
 function ProfileHeader({ displayName, email, badgeClassName, badgeLabel, avatarKey }: ProfileHeaderProps) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/50 px-3 py-2.5">
-      <Avatar className="size-8 text-xs">
+    <div className="flex min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-lg border border-border/50 bg-muted/50 px-4 py-3">
+      <Avatar className="size-10 shrink-0 text-sm">
         <AvatarFallback className={avatarColorFor(avatarKey)}>
           {getInitials(displayName)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-foreground truncate">{displayName}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{email}</p>
+        <p className="text-base font-semibold text-foreground truncate">{displayName}</p>
+        <p className="text-sm text-muted-foreground truncate">{email}</p>
       </div>
-      <Badge className={cn("shrink-0", badgeClassName)}>{badgeLabel}</Badge>
+      <Badge className={cn("max-w-24 shrink-0 whitespace-normal text-center leading-tight", badgeClassName)}>
+        {badgeLabel}
+      </Badge>
     </div>
   );
 }
@@ -234,8 +226,6 @@ interface RecipientDetailDialogProps {
   removeGroupResult: GroupsRemoveMembersResult | null;
   removedGroupName: string | null;
   onRequestRemoveGroup: (group: ExchangeGroupListItem) => void;
-  onClose: () => void;
-  recipientDialogPending: boolean;
 }
 
 export function RecipientDetailDialog({
@@ -281,22 +271,6 @@ export function RecipientDetailDialog({
   removedGroupName,
   onRequestRemoveGroup,
 }: RecipientDetailDialogProps) {
-  const dialogTitle = useMemo(() => {
-    if (!detailTarget) return "Details";
-    switch (detailTarget.recipientType) {
-      case "mailContact":
-        return "Contact Details";
-      case "guestUser":
-        return "Guest Details";
-      case "mailbox":
-        return "Mailbox Details";
-      case "mailUser":
-        return "Mail User Details";
-      default:
-        return "Details";
-    }
-  }, [detailTarget]);
-
   const addGroupIssues = addGroupResult?.flatMap(({ group, result }) =>
     result.items
       .filter((item) => !isAddStatusClean(item.status))
@@ -309,23 +283,18 @@ export function RecipientDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[1280px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
+        aria-describedby={undefined}
+        className="sm:max-w-[1280px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden text-base"
         showCloseButton={canDismiss}
       >
-        <DialogHeader className="px-6 py-4 border-b border-border/50">
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            {detailTarget
-              ? `Inspecting ${detailTarget.displayName}`
-              : "Viewing directory entry details."}
-          </DialogDescription>
-        </DialogHeader>
-
+        <DialogTitle className="sr-only">
+          {detailTarget ? `${detailTarget.displayName} recipient details` : "Recipient details"}
+        </DialogTitle>
         {detailTarget && (
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            <aside className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-r border-border/50 bg-muted/30">
-              <ScrollArea className="flex-1">
-                <div className="p-4 flex flex-col gap-4">
+            <aside className="flex min-h-0 w-80 max-w-80 flex-shrink-0 basis-80 flex-col overflow-hidden border-r border-border/50 bg-muted/30">
+              <ScrollArea className="directory-detail-left-pane-scroll directory-detail-pane-scroll min-h-0 flex-1 overflow-hidden">
+                <div className="flex min-w-0 max-w-full flex-col gap-4 overflow-hidden p-4">
                   {detailPending ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
@@ -353,22 +322,22 @@ export function RecipientDetailDialog({
                             avatarKey={detailTarget?.stableKey ?? ""}
                           />
                           {detailCanUpdateCompany && (
-                            <div className="flex flex-col gap-2">
-                              <div>
+                            <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden">
+                              <div className="min-w-0">
                                 <label
                                   htmlFor="contact-company-name"
-                                  className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                                 >
                                   Company name
                                 </label>
-                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                <p className="text-xs text-muted-foreground leading-tight">
                                   Update the company value directly.
                                 </p>
                               </div>
-                              <div className="flex flex-col gap-2">
+                              <div className="flex min-w-0 flex-col gap-2">
                                 <Input
                                   id="contact-company-name"
-                                  className="bg-background text-xs"
+                                  className="w-full min-w-0 max-w-full bg-background text-sm"
                                   value={updateCompanyName}
                                   onChange={(e) => onUpdateCompanyNameChange(e.target.value)}
                                   disabled={updatePending}
@@ -376,6 +345,7 @@ export function RecipientDetailDialog({
                                 />
                                 <Button
                                   size="sm"
+                                  className="w-full min-w-0"
                                   disabled={updatePending || updateCompanyName.trim().length === 0}
                                   onClick={onUpdateSubmit}
                                 >
@@ -384,17 +354,17 @@ export function RecipientDetailDialog({
                                 </Button>
                               </div>
                               {updateResult && (
-                                <p className="text-xs text-emerald-700">
+                                <p className="text-sm text-emerald-700">
                                   {updateResult.data.verification.detail}
                                 </p>
                               )}
                               {updateError && (
-                                <p className="text-xs text-[var(--color-error)]">{updateError}</p>
+                                <p className="text-sm text-[var(--color-error)]">{updateError}</p>
                               )}
                             </div>
                           )}
                           <Separator />
-                          <div className="divide-y divide-border/50 rounded-lg border border-border/50 px-3 py-1">
+                          <div className="min-w-0 max-w-full divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 px-3 py-1">
                             {detailResult.data.primaryEmail && (
                               <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                             )}
@@ -449,22 +419,22 @@ export function RecipientDetailDialog({
                             avatarKey={detailTarget?.stableKey ?? ""}
                           />
                           {detailCanUpdateCompany && (
-                            <div className="flex flex-col gap-2">
-                              <div>
+                            <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden">
+                              <div className="min-w-0">
                                 <label
                                   htmlFor="guest-company-name"
-                                  className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                                 >
                                   Company name
                                 </label>
-                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                <p className="text-xs text-muted-foreground leading-tight">
                                   Update the company value directly.
                                 </p>
                               </div>
-                              <div className="flex flex-col gap-2">
+                              <div className="flex min-w-0 flex-col gap-2">
                                 <Input
                                   id="guest-company-name"
-                                  className="bg-background text-xs"
+                                  className="w-full min-w-0 max-w-full bg-background text-sm"
                                   value={updateCompanyName}
                                   onChange={(e) => onUpdateCompanyNameChange(e.target.value)}
                                   disabled={updatePending}
@@ -472,6 +442,7 @@ export function RecipientDetailDialog({
                                 />
                                 <Button
                                   size="sm"
+                                  className="w-full min-w-0"
                                   disabled={updatePending || updateCompanyName.trim().length === 0}
                                   onClick={onUpdateSubmit}
                                 >
@@ -480,17 +451,17 @@ export function RecipientDetailDialog({
                                 </Button>
                               </div>
                               {updateResult && (
-                                <p className="text-xs text-emerald-700">
+                                <p className="text-sm text-emerald-700">
                                   {updateResult.data.verification.detail}
                                 </p>
                               )}
                               {updateError && (
-                                <p className="text-xs text-[var(--color-error)]">{updateError}</p>
+                                <p className="text-sm text-[var(--color-error)]">{updateError}</p>
                               )}
                             </div>
                           )}
                           <Separator />
-                          <div className="divide-y divide-border/50 rounded-lg border border-border/50 px-3 py-1">
+                          <div className="min-w-0 max-w-full divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 px-3 py-1">
                             {detailResult.data.primaryEmail && (
                               <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                             )}
@@ -526,7 +497,7 @@ export function RecipientDetailDialog({
                               value={
                                 <span
                                   className={cn(
-                                    "text-xs font-medium",
+                                    "text-sm font-medium",
                                     detailResult.data.externalUserState === "Accepted"
                                       ? "text-emerald-700"
                                       : detailResult.data.externalUserState === "PendingAcceptance"
@@ -548,7 +519,7 @@ export function RecipientDetailDialog({
                                 value={
                                   <span
                                     className={cn(
-                                      "text-xs font-medium",
+                                      "text-sm font-medium",
                                       detailResult.data.accountEnabled ? "text-emerald-700" : "text-red-600",
                                     )}
                                   >
@@ -579,7 +550,7 @@ export function RecipientDetailDialog({
                             avatarKey={detailTarget?.stableKey ?? ""}
                           />
                           <Separator />
-                          <div className="divide-y divide-border/50 rounded-lg border border-border/50 px-3 py-1">
+                          <div className="min-w-0 max-w-full divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 px-3 py-1">
                             {detailResult.data.primaryEmail && (
                               <DetailRow label="Email" value={detailResult.data.primaryEmail} />
                             )}
@@ -625,21 +596,13 @@ export function RecipientDetailDialog({
               </ScrollArea>
             </aside>
 
-            <section className="w-[400px] flex-shrink-0 flex flex-col overflow-hidden border-r border-border/50 bg-background">
-              <div className="px-4 py-3 border-b border-border/50 flex items-end justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
-                    Current groups
-                  </h3>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {currentMemberships.length}
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Review and manage existing memberships.
-                </p>
+            <section className="w-[400px] flex-shrink-0 flex min-h-0 flex-col overflow-hidden border-r border-border/50 bg-background">
+              <div className="flex shrink-0 items-center border-b border-border/50 px-4 py-3">
+                <h3 className="text-base font-bold uppercase tracking-wide text-foreground">
+                  Current Memberships
+                </h3>
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="directory-detail-pane-scroll min-h-0 flex-1">
                 <div className="p-4 flex flex-col gap-4">
                   {membershipsError && (
                     <Alert variant="destructive">
@@ -668,7 +631,7 @@ export function RecipientDetailDialog({
                         </AlertDescription>
                       </Alert>
                     ) : (
-                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                         <span>
                           {REMOVE_STATUS_LABELS[removeGroupStatus]} — <span className="font-semibold">{removedGroupName ?? "group"}</span>.
@@ -696,57 +659,53 @@ export function RecipientDetailDialog({
                           This person is not currently in any groups.
                         </p>
                       ) : (
-                        <div className="border border-border/20 rounded-sm overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-full">
-                                  Group
-                                </TableHead>
-                                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Type
-                                </TableHead>
-                                <TableHead className="w-12"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {currentMemberships.map((group) => (
-                                <TableRow
-                                  key={group.exchangeIdentity}
-                                  className="group hover:bg-muted/30"
-                                >
-                                  <TableCell>
-                                    <div className="flex flex-col">
-                                      <span className="text-xs font-semibold text-foreground">
-                                        {group.displayName}
-                                      </span>
-                                      <span className="text-[10px] text-muted-foreground">
-                                        {group.primaryEmail ?? group.exchangeIdentity}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                                      {GROUP_KIND_LABELS[group.groupKind]}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-xs"
-                                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-[var(--color-error)]"
-                                      aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
-                                      onClick={() => {
-                                        onRequestRemoveGroup(group);
-                                      }}
-                                    >
-                                      <UserMinus className="size-4" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                        <div className="rounded-sm border border-border/20 bg-background">
+                          <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto_3rem] items-center gap-2 border-b border-border/70 bg-muted/95 px-2 py-2 backdrop-blur supports-backdrop-filter:bg-muted/85">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Group
+                            </div>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Type
+                            </div>
+                            <div />
+                          </div>
+                          <div className="divide-y divide-border/60">
+                            {currentMemberships.map((group) => (
+                              <div
+                                key={group.exchangeIdentity}
+                                className="group grid grid-cols-[minmax(0,1fr)_auto_3rem] items-start gap-2 px-2 py-2 transition-colors hover:bg-muted/30"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-semibold text-foreground">
+                                      {group.displayName}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {group.primaryEmail ?? group.exchangeIdentity}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="pt-0.5">
+                                  <Badge variant="outline" className="text-[11px] px-1.5 py-0">
+                                    {GROUP_KIND_LABELS[group.groupKind]}
+                                  </Badge>
+                                </div>
+                                <div className="flex justify-end">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-[var(--color-error)]"
+                                    aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
+                                    onClick={() => {
+                                      onRequestRemoveGroup(group);
+                                    }}
+                                  >
+                                    <UserMinus className="size-5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </>
@@ -755,23 +714,81 @@ export function RecipientDetailDialog({
               </ScrollArea>
             </section>
 
-            <section className="min-w-0 flex-1 flex flex-col overflow-hidden bg-background">
-              <div className="px-4 py-3 border-b border-border/50 flex items-end justify-between shrink-0">
+            <section className="min-w-0 flex flex-1 min-h-0 flex-col overflow-hidden bg-background">
+              <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3">
                 <div className="flex flex-col">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
-                    Add to groups
+                  <h3 className="text-base font-bold uppercase tracking-wide text-foreground">
+                    Available Groups
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Bulk membership assignment.
-                  </p>
                 </div>
                 {selectedGroupsCount > 0 && (
-                  <span className="text-[11px] font-bold text-[var(--color-primary)]">
+                  <span className="text-sm font-bold text-[var(--color-primary)]">
                     {visibleSelectedGroupsCount} of {selectedGroupsCount} selected
                   </span>
                 )}
               </div>
-              <ScrollArea className="flex-1">
+              {memberSelectionRef && !allGroupsLoading && (
+                <div className="shrink-0 border-b border-border/50 bg-background px-4 py-3">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3" />
+                        <Input
+                          className="w-full bg-muted/30 border-border/30 rounded-sm pl-8 pr-3 py-1.5 text-sm"
+                          placeholder="Filter available groups..."
+                          type="text"
+                          value={groupFilterText}
+                          onChange={(e) => onGroupFilterTextChange(e.target.value)}
+                          disabled={addGroupPending}
+                          aria-label="Filter available groups"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
+                        onClick={onAddGroups}
+                      >
+                        {addGroupPending ? (
+                          <Loader2 className="mr-1 size-3.5 animate-spin" />
+                        ) : (
+                          <UserPlus className="mr-1 size-3.5" />
+                        )}
+                        Add selected ({visibleSelectedGroupsCount})
+                      </Button>
+                    </div>
+
+                    {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-sm"
+                            disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
+                            onClick={onSelectAllFiltered}
+                          >
+                            Select all filtered
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-sm"
+                            disabled={addGroupPending || selectedGroupsCount === 0}
+                            onClick={onClearSelection}
+                          >
+                            Clear selection
+                          </Button>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
+                          {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              <ScrollArea className="directory-detail-pane-scroll min-h-0 flex-1">
                 <div className="p-4 flex flex-col gap-4">
                   {addGroupResult && addGroupResult.length > 0 && (
                     addGroupHadIssues ? (
@@ -789,7 +806,7 @@ export function RecipientDetailDialog({
                         </AlertDescription>
                       </Alert>
                     ) : (
-                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                         <div className="flex flex-col gap-1">
                           {addGroupResult.map(({ group, result }) => {
@@ -806,7 +823,7 @@ export function RecipientDetailDialog({
                   )}
 
                   {addGroupError && (
-                    <p className="text-xs text-[var(--color-error)]">{addGroupError}</p>
+                    <p className="text-sm text-[var(--color-error)]">{addGroupError}</p>
                   )}
 
                   {allGroupsError && (
@@ -838,66 +855,7 @@ export function RecipientDetailDialog({
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3" />
-                            <Input
-                              className="w-full bg-muted/30 border-border/30 rounded-sm pl-8 pr-3 py-1.5 text-xs"
-                              placeholder="Filter available groups..."
-                              type="text"
-                              value={groupFilterText}
-                              onChange={(e) => onGroupFilterTextChange(e.target.value)}
-                              disabled={addGroupPending}
-                              aria-label="Filter available groups"
-                            />
-                          </div>
-                          <Button
-                            size="sm"
-                            disabled={visibleSelectedGroupsCount === 0 || addGroupPending}
-                            onClick={onAddGroups}
-                          >
-                            {addGroupPending ? (
-                              <Loader2 className="mr-1 size-3.5 animate-spin" />
-                            ) : (
-                              <UserPlus className="mr-1 size-3.5" />
-                            )}
-                            Add selected ({visibleSelectedGroupsCount})
-                          </Button>
-                        </div>
-
-                        {(filteredAvailableGroups.length > 0 || selectedGroupsCount > 0) && (
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                disabled={addGroupPending || filteredAvailableGroups.every((g) => selectedGroupKeys.has(g.exchangeIdentity))}
-                                onClick={onSelectAllFiltered}
-                              >
-                                Select all filtered
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                disabled={addGroupPending || selectedGroupsCount === 0}
-                                onClick={onClearSelection}
-                              >
-                                Clear selection
-                              </Button>
-                            </div>
-                            <span className="text-muted-foreground text-[10px]">
-                              {visibleSelectedGroupsCount} of {filteredAvailableGroups.length} shown
-                              {hasHiddenSelectedGroups ? ` \u2022 ${selectedGroupsCount - visibleSelectedGroupsCount} hidden by filter` : ""}
-                            </span>
-                          </div>
-                        )}
-
-                        {availableGroups.length === 0 ? (
+                  ) : availableGroups.length === 0 ? (
                           <p className="text-sm text-muted-foreground py-2">
                             There are no additional groups available to add.
                           </p>
@@ -907,63 +865,56 @@ export function RecipientDetailDialog({
                             {hasHiddenSelectedGroups ? " Clear the filter to review hidden selections." : ""}
                           </p>
                         ) : (
-                          <div className="border border-border/20 rounded-sm overflow-hidden">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                  <TableHead className="w-10"></TableHead>
-                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-full">
-                                    Group
-                                  </TableHead>
-                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Type
-                                  </TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {filteredAvailableGroups.map((group) => {
-                                  const selected = selectedGroupKeys.has(group.exchangeIdentity);
-                                  return (
-                                    <TableRow
-                                      key={group.exchangeIdentity}
-                                      className={cn(
-                                        "transition-colors",
-                                        selected ? "bg-primary/5" : "hover:bg-muted/30",
-                                      )}
-                                    >
-                                      <TableCell>
-                                        <Checkbox
-                                          checked={selected}
-                                          onCheckedChange={() => onToggleGroupSelection(group.exchangeIdentity)}
-                                          disabled={addGroupPending}
-                                          aria-label={`Select ${group.displayName} for group membership add`}
-                                        />
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex flex-col">
-                                          <span className="text-xs font-semibold text-foreground">
-                                            {group.displayName}
-                                          </span>
-                                          <span className="text-[10px] text-muted-foreground">
-                                            {group.primaryEmail ?? group.exchangeIdentity}
-                                          </span>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                                          {GROUP_KIND_LABELS[group.groupKind]}
-                                        </Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
+                          <div className="rounded-sm border border-border/20 bg-background">
+                            <div className="sticky top-0 z-10 grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-2 border-b border-border/70 bg-muted/95 px-2 py-2 backdrop-blur supports-backdrop-filter:bg-muted/85">
+                              <div />
+                              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Group
+                              </div>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Type
+                              </div>
+                            </div>
+                            <div className="divide-y divide-border/60">
+                              {filteredAvailableGroups.map((group) => {
+                                const selected = selectedGroupKeys.has(group.exchangeIdentity);
+                                return (
+                                  <div
+                                    key={group.exchangeIdentity}
+                                    className={cn(
+                                      "grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-start gap-2 px-2 py-2 transition-colors",
+                                      selected ? "bg-primary/5" : "hover:bg-muted/30",
+                                    )}
+                                  >
+                                    <div>
+                                      <Checkbox
+                                        checked={selected}
+                                        onCheckedChange={() => onToggleGroupSelection(group.exchangeIdentity)}
+                                        disabled={addGroupPending}
+                                        aria-label={`Select ${group.displayName} for group membership add`}
+                                      />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-foreground">
+                                          {group.displayName}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {group.primaryEmail ?? group.exchangeIdentity}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="pt-0.5">
+                                      <Badge variant="outline" className="text-[11px] px-1.5 py-0">
+                                        {GROUP_KIND_LABELS[group.groupKind]}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </ScrollArea>
             </section>
