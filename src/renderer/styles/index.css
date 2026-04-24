@@ -62,7 +62,7 @@
   --color-sidebar-primary-foreground: #ffffff;
   --color-sidebar-accent: #eef6f5;
   --color-sidebar-accent-foreground: #0f766e;
-  --color-sidebar-border: #d7dfde;
+  --color-sidebar-border: #c8d2d0;
   --color-sidebar-ring: #006a61;
 
   /* Destructive / Error */
@@ -74,10 +74,10 @@
   --color-on-error-container: #93000a;
 
   /* Borders and outlines */
-  --color-border: #e0e3e5;
+  --color-border: #cbd3d6;
   --color-outline: #6d7a77;
-  --color-outline-variant: #bcc9c6;
-  --color-input: #e0e3e5;
+  --color-outline-variant: #8fa09c;
+  --color-input: #cbd3d6;
   --color-ring: #006a61;
 
   /* Inverse */
@@ -148,4 +148,24 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.directory-detail-pane-scroll [data-slot="scroll-area-scrollbar"][data-orientation="vertical"] {
+  width: 0.625rem;
+  padding: 0.125rem;
+}
+
+.directory-detail-left-pane-scroll [data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.directory-detail-pane-scroll [data-slot="scroll-area-thumb"] {
+  background: color-mix(in srgb, var(--color-outline) 58%, transparent);
+}
+
+.directory-detail-pane-scroll [data-slot="scroll-area-thumb"]:hover {
+  background: color-mix(in srgb, var(--color-primary) 55%, transparent);
 }

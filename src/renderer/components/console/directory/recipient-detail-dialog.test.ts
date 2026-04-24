@@ -33,7 +33,8 @@ vi.mock('@/renderer/components/ui/button', () => ({
 }));
 
 vi.mock('@/renderer/components/ui/badge', () => ({
-  Badge: ({ children }: { children: React.ReactNode }) => React.createElement('span', null, children),
+  Badge: ({ children, ...props }: React.ComponentProps<'span'>) =>
+    React.createElement('span', props, children),
 }));
 
 vi.mock('@/renderer/components/ui/avatar', () => ({
@@ -54,7 +55,7 @@ vi.mock('@/renderer/components/ui/table', () => ({
 }));
 
 vi.mock('@/renderer/components/ui/input', () => ({
-  Input: () => React.createElement('input'),
+  Input: (props: React.ComponentProps<'input'>) => React.createElement('input', props),
 }));
 
 vi.mock('@/renderer/components/ui/checkbox', () => ({
@@ -75,7 +76,8 @@ vi.mock('@/renderer/components/ui/separator', () => ({
 }));
 
 vi.mock('@/renderer/components/ui/scroll-area', () => ({
-  ScrollArea: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
+  ScrollArea: ({ children, ...props }: React.ComponentProps<'div'>) =>
+    React.createElement('div', props, children),
 }));
 
 import { RecipientDetailDialog } from './recipient-detail-dialog';
@@ -287,6 +289,38 @@ describe('RecipientDetailDialog', () => {
     expect(markup).toContain('US');
   });
 
+  it('keeps long contact details constrained inside the shared left pane', () => {
+    const longEmail = 'very.long.personal.email.address.with.no.breaks@example-very-long-domain-name.test';
+    const longCompany = 'ExtremelyLongCompanyNameWithoutNaturalBreaksThatPreviouslyForcedThePaneWider';
+    const props = {
+      ...defaultProps,
+      updateCompanyName: longCompany,
+      detailTarget: makeDetailTarget({
+        primaryEmail: longEmail,
+        alias: 'VeryLongAliasWithoutAnyNaturalBreakpoints',
+        companyName: longCompany,
+      }),
+      detailResult: {
+        mode: 'contact' as const,
+        data: {
+          ...makeContactDetails(),
+          primaryEmail: longEmail,
+          alias: 'VeryLongAliasWithoutAnyNaturalBreakpoints',
+          companyName: longCompany,
+        },
+      },
+    };
+
+    const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, props));
+
+    expect(markup).toContain(longEmail);
+    expect(markup).toContain(longCompany);
+    expect(markup).toContain('directory-detail-left-pane-scroll');
+    expect(markup).toContain('[overflow-wrap:anywhere]');
+    expect(markup).toContain('w-full min-w-0 max-w-full');
+    expect(markup).toContain('overflow-hidden rounded-lg border');
+  });
+
   it('renders guest details in left pane', () => {
     const props = {
       ...defaultProps,
@@ -323,6 +357,49 @@ describe('RecipientDetailDialog', () => {
     expect(markup).toContain('Yes');
   });
 
+  it('keeps long guest UPN values wrapped inside the shared left pane', () => {
+    const longUpn =
+      'guest.user.with.a.very.long.external.identifier_example.com#EXT#@very-long-tenant-name.onmicrosoft.com';
+    const props = {
+      ...defaultProps,
+      detailTarget: makeDetailTarget({
+        stableKey: 'guest-1',
+        recipientType: 'guestUser',
+        displayName: 'Long Guest User',
+        primaryEmail: null,
+        alias: null,
+        recipientTypeDetails: null,
+        companyName: 'Guest Corp',
+        source: 'graph',
+        membershipSupport: 'graphBridgeable',
+        exchangeIdentity: null,
+        objectId: 'guest-obj-1',
+        companySource: 'graph',
+      }),
+      detailResult: {
+        mode: 'guest' as const,
+        data: {
+          ...makeGuestDetails(),
+          displayName: 'Long Guest User',
+          primaryEmail: null,
+          userPrincipalName: longUpn,
+        },
+      },
+      memberSelectionRef: {
+        kind: 'graphGuest' as const,
+        objectId: 'guest-obj-1',
+        primaryEmail: null,
+        displayName: 'Long Guest User',
+      } satisfies GroupMemberSelectionRef,
+    };
+
+    const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, props));
+
+    expect(markup).toContain(longUpn);
+    expect(markup).toContain('[overflow-wrap:anywhere]');
+    expect(markup).toContain('min-w-0 max-w-full');
+  });
+
   it('renders exchange recipient details in left pane', () => {
     const props = {
       ...defaultProps,
@@ -349,14 +426,14 @@ describe('RecipientDetailDialog', () => {
 
   it('renders current groups table in right pane', () => {
     const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, defaultProps));
-    expect(markup).toContain('Current groups');
+    expect(markup).toContain('Current Memberships');
     expect(markup).toContain('Test Group');
     expect(markup).toContain('group1@example.com');
   });
 
   it('renders add to groups section with filter and table', () => {
     const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, defaultProps));
-    expect(markup).toContain('Add to groups');
+    expect(markup).toContain('Available Groups');
     expect(markup).toContain('Another Group');
     expect(markup).toContain('group2@example.com');
   });
