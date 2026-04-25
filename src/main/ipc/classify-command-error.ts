@@ -1,5 +1,5 @@
 import type { BackendOwner } from '@/main/logging';
-import type { CommandError, CommandName } from '@/shared/contracts/command';
+import type { CommandError } from '@/shared/contracts/command';
 
 type ErrorLike = {
   message?: unknown;
@@ -48,7 +48,7 @@ const TENANT_MISMATCH_PATTERNS = [
 ];
 
 export function classifyCommandError(input: {
-  commandName: CommandName | string;
+  commandName: string;
   backendOwner: BackendOwner;
   error: unknown;
 }): CommandError {

@@ -1,4 +1,5 @@
 import { InfiniteQueryObserver, QueryClient } from "@tanstack/react-query";
+import type * as ReactQuery from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SystemLogsListEventsResult } from "@/shared/contracts/system-logs";
@@ -9,7 +10,7 @@ const { useInfiniteQueryMock, useQueryClientMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", async () => {
-  const actual = await vi.importActual<typeof import("@tanstack/react-query")>(
+  const actual = await vi.importActual<typeof ReactQuery>(
     "@tanstack/react-query",
   );
 
@@ -85,8 +86,8 @@ describe("useSystemLogsQuery", () => {
   });
 
   it("maps paginated query data into the shared panel-facing shape", () => {
-    const resetQueries = vi.fn(async () => undefined);
-    const fetchNextPage = vi.fn(async () => undefined);
+    const resetQueries = vi.fn(() => Promise.resolve(undefined));
+    const fetchNextPage = vi.fn(() => Promise.resolve(undefined));
 
     useQueryClientMock.mockReturnValue({
       resetQueries,
@@ -152,7 +153,7 @@ describe("useSystemLogsQuery", () => {
 
   it("formats query failures with the shared command failure presenter", () => {
     useQueryClientMock.mockReturnValue({
-      resetQueries: vi.fn(async () => undefined),
+      resetQueries: vi.fn(() => Promise.resolve(undefined)),
     });
     useInfiniteQueryMock.mockReturnValue({
       data: undefined,
@@ -161,7 +162,7 @@ describe("useSystemLogsQuery", () => {
       isLoading: false,
       isFetching: false,
       isFetchingNextPage: false,
-      fetchNextPage: vi.fn(async () => undefined),
+      fetchNextPage: vi.fn(() => Promise.resolve(undefined)),
     });
 
     const result = useSystemLogsQuery({ kind: "all" });
@@ -177,7 +178,7 @@ describe("useSystemLogsQuery", () => {
   });
 
   it("refreshes by resetting the scoped infinite query to first-page state", async () => {
-    const resetQueries = vi.fn(async () => undefined);
+    const resetQueries = vi.fn(() => Promise.resolve(undefined));
 
     useQueryClientMock.mockReturnValue({
       resetQueries,
@@ -189,7 +190,7 @@ describe("useSystemLogsQuery", () => {
       isLoading: false,
       isFetching: false,
       isFetchingNextPage: false,
-      fetchNextPage: vi.fn(async () => undefined),
+      fetchNextPage: vi.fn(() => Promise.resolve(undefined)),
     });
 
     const result = useSystemLogsQuery({
@@ -208,10 +209,10 @@ describe("useSystemLogsQuery", () => {
 
   it("loads the next page only when a cursor is available", async () => {
     useQueryClientMock.mockReturnValue({
-      resetQueries: vi.fn(async () => undefined),
+      resetQueries: vi.fn(() => Promise.resolve(undefined)),
     });
 
-    const fetchNextPage = vi.fn(async () => undefined);
+    const fetchNextPage = vi.fn(() => Promise.resolve(undefined));
     useInfiniteQueryMock.mockReturnValue({
       data: undefined,
       error: null,
