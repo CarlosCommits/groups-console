@@ -122,6 +122,38 @@ const RECIPIENT_TYPE_LABELS: Record<GroupMemberListItem["recipientType"], string
 
 const STICKY_TABLE_HEAD_CLASS = "sticky top-0 z-20 bg-slate-50/95";
 
+const emailTruncationSubscribers = new Set<() => void>();
+let emailTruncationResizeFrame: number | null = null;
+
+function scheduleEmailTruncationMeasure() {
+  if (emailTruncationResizeFrame !== null) return;
+  emailTruncationResizeFrame = window.requestAnimationFrame(() => {
+    emailTruncationResizeFrame = null;
+    emailTruncationSubscribers.forEach((measure) => measure());
+  });
+}
+
+function subscribeEmailTruncationMeasure(measure: () => void) {
+  emailTruncationSubscribers.add(measure);
+
+  if (emailTruncationSubscribers.size === 1) {
+    window.addEventListener("resize", scheduleEmailTruncationMeasure);
+  }
+
+  return () => {
+    emailTruncationSubscribers.delete(measure);
+
+    if (emailTruncationSubscribers.size === 0) {
+      window.removeEventListener("resize", scheduleEmailTruncationMeasure);
+
+      if (emailTruncationResizeFrame !== null) {
+        window.cancelAnimationFrame(emailTruncationResizeFrame);
+        emailTruncationResizeFrame = null;
+      }
+    }
+  };
+}
+
 function TruncatedEmailText({ email }: { email: string }) {
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -134,8 +166,7 @@ function TruncatedEmailText({ email }: { email: string }) {
 
   useEffect(() => {
     measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return subscribeEmailTruncationMeasure(measure);
   }, [email, measure]);
 
   const emailText = (
