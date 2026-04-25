@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/renderer/lib/utils";
 import { AppSidebar } from "./app-sidebar";
 import { AppHeader } from "./app-header";
-import { useApp } from "./app-context";
+import { useApp, type Screen } from "./app-context";
 import { deriveShellReadiness } from "./shell-readiness";
 import { ShellAuthPanel } from "./shell-auth-panel";
 
@@ -10,8 +10,6 @@ export interface AppShellProps {
   children: React.ReactNode;
   className?: string;
 }
-
-type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
 
 const SCREEN_TITLES: Record<Screen, string> = {
   dashboard: "Dashboard",
