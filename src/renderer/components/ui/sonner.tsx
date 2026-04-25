@@ -33,6 +33,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast",
+          description: "whitespace-pre-line",
         },
       }}
       {...props}

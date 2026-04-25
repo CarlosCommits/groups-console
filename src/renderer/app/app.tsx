@@ -7,6 +7,7 @@ import {
   SettingsScreen,
 } from "@/renderer/components/console/screens";
 import { useApp } from "@/renderer/components/console";
+import { Toaster } from "@/renderer/components/ui/sonner";
 
 function AppContent() {
   const { currentScreen } = useApp();
@@ -35,6 +36,7 @@ export function App() {
   return (
     <AppProvider>
       <AppContent />
+      <Toaster richColors position="bottom-right" />
     </AppProvider>
   );
 }

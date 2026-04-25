@@ -267,6 +267,12 @@ describe('DirectoryScreen exchange recipient details', () => {
         isHydrating: false,
         loadError: null,
       },
+      directoryScreenState: {
+        activeTab: 'all',
+        searchText: '',
+        effectiveQuery: '',
+      },
+      setDirectoryScreenState: vi.fn(),
     });
 
     useRecipientsSearchQueryMock.mockReturnValue({ ...defaultSearchQueryResult });
@@ -433,6 +439,12 @@ describe('DirectoryScreen exchange recipient details', () => {
         isHydrating: false,
         loadError: null,
       },
+      directoryScreenState: {
+        activeTab: 'all',
+        searchText: '',
+        effectiveQuery: '',
+      },
+      setDirectoryScreenState: vi.fn(),
     });
 
     renderToStaticMarkup(React.createElement(DirectoryScreen));
