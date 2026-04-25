@@ -1,8 +1,11 @@
 import * as React from "react";
-import { Filter, Search } from "lucide-react";
+import { Filter } from "lucide-react";
 import { cn } from "@/renderer/lib/utils";
 import { Button } from "@/renderer/components/ui/button";
-import { Input } from "@/renderer/components/ui/input";
+import {
+  InputGroup,
+  InputGroupInput,
+} from "@/renderer/components/ui/input-group";
 
 export interface TableToolbarProps {
   searchPlaceholder?: string;
@@ -26,15 +29,14 @@ export function TableToolbar({
         className
       )}
     >
-      <div className="relative flex-1 min-w-[300px]">
-        <Search className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 size-4" />
-        <Input
-          className="w-full bg-white border border-[var(--color-outline-variant)]/30 rounded py-1 pl-10 pr-4 text-xs focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] outline-none transition-all"
+      <InputGroup className="flex-1 min-w-[300px] bg-white border-[var(--color-outline-variant)]/30 rounded">
+        <InputGroupInput
+          className="px-4 text-sm"
           placeholder={searchPlaceholder}
           onChange={(e) => onSearch?.(e.target.value)}
           type="text"
         />
-      </div>
+      </InputGroup>
       {filters && <div className="flex gap-2">{filters}</div>}
       {actions && <div className="flex gap-2 ml-auto">{actions}</div>}
     </div>
@@ -57,7 +59,7 @@ export function FilterSegmentedControl({
   return (
     <fieldset
       className={cn(
-        "flex rounded-md bg-[var(--color-surface-container)] p-0.5",
+        "flex rounded-md bg-[var(--color-surface-container)] p-1",
         className
       )}
     >
@@ -69,7 +71,7 @@ export function FilterSegmentedControl({
             aria-pressed={activeTab === tab.value}
             onClick={() => onTabChange(tab.value)}
             className={cn(
-              "flex-none rounded px-2 py-1 text-[10px] font-semibold transition-colors",
+              "flex-none rounded px-3 py-1.5 text-xs font-semibold transition-colors",
               activeTab === tab.value
                 ? "bg-white text-[var(--color-primary)] shadow-sm"
                 : "text-slate-600 hover:text-[var(--color-primary)]"
@@ -77,7 +79,7 @@ export function FilterSegmentedControl({
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className="ml-1 text-[9px] text-slate-400">({tab.count})</span>
+              <span className="ml-1 text-[11px] text-slate-400">({tab.count})</span>
             )}
           </button>
         ))}
@@ -102,11 +104,11 @@ export function TableFilterButton({
       size="sm"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1 text-[9px] font-bold text-slate-500 hover:text-[var(--color-primary)] px-2 py-1 border border-[var(--color-outline-variant)]/30 rounded bg-white transition-colors",
+        "flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[var(--color-primary)] px-3 py-1.5 border border-[var(--color-outline-variant)]/30 rounded bg-white transition-colors",
         className
       )}
     >
-      <Filter className="size-3" />
+      <Filter className="size-3.5" />
       {label}
     </Button>
   );

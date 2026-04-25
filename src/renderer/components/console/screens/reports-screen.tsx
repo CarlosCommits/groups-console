@@ -35,8 +35,7 @@ import {
   SelectValue,
 } from "@/renderer/components/ui/select";
 import { Progress } from "@/renderer/components/ui/progress";
-import { StatusBadge } from "@/renderer/components/console";
-import { AppShell, PageHeader } from "@/renderer/components/console";
+import { AppShell, StatusBadge } from "@/renderer/components/console";
 import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER,
@@ -154,10 +153,6 @@ export function ReportsScreen() {
   if (shell.isHydrating && !shell.session) {
     return (
       <AppShell>
-        <PageHeader
-          title="Reports"
-          description="Capability status and export inventory."
-        />
         <div className="flex items-center justify-center py-24">
           <Loader2 className="size-8 text-[var(--color-primary)] animate-spin mr-3" />
           <span className="text-sm text-slate-500">Loading shell state…</span>
@@ -168,10 +163,7 @@ export function ReportsScreen() {
 
   return (
     <AppShell>
-      <PageHeader
-        title="Reports"
-        description="Capability status and export inventory."
-        actions={
+      <div className="py-6 flex justify-end">
           <div className="flex gap-2">
             {membershipMatrixGeneration.phase === "idle" && (
               <Button
@@ -203,8 +195,7 @@ export function ReportsScreen() {
               </Button>
             )}
           </div>
-        }
-      />
+      </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card className={CONSOLE_SURFACE_CARD}>
