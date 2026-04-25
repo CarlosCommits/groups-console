@@ -37,42 +37,50 @@ export interface StatusBadgeProps
   dotOnly?: boolean;
 }
 
-export function StatusBadge({
-  className,
-  variant,
-  size,
-  pulse,
-  dotOnly,
-  children,
-  ...props
-}: StatusBadgeProps) {
-  if (dotOnly) {
+export const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
+  (
+    {
+      className,
+      variant,
+      size,
+      pulse,
+      dotOnly,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    if (dotOnly) {
+      return (
+        <span
+          ref={ref}
+          className={cn(
+            "inline-block w-1.5 h-1.5 rounded-full",
+            variant === "success" && "bg-teal-600",
+            variant === "warning" && "bg-amber-600",
+            variant === "error" && "bg-red-600",
+            variant === "info" && "bg-blue-600",
+            variant === "neutral" && "bg-slate-400",
+            pulse && "animate-pulse",
+            className
+          )}
+          {...props}
+        />
+      );
+    }
+
     return (
       <span
-        className={cn(
-          "inline-block w-1.5 h-1.5 rounded-full",
-          variant === "success" && "bg-teal-600",
-          variant === "warning" && "bg-amber-600",
-          variant === "error" && "bg-red-600",
-          variant === "info" && "bg-blue-600",
-          variant === "neutral" && "bg-slate-400",
-          pulse && "animate-pulse",
-          className
-        )}
+        ref={ref}
+        className={cn(statusBadgeVariants({ variant, size }), className)}
         {...props}
-      />
+      >
+        {children}
+      </span>
     );
   }
-
-  return (
-    <span
-      className={cn(statusBadgeVariants({ variant, size }), className)}
-      {...props}
-    >
-      {children}
-    </span>
-  );
-}
+);
+StatusBadge.displayName = "StatusBadge";
 
 export interface ConnectionStatusProps {
   graphConnected?: boolean;
