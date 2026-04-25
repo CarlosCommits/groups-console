@@ -35,8 +35,7 @@ import {
   SelectValue,
 } from "@/renderer/components/ui/select";
 import { Progress } from "@/renderer/components/ui/progress";
-import { StatusBadge } from "@/renderer/components/console";
-import { AppShell, PageHeader } from "@/renderer/components/console";
+import { AppShell, StatusBadge } from "@/renderer/components/console";
 import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER,
@@ -154,10 +153,6 @@ export function ReportsScreen() {
   if (shell.isHydrating && !shell.session) {
     return (
       <AppShell>
-        <PageHeader
-          title="Reports"
-          description="Capability status and export inventory."
-        />
         <div className="flex items-center justify-center py-24">
           <Loader2 className="size-8 text-[var(--color-primary)] animate-spin mr-3" />
           <span className="text-sm text-slate-500">Loading shell state…</span>
@@ -168,43 +163,39 @@ export function ReportsScreen() {
 
   return (
     <AppShell>
-      <PageHeader
-        title="Reports"
-        description="Capability status and export inventory."
-        actions={
-          <div className="flex gap-2">
-            {membershipMatrixGeneration.phase === "idle" && (
-              <Button
-                size="sm"
-                className="text-xs"
-                disabled={!exchangeConnected}
-                onClick={() => void handleGenerate()}
-              >
-                <FileDown className="size-3.5 mr-1.5" />
-                Generate Matrix
-              </Button>
-            )}
-            {membershipMatrixGeneration.phase === "generating" && (
-              <Button size="sm" className="text-xs" variant="outline" disabled>
-                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                Generating…
-              </Button>
-            )}
-            {membershipMatrixGeneration.phase === "success" && (
-              <Button size="sm" className="text-xs" variant="outline" onClick={handleReset}>
-                <RefreshCw className="size-3.5 mr-1.5" />
-                New Report
-              </Button>
-            )}
-            {membershipMatrixGeneration.phase === "error" && (
-              <Button size="sm" className="text-xs" onClick={() => void handleRetry()}>
-                <RefreshCw className="size-3.5 mr-1.5" />
-                Retry
-              </Button>
-            )}
-          </div>
-        }
-      />
+      <div className="py-6 flex justify-end">
+        <div className="flex gap-2">
+          {membershipMatrixGeneration.phase === "idle" && (
+            <Button
+              size="sm"
+              className="text-xs"
+              disabled={!exchangeConnected}
+              onClick={() => void handleGenerate()}
+            >
+              <FileDown className="size-3.5 mr-1.5" />
+              Generate Matrix
+            </Button>
+          )}
+          {membershipMatrixGeneration.phase === "generating" && (
+            <Button size="sm" className="text-xs" variant="outline" disabled>
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+              Generating…
+            </Button>
+          )}
+          {membershipMatrixGeneration.phase === "success" && (
+            <Button size="sm" className="text-xs" variant="outline" onClick={handleReset}>
+              <RefreshCw className="size-3.5 mr-1.5" />
+              New Report
+            </Button>
+          )}
+          {membershipMatrixGeneration.phase === "error" && (
+            <Button size="sm" className="text-xs" onClick={() => void handleRetry()}>
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Retry
+            </Button>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card className={CONSOLE_SURFACE_CARD}>
@@ -473,10 +464,10 @@ export function ReportsScreen() {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                       size="sm"
-                       className="flex-1 text-xs"
-                       onClick={() => void handleRetry()}
-                     >
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => void handleRetry()}
+                    >
                       <RefreshCw className="size-3.5 mr-1.5" />
                       Retry
                     </Button>
@@ -484,7 +475,7 @@ export function ReportsScreen() {
                       variant="outline"
                       size="sm"
                       className="flex-1 text-xs"
-                       onClick={() => void handleRetry()}
+                      onClick={handleReset}
                     >
                       Dismiss
                     </Button>
