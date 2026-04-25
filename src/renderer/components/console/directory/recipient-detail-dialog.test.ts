@@ -194,7 +194,6 @@ const defaultProps = {
   updatePending: false,
   onUpdateSubmit: vi.fn(),
   updateResult: null,
-  updateError: null,
   memberSelectionRef: {
     kind: 'exchangeRecipient' as const,
     exchangeIdentity: 'contact@example.com',
@@ -275,7 +274,7 @@ describe('RecipientDetailDialog', () => {
     expect(markup).toContain(longCompany);
     expect(markup).toContain('directory-detail-left-pane-scroll');
     expect(markup).toContain('[overflow-wrap:anywhere]');
-    expect(markup).toContain('w-full min-w-0 max-w-full');
+    expect(markup).toContain('aria-label="Edit company name"');
     expect(markup).toContain('overflow-hidden rounded-lg border');
   });
 
@@ -396,16 +395,46 @@ describe('RecipientDetailDialog', () => {
     expect(markup).toContain('group2@example.com');
   });
 
-  it('shows company update when detailCanUpdateCompany is true', () => {
+  it('shows inline company edit action when detailCanUpdateCompany is true', () => {
     const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, defaultProps));
-    expect(markup).toContain('Company name');
-    expect(markup).toContain('Save Changes');
+    expect(markup).toContain('Company');
+    expect(markup).toContain('Test Corp');
+    expect(markup).toContain('aria-label="Edit company name"');
+    expect(markup).not.toContain('Save Changes');
+    expect(markup).not.toContain('Update the company value directly.');
   });
 
-  it('hides company update when detailCanUpdateCompany is false', () => {
+  it('hides inline company edit action when detailCanUpdateCompany is false', () => {
     const props = { ...defaultProps, detailCanUpdateCompany: false };
     const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, props));
-    expect(markup).not.toContain('Save Changes');
+    expect(markup).toContain('Test Corp');
+    expect(markup).not.toContain('aria-label="Edit company name"');
+  });
+
+  it('shows updated contact company from the mutation result while details refetch', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(RecipientDetailDialog, {
+        ...defaultProps,
+        updateResult: {
+          mode: 'contact',
+          data: {
+            contact: {
+              exchangeIdentity: 'contact@example.com',
+              objectId: null,
+              primaryEmail: 'contact@example.com',
+              companyName: 'Updated Corp',
+            },
+            verification: {
+              attempted: true,
+              companyApplied: true,
+              detail: 'Verified company update.',
+            },
+          },
+        },
+      }),
+    );
+
+    expect(markup).toContain('Updated Corp');
   });
 
   it('shows loading state when detailPending is true', () => {
