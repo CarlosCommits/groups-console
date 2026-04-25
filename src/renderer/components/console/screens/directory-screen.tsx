@@ -1523,7 +1523,8 @@ export function DirectoryScreen() {
                   {detailTarget.primaryEmail && (
                     <span className="text-slate-500"> ({detailTarget.primaryEmail})</span>
                   )}
-                  {" "}from this group?
+                  {" "}from{" "}
+                  <span className="font-semibold">{removeGroupTarget.displayName}</span>?
                 </>
               ) : (
                 "Remove this membership?"

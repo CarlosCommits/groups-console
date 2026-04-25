@@ -830,7 +830,7 @@ export function GroupsScreen() {
                               Total Members:
                             </span>
                             <span className="text-sm font-extrabold font-headline text-slate-900">
-                              {membersLoading ? "..." : members.length}
+                              {membersLoading ? "…" : members.length}
                             </span>
                           </div>
                           {selectedGroup.whenChangedUtc && (

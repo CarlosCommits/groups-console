@@ -117,11 +117,7 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
             disabled={isBusy}
             onClick={() => { void connectGraph(); }}
           >
-            {shell.graphConnection?.state === "connected" ? (
-              "Disconnect Graph"
-            ) : (
-              "Connect Graph"
-            )}
+            Connect Graph
           </Button>
           {actionErrors.graph && (
             <p className="text-xs font-medium text-[var(--color-error)]">{actionErrors.graph}</p>
