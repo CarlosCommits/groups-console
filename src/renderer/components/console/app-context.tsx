@@ -5,7 +5,9 @@ import {
   useCallback,
   useEffect,
   useRef,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import type { SessionStatusSchema } from "@/shared/contracts/session";
 import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/contracts/exchange";
@@ -39,6 +41,20 @@ export interface ShellState {
   exchangeConnection: ExchangeConnectionStatus | null;
   isHydrating: boolean;
   loadError: string | null;
+}
+
+export interface DirectoryScreenState {
+  activeTab: string;
+  searchText: string;
+  effectiveQuery: string;
+}
+
+export interface GroupsScreenState {
+  selectedGroupExchangeIdentity: string | null;
+  activeTab: string;
+  sortBy: string;
+  groupFilter: string;
+  memberFilter: string;
 }
 
 export type MembershipMatrixGenerationPhase = "idle" | "generating" | "success" | "error";
@@ -119,6 +135,10 @@ interface AppContextValue {
   currentScreen: Screen;
   setCurrentScreen: (screen: Screen) => void;
   shell: ShellState;
+  directoryScreenState: DirectoryScreenState;
+  setDirectoryScreenState: Dispatch<SetStateAction<DirectoryScreenState>>;
+  groupsScreenState: GroupsScreenState;
+  setGroupsScreenState: Dispatch<SetStateAction<GroupsScreenState>>;
   lastExchangeConnectFailure: string | null;
   refreshShellState: () => Promise<void>;
   pendingAction: PendingAction;
@@ -178,6 +198,20 @@ const initialShellState: ShellState = {
   exchangeConnection: null,
   isHydrating: true,
   loadError: null,
+};
+
+export const initialDirectoryScreenState: DirectoryScreenState = {
+  activeTab: "all",
+  searchText: "",
+  effectiveQuery: "",
+};
+
+export const initialGroupsScreenState: GroupsScreenState = {
+  selectedGroupExchangeIdentity: null,
+  activeTab: "members",
+  sortBy: "name",
+  groupFilter: "",
+  memberFilter: "",
 };
 
 export function getExchangeUpnPreset(
@@ -257,6 +291,12 @@ export function resolveLastExchangeConnectFailureAfterRefresh(
 export function AppProvider({ children }: AppProviderProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>("dashboard");
   const [shell, setShell] = useState<ShellState>(initialShellState);
+  const [directoryScreenState, setDirectoryScreenState] = useState<DirectoryScreenState>(
+    initialDirectoryScreenState,
+  );
+  const [groupsScreenState, setGroupsScreenState] = useState<GroupsScreenState>(
+    initialGroupsScreenState,
+  );
   const [lastExchangeConnectFailure, setLastExchangeConnectFailure] = useState<string | null>(null);
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -307,6 +347,8 @@ export function AppProvider({ children }: AppProviderProps) {
 
     if (shellConnectionBoundaryRef.current !== nextBoundary) {
       purgeAppQueryCacheForConnectionBoundary();
+      setDirectoryScreenState(initialDirectoryScreenState);
+      setGroupsScreenState(initialGroupsScreenState);
       shellConnectionBoundaryRef.current = nextBoundary;
     }
 
@@ -549,6 +591,10 @@ export function AppProvider({ children }: AppProviderProps) {
         currentScreen,
         setCurrentScreen,
         shell,
+        directoryScreenState,
+        setDirectoryScreenState,
+        groupsScreenState,
+        setGroupsScreenState,
         lastExchangeConnectFailure,
         refreshShellState,
         pendingAction,
