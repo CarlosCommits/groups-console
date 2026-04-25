@@ -906,7 +906,7 @@ export function DirectoryScreen() {
                 <div className="text-center py-16 px-8">
                   <Loader2 className="size-8 text-[var(--color-primary)] mx-auto mb-4 animate-spin" />
                   <p className="text-sm text-slate-500">
-                    Searching directory
+                    Searching directory…
                   </p>
                 </div>
               </div>
