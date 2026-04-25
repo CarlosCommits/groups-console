@@ -5,7 +5,7 @@ import {
   UserPlus,
   UserMinus,
   RefreshCw,
-  Wrench,
+  UsersRound,
   Loader2,
   AlertCircle,
   WifiOff,
@@ -66,6 +66,7 @@ import {
   handleMutationDialogOpenChange,
 } from "@/renderer/components/console/mutation-dialog-guard";
 import {
+  CONSOLE_ROW_ACTION_ICON_BUTTON,
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
@@ -112,6 +113,8 @@ const RECIPIENT_TYPE_LABELS: Record<GroupMemberListItem["recipientType"], string
   mailEnabledSecurityGroup: "Security",
   unknown: "Unknown",
 };
+
+const STICKY_TABLE_HEAD_CLASS = "sticky top-0 z-20 bg-slate-50/95";
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -389,6 +392,7 @@ export function GroupsScreen() {
   const showStaleMembersError = membersError !== null && hasMembersData;
   const addGroupMembersMutation = useAddGroupMembersMutation(exchangeConnection);
   const removeGroupMembersMutation = useRemoveGroupMembersMutation(exchangeConnection);
+  const normalizedActiveTab = activeTab === "settings" ? "details" : activeTab;
 
   useEffect(() => {
     if (groupsLoading) {
@@ -666,10 +670,10 @@ export function GroupsScreen() {
     <AppShell>
       <div className="h-[calc(100vh-7rem)] pt-6 flex flex-col overflow-hidden">
         <div className="flex flex-1 overflow-hidden rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
-          <section className="w-80 flex flex-col bg-slate-50 border-r border-slate-200/50 flex-none h-full">
+          <section className="w-96 flex flex-col bg-slate-50 border-r border-slate-200/50 flex-none h-full">
             <div className="p-4 bg-white border-b border-slate-200/50 flex-none">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="font-headline text-sm font-bold text-[var(--color-foreground)]">
+                <h2 className="font-headline text-base font-bold text-[var(--color-foreground)]">
                   Groups <span className="text-slate-400 font-normal ml-1">({groups.length})</span>
                 </h2>
               </div>
@@ -690,10 +694,9 @@ export function GroupsScreen() {
                 </div>
               )}
               <div className="relative">
-                <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 z-10" />
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 size-3" />
                 <Input
-                  className="w-full bg-slate-100 border-none rounded-md py-1.5 pl-8 pr-3 text-xs"
+                  className="w-full bg-slate-100 border-none rounded-md py-2 pl-8 pr-3 text-sm"
                   placeholder="Filter groups..."
                   type="text"
                   value={groupFilter}
@@ -702,11 +705,11 @@ export function GroupsScreen() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <Table>
-                <TableHeader>
+              <Table containerClassName="overflow-x-visible">
+                <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.25)]">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-full">Display Name</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-11 w-full px-3 text-sm font-bold text-slate-700")}>Display Name</TableHead>
+                    <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-11 px-3 text-sm font-bold text-slate-700")}>Type</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -721,10 +724,10 @@ export function GroupsScreen() {
                       )}
                       onClick={() => setSelectedGroupExchangeIdentity(group.exchangeIdentity)}
                     >
-                      <TableCell>
+                      <TableCell className="px-3 py-3">
                         <p
                           className={cn(
-                            "text-xs truncate",
+                            "text-sm truncate",
                             selectedGroup?.exchangeIdentity === group.exchangeIdentity
                               ? "font-bold text-[var(--color-primary)]"
                               : "font-semibold text-slate-700"
@@ -732,14 +735,14 @@ export function GroupsScreen() {
                         >
                           {group.displayName}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="mt-0.5 text-xs text-slate-500">
                           {group.primaryEmail ?? "—"}
                         </p>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-3 py-3">
                         <Badge
                           variant="secondary"
-                          className="text-[9px] px-1.5 py-0.5"
+                          className="px-2 py-0.5 text-[11px]"
                         >
                           {GROUP_KIND_LABELS[group.groupKind]}
                         </Badge>
@@ -754,35 +757,60 @@ export function GroupsScreen() {
           <section className="flex-1 bg-[var(--color-surface)] flex flex-col overflow-hidden h-full min-w-0">
             {selectedGroup ? (
               <>
-                <div className="p-6 bg-white border-b border-slate-200/50 flex-none">
+                <div className="bg-white px-6 py-5 border-b border-slate-200/50 flex-none">
                   <div className="flex justify-between items-start">
-                    <div className="flex gap-4">
-                      <div className="w-10 h-10 bg-[var(--color-primary)]/10 rounded-lg flex items-center justify-center text-[var(--color-primary)] shrink-0">
-                        <Wrench className="size-5" />
+                    <div className="flex min-w-0 gap-4">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-[var(--color-primary)]/15 bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                        <UsersRound className="size-6" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-lg font-extrabold font-headline tracking-tight">
+                      <div className="min-w-0">
+                        <div className="min-w-0">
+                          <h2 className="truncate text-xl font-extrabold font-headline tracking-tight">
                             {selectedGroup.displayName}
                           </h2>
-                          <Badge variant="secondary" className="text-[9px] font-bold uppercase">
-                            {GROUP_KIND_LABELS[selectedGroup.groupKind]} Group
-                          </Badge>
                         </div>
-                        <p className="text-xs text-slate-500 max-w-lg mt-0.5">
+                        <p className="text-sm text-slate-500 max-w-lg mt-0.5 truncate">
                           {selectedGroup.primaryEmail ?? selectedGroup.alias ?? "—"}
                         </p>
+                        <div className="mt-3 grid grid-cols-[auto_auto] items-baseline gap-x-3 gap-y-2 sm:grid-cols-[auto_auto_auto_auto_auto_auto]">
+                          <div className="contents">
+                            <span className="text-xs uppercase font-bold text-slate-500 text-right">
+                              Type:
+                            </span>
+                            <span className="text-sm font-semibold text-slate-700">
+                              {GROUP_KIND_LABELS[selectedGroup.groupKind]} Group
+                            </span>
+                          </div>
+                          <div className="contents">
+                            <span className="text-xs uppercase font-bold text-slate-500 text-right">
+                              Total Members:
+                            </span>
+                            <span className="text-sm font-extrabold font-headline text-slate-900">
+                              {membersLoading ? "..." : members.length}
+                            </span>
+                          </div>
+                          {selectedGroup.whenChangedUtc && (
+                            <div className="contents">
+                              <span className="text-xs uppercase font-bold text-slate-500 text-right">
+                                Modified:
+                              </span>
+                              <span className="text-sm text-slate-700">
+                                {new Date(selectedGroup.whenChangedUtc).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="text-xs" onClick={openAddDialog} disabled={!selectedGroup}>
+                    <div className="flex shrink-0 gap-2">
+                      <Button size="default" className="text-sm" onClick={openAddDialog} disabled={!selectedGroup}>
                         <UserPlus className="size-4 mr-1" />
                         Add Member
                       </Button>
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        className="text-xs"
+                        className="text-sm"
                         disabled={!selectedGroup || membersFetching}
                         onClick={() => void refetchMembers()}
                         aria-label="Refresh members"
@@ -792,73 +820,45 @@ export function GroupsScreen() {
                       </Button>
                     </div>
                   </div>
-                    <div className="flex gap-6 mt-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">
-                          Total Members:
-                        </span>
-                        <span className="text-xs font-extrabold font-headline">
-                          {membersLoading ? "…" : members.length}
-                        </span>
-                      </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">
-                        ID:
-                      </span>
-                      <span className="text-xs font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
-                        {selectedGroup.objectId ?? selectedGroup.exchangeIdentity}
-                      </span>
-                    </div>
-                    {selectedGroup.whenChangedUtc && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">
-                          Modified:
-                        </span>
-                        <span className="text-xs text-slate-600">
-                          {new Date(selectedGroup.whenChangedUtc).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <Tabs
-                  value={activeTab}
+                  value={normalizedActiveTab}
                   onValueChange={setActiveTab}
                   className="flex flex-1 flex-col gap-0 overflow-hidden"
                 >
-                  <div className="px-6 pt-3 flex items-center justify-between border-b border-slate-200/50 flex-none bg-white">
-                    <TabsList variant="line" className="h-auto bg-transparent gap-6 p-0">
+                  <div className="px-6 py-3 flex items-center justify-between border-b border-slate-200/50 flex-none bg-white">
+                    <TabsList className="h-9 bg-slate-100 p-1">
                       <TabsTrigger
                         value="members"
-                        className="text-xs font-semibold pb-3 data-[state=active]:text-[var(--color-primary)] text-slate-400 hover:text-slate-600"
+                        className="h-7 min-w-28 rounded-md px-3 py-1 text-sm font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[var(--color-primary)] data-[state=active]:shadow-sm hover:text-slate-800"
                       >
                         Members{!membersLoading ? ` (${members.length})` : ""}
                       </TabsTrigger>
                       <TabsTrigger
                         value="owners"
-                        className="text-xs font-semibold pb-3 data-[state=active]:text-[var(--color-primary)] text-slate-400 hover:text-slate-600"
+                        className="h-7 min-w-24 rounded-md px-3 py-1 text-sm font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[var(--color-primary)] data-[state=active]:shadow-sm hover:text-slate-800"
                       >
                         Owners
                       </TabsTrigger>
                       <TabsTrigger
-                        value="settings"
-                        className="text-xs font-semibold pb-3 data-[state=active]:text-[var(--color-primary)] text-slate-400 hover:text-slate-600"
+                        value="details"
+                        className="h-7 min-w-24 rounded-md px-3 py-1 text-sm font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[var(--color-primary)] data-[state=active]:shadow-sm hover:text-slate-800"
                       >
-                        Settings
+                        Details
                       </TabsTrigger>
                     </TabsList>
-                    {activeTab === "members" ? (
-                      <div className="flex items-center gap-2 pb-2">
+                    {normalizedActiveTab === "members" ? (
+                      <div className="flex items-center gap-2">
                         <Input
-                          className="bg-slate-100 border-none text-[11px] rounded-full pl-3 pr-3 py-1 w-48"
+                          className="bg-slate-100 border-none text-sm rounded-full pl-4 pr-4 py-2 w-64"
                           placeholder="Filter current list..."
                           type="text"
                           value={memberFilter}
                           onChange={(e) => setMemberFilter(e.target.value)}
                         />
                         <Select value={sortBy} onValueChange={setSortBy}>
-                          <SelectTrigger size="sm" className="bg-white border-slate-200 text-[11px]">
+                          <SelectTrigger size="sm" className="bg-white border-slate-200 text-sm">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -874,10 +874,10 @@ export function GroupsScreen() {
                     )}
                   </div>
 
-                  <TabsContent value="members" className="mt-0 flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar h-full">
+                  <TabsContent value="members" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                    <div className="h-full overflow-y-auto custom-scrollbar">
                       {showStaleMembersError && (
-                        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2">
+                        <div className="mx-6 mt-4 mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2">
                           <div className="min-w-0">
                             <p className="text-[11px] font-bold text-amber-900">Members list may be stale</p>
                             <p className="text-[10px] text-amber-800/80 truncate">{membersError}</p>
@@ -893,17 +893,17 @@ export function GroupsScreen() {
                         </div>
                       )}
                       {membersLoading ? (
-                        <div className="flex items-center justify-center py-16">
+                        <div className="flex items-center justify-center px-6 py-16">
                           <Loader2 className="size-6 text-[var(--color-primary)] animate-spin mr-2" />
                           <span className="text-sm text-slate-500">Loading members…</span>
                         </div>
                       ) : showBlockingMembersError ? (
-                        <div className="flex items-center justify-center py-16">
+                        <div className="flex items-center justify-center px-6 py-16">
                           <AlertCircle className="size-5 text-[var(--color-error)] mr-2" />
                           <span className="text-sm text-slate-500">{membersError}</span>
                         </div>
                       ) : visibleMembers.length === 0 ? (
-                        <div className="flex items-center justify-center py-16">
+                        <div className="flex items-center justify-center px-6 py-16">
                           <div className="text-center">
                             <span className="text-sm text-slate-400">
                               {showStaleMembersError ? "Members list may be stale." : "No members found."}
@@ -918,57 +918,58 @@ export function GroupsScreen() {
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-white border border-slate-200/60 rounded-lg overflow-hidden min-h-full">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-slate-50/80 sticky top-0 z-10">
-                                <TableHead>Name</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Recipient Details</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right w-12"></TableHead>
+                        <div className="min-h-full w-full border-y border-slate-200/70 bg-white">
+                          <Table className="text-sm" containerClassName="overflow-x-visible">
+                            <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.35)]">
+                              <TableRow className="hover:bg-transparent">
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Name</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Email</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Recipient Details</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Type</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 w-12 px-3 text-right")}></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {visibleMembers.map((member) => (
                                 <TableRow
                                   key={member.exchangeIdentity}
-                                  className="hover:bg-slate-50/50 transition-colors group"
+                                  className="hover:bg-slate-50/60 transition-colors group"
                                 >
-                                  <TableCell>
-                                    <div className="flex items-center gap-2.5">
-                                      <Avatar className="w-6 h-6 text-[9px]">
+                                  <TableCell className="px-3 py-3">
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="size-8 text-xs">
                                         <AvatarFallback className={avatarColorFor(member.exchangeIdentity)}>
                                           {getInitials(member.displayName)}
                                         </AvatarFallback>
                                       </Avatar>
-                                      <span className="text-xs font-bold text-slate-800">
+                                      <span className="text-sm font-bold text-slate-800">
                                         {member.displayName}
                                       </span>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-500 font-medium">
+                                  <TableCell className="px-3 py-3 text-sm text-slate-600 font-medium">
                                     {member.primaryEmail ?? "—"}
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-500">
+                                  <TableCell className="px-3 py-3 text-sm text-slate-600">
                                     {member.recipientTypeDetails || "—"}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="px-3 py-3">
                                     <Badge
                                       variant="secondary"
-                                      className="text-[9px] uppercase"
+                                      className="text-[11px] uppercase"
                                     >
                                       {RECIPIENT_TYPE_LABELS[member.recipientType]}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-right">
+                                  <TableCell className="px-3 py-3 text-right">
                                     <Button
                                       variant="ghost"
-                                      size="icon-xs"
-                                      className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-[var(--color-error)]"
+                                      size="icon-sm"
+                                      className={CONSOLE_ROW_ACTION_ICON_BUTTON}
+                                      aria-label={`Remove ${member.displayName} from ${selectedGroup.displayName}`}
                                       onClick={() => setRemoveConfirmTarget(member)}
                                     >
-                                      <UserMinus className="size-4" />
+                                      <UserMinus className="size-5" />
                                     </Button>
                                   </TableCell>
                                 </TableRow>
@@ -988,32 +989,32 @@ export function GroupsScreen() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="settings" className="mt-0 flex-1 overflow-hidden px-6 py-4">
+                  <TabsContent value="details" className="mt-0 flex-1 overflow-hidden px-6 py-4">
                     <Card className={CONSOLE_SURFACE_CARD}>
                       <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
-                        <CardTitle className="text-sm font-bold text-slate-800">
-                          Group Settings Snapshot
+                        <CardTitle className="text-base font-bold text-slate-800">
+                          Group Details
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="grid gap-4 p-4 text-sm text-slate-600 md:grid-cols-2">
+                      <CardContent className="grid gap-5 p-4 text-sm text-slate-600 md:grid-cols-2">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                             Group Type
                           </p>
-                          <p className="mt-1 font-semibold text-slate-800">
+                          <p className="mt-1 text-base font-semibold text-slate-800">
                             {GROUP_KIND_LABELS[selectedGroup.groupKind]}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                             Member Count
                           </p>
-                          <p className="mt-1 font-semibold text-slate-800">
+                          <p className="mt-1 text-base font-semibold text-slate-800">
                             {membersLoading ? "…" : members.length}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                             Managed By
                           </p>
                           <p className="mt-1">
@@ -1023,11 +1024,19 @@ export function GroupsScreen() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                             Alias
                           </p>
                           <p className="mt-1">
                             {selectedGroup.alias ?? "—"}
+                          </p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            ID
+                          </p>
+                          <p className="mt-1 rounded-md bg-slate-50 px-3 py-2 font-mono text-sm text-slate-700 [overflow-wrap:anywhere]">
+                            {selectedGroup.objectId ?? selectedGroup.exchangeIdentity}
                           </p>
                         </div>
                       </CardContent>
