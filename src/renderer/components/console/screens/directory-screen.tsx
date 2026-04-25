@@ -1509,22 +1509,34 @@ export function DirectoryScreen() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md" showCloseButton={canDismissMutationDialog(removeGroupPending)}>
+        <DialogContent
+          className="sm:max-w-sm"
+          showCloseButton={canDismissMutationDialog(removeGroupPending)}
+        >
           <DialogHeader>
-            <DialogTitle>Remove from group</DialogTitle>
+            <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription>
-              {removeGroupTarget && detailTarget
-                ? `Remove ${detailTarget.displayName} from ${removeGroupTarget.displayName}?`
-                : "Remove this membership?"}
+              {removeGroupTarget && detailTarget ? (
+                <>
+                  Are you sure you want to remove{" "}
+                  <span className="font-semibold">{detailTarget.displayName}</span>
+                  {detailTarget.primaryEmail && (
+                    <span className="text-slate-500"> ({detailTarget.primaryEmail})</span>
+                  )}
+                  {" "}from{" "}
+                  <span className="font-semibold">{removeGroupTarget.displayName}</span>?
+                </>
+              ) : (
+                "Remove this membership?"
+              )}
             </DialogDescription>
           </DialogHeader>
 
           {removeGroupError && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertTitle>Remove failed</AlertTitle>
-              <AlertDescription>{removeGroupError}</AlertDescription>
-            </Alert>
+            <div className="flex items-center gap-2 text-xs text-[var(--color-error)] bg-red-50 rounded-md px-3 py-2">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{removeGroupError}</span>
+            </div>
           )}
 
           <DialogFooter>
@@ -1539,14 +1551,13 @@ export function DirectoryScreen() {
             <Button
               variant="destructive"
               size="sm"
-              className="!bg-[var(--color-error)] !text-white hover:!bg-[#93000a] focus-visible:!ring-[var(--color-error)]/30 disabled:!bg-[var(--color-error)] disabled:!text-white disabled:!opacity-100"
               disabled={removeGroupPending || !currentMemberRef}
               onClick={(): void => {
                 void handleRemoveGroup();
               }}
             >
               {removeGroupPending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
-              Remove from group
+              Remove
             </Button>
           </DialogFooter>
         </DialogContent>
