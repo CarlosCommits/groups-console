@@ -164,37 +164,37 @@ export function ReportsScreen() {
   return (
     <AppShell>
       <div className="py-6 flex justify-end">
-          <div className="flex gap-2">
-            {membershipMatrixGeneration.phase === "idle" && (
-              <Button
-                size="sm"
-                className="text-xs"
-                disabled={!exchangeConnected}
-                onClick={() => void handleGenerate()}
-              >
-                <FileDown className="size-3.5 mr-1.5" />
-                Generate Matrix
-              </Button>
-            )}
-            {membershipMatrixGeneration.phase === "generating" && (
-              <Button size="sm" className="text-xs" variant="outline" disabled>
-                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                Generating…
-              </Button>
-            )}
-            {membershipMatrixGeneration.phase === "success" && (
-              <Button size="sm" className="text-xs" variant="outline" onClick={handleReset}>
-                <RefreshCw className="size-3.5 mr-1.5" />
-                New Report
-              </Button>
-            )}
-            {membershipMatrixGeneration.phase === "error" && (
-              <Button size="sm" className="text-xs" onClick={() => void handleRetry()}>
-                <RefreshCw className="size-3.5 mr-1.5" />
-                Retry
-              </Button>
-            )}
-          </div>
+        <div className="flex gap-2">
+          {membershipMatrixGeneration.phase === "idle" && (
+            <Button
+              size="sm"
+              className="text-xs"
+              disabled={!exchangeConnected}
+              onClick={() => void handleGenerate()}
+            >
+              <FileDown className="size-3.5 mr-1.5" />
+              Generate Matrix
+            </Button>
+          )}
+          {membershipMatrixGeneration.phase === "generating" && (
+            <Button size="sm" className="text-xs" variant="outline" disabled>
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+              Generating…
+            </Button>
+          )}
+          {membershipMatrixGeneration.phase === "success" && (
+            <Button size="sm" className="text-xs" variant="outline" onClick={handleReset}>
+              <RefreshCw className="size-3.5 mr-1.5" />
+              New Report
+            </Button>
+          )}
+          {membershipMatrixGeneration.phase === "error" && (
+            <Button size="sm" className="text-xs" onClick={() => void handleRetry()}>
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Retry
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
