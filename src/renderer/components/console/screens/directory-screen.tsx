@@ -80,6 +80,7 @@ import {
   handleMutationDialogOpenChange,
 } from "@/renderer/components/console/mutation-dialog-guard";
 import { cn } from "@/renderer/lib/utils";
+import { toast } from "sonner";
 import type {
   RecipientSearchItem,
   RecipientSearchType,
@@ -116,9 +117,12 @@ type DetailResult =
   | { mode: "guest"; data: GuestDetails }
   | { mode: "exchangeRecipient"; data: ExchangeRecipientDetails };
 
-type GroupAddBatchResult = {
-  group: ExchangeGroupListItem;
-  result: GroupsAddMembersResult;
+const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"], string> = {
+  added: "Added",
+  alreadyMember: "Already a member",
+  invalid: "Invalid",
+  verificationFailed: "Verification failed",
+  failed: "Failed",
 };
 
 const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["status"], string> = {
@@ -189,6 +193,52 @@ function getInitials(name: string): string {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
+}
+
+function isAddStatusClean(status: GroupsAddMembersResult["items"][number]["status"]): boolean {
+  return status === "added" || status === "alreadyMember";
+}
+
+function showAddGroupsToast(
+  batchResults: Array<{ group: ExchangeGroupListItem; result: GroupsAddMembersResult }>,
+): void {
+  const issues = batchResults.flatMap(({ group, result }) => {
+    if (result.items.length === 0) {
+      return [{
+        groupName: group.displayName,
+        label: "No result",
+        detail: "No membership result was returned.",
+      }];
+    }
+
+    return result.items
+      .filter((item) => !isAddStatusClean(item.status))
+      .map((item) => ({
+        groupName: group.displayName,
+        label: ADD_STATUS_LABELS[item.status],
+        detail: item.detail,
+      }));
+  });
+
+  if (issues.length > 0) {
+    toast.warning("Some group updates need attention", {
+      description: issues
+        .map((issue) =>
+          `${issue.groupName}: ${issue.label} - ${issue.detail}`,
+        )
+        .join("\n"),
+    });
+    return;
+  }
+
+  toast.success("Group memberships updated", {
+    description: batchResults
+      .map(({ group, result }) => {
+        const status = result.items[0]?.status ?? "added";
+        return `${group.displayName}: ${ADD_STATUS_LABELS[status]}`;
+      })
+      .join("\n"),
+  });
 }
 
 const AVATAR_COLORS = [
@@ -273,7 +323,7 @@ function getUpdateMode(
 }
 
 export function DirectoryScreen() {
-  const { shell } = useApp();
+  const { shell, directoryScreenState, setDirectoryScreenState } = useApp();
   const exchangeConnected = shell.exchangeConnection?.state === "connected";
   const graphConnected = shell.graphConnection?.state === "connected";
   const graphTenantMatched = shell.graphConnection?.exchangeAlignment === "matched";
@@ -291,9 +341,25 @@ export function DirectoryScreen() {
     shell.graphConnection,
   );
 
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchText, setSearchText] = useState("");
-  const [effectiveQuery, setEffectiveQuery] = useState("");
+  const { activeTab, searchText, effectiveQuery } = directoryScreenState;
+  const setActiveTab = useCallback((value: string) => {
+    setDirectoryScreenState((previous) => ({
+      ...previous,
+      activeTab: value,
+    }));
+  }, [setDirectoryScreenState]);
+  const setSearchText = useCallback((value: string) => {
+    setDirectoryScreenState((previous) => ({
+      ...previous,
+      searchText: value,
+    }));
+  }, [setDirectoryScreenState]);
+  const setEffectiveQuery = useCallback((value: string) => {
+    setDirectoryScreenState((previous) => ({
+      ...previous,
+      effectiveQuery: value,
+    }));
+  }, [setDirectoryScreenState]);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("contact");
@@ -320,14 +386,11 @@ export function DirectoryScreen() {
 
   const [removeGroupTarget, setRemoveGroupTarget] = useState<ExchangeGroupListItem | null>(null);
   const [removeGroupPending, setRemoveGroupPending] = useState(false);
-  const [removeGroupResult, setRemoveGroupResult] = useState<GroupsRemoveMembersResult | null>(null);
-  const [removedGroupName, setRemovedGroupName] = useState<string | null>(null);
   const [removeGroupError, setRemoveGroupError] = useState<string | null>(null);
 
   const [groupFilterText, setGroupFilterText] = useState("");
   const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
   const [addGroupPending, setAddGroupPending] = useState(false);
-  const [addGroupResult, setAddGroupResult] = useState<GroupAddBatchResult[] | null>(null);
   const [addGroupError, setAddGroupError] = useState<string | null>(null);
 
   const canCreateContact = exchangeConnected;
@@ -339,7 +402,7 @@ export function DirectoryScreen() {
       setEffectiveQuery(searchText);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchText]);
+  }, [searchText, setEffectiveQuery]);
 
   const isGated = useMemo(() => {
     if (activeTab === "guests") {
@@ -664,10 +727,7 @@ export function DirectoryScreen() {
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
     setAddGroupPending(false);
-    setAddGroupResult(null);
     setAddGroupError(null);
-    setRemoveGroupResult(null);
-    setRemovedGroupName(null);
     setRemoveGroupTarget(null);
     setRemoveGroupPending(false);
     setRemoveGroupError(null);
@@ -681,10 +741,7 @@ export function DirectoryScreen() {
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
     setAddGroupPending(false);
-    setAddGroupResult(null);
     setAddGroupError(null);
-    setRemoveGroupResult(null);
-    setRemovedGroupName(null);
     setRemoveGroupTarget(null);
     setRemoveGroupPending(false);
     setRemoveGroupError(null);
@@ -733,10 +790,9 @@ export function DirectoryScreen() {
 
     setAddGroupPending(true);
     setAddGroupError(null);
-    setAddGroupResult(null);
 
     try {
-      const batchResults: GroupAddBatchResult[] = [];
+      const batchResults: Array<{ group: ExchangeGroupListItem; result: GroupsAddMembersResult }> = [];
 
       for (const group of groupsToAdd) {
         const result = await addGroupMembersMutation.mutateAsync({
@@ -747,15 +803,15 @@ export function DirectoryScreen() {
         batchResults.push({ group, result });
       }
 
-      setAddGroupResult(batchResults);
+      showAddGroupsToast(batchResults);
       setSelectedGroupKeys(new Set());
       await membershipsQuery.refetch();
     } catch (err: unknown) {
-      setAddGroupError(
-        formatPresentedCommandFailure(
-          presentCommandFailure(err, "Add to Groups Error", "Failed to add to selected groups."),
-        ),
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Add to Groups Error", "Failed to add to selected groups."),
       );
+      setAddGroupError(message);
+      toast.error("Failed to add to selected groups", { description: message });
     } finally {
       setAddGroupPending(false);
     }
@@ -782,34 +838,37 @@ export function DirectoryScreen() {
         memberRefs: [currentMemberRef],
       });
 
-      setRemoveGroupResult(result);
-
       const status = result.items[0]?.status ?? "failed";
       const detail = result.items[0]?.detail ?? "Membership update failed.";
 
-      if (status === "removed") {
-        setRemovedGroupName(removeGroupTarget.displayName);
+      if (status === "removed" || status === "notMember") {
+        toast.success(REMOVE_STATUS_LABELS[status], {
+          description:
+            status === "notMember"
+              ? `${detailTarget?.displayName ?? "Recipient"} was not a member of ${removeGroupTarget.displayName}.`
+              : `${detailTarget?.displayName ?? "Recipient"} was removed from ${removeGroupTarget.displayName}.`,
+        });
         setRemoveGroupTarget(null);
         await membershipsQuery.refetch();
         return;
       }
 
-      if (status === "notMember") {
-        await membershipsQuery.refetch();
-      }
-
-      setRemoveGroupError(`${REMOVE_STATUS_LABELS[status]}: ${detail}`);
+      const message = `${REMOVE_STATUS_LABELS[status]}: ${detail}`;
+      setRemoveGroupError(message);
+      toast.warning("Remove from group needs attention", {
+        description: `${removeGroupTarget.displayName}: ${message}`,
+      });
 
     } catch (err: unknown) {
-      setRemoveGroupError(
-        formatPresentedCommandFailure(
-          presentCommandFailure(err, "Remove From Group Error", "Failed to remove from group."),
-        ),
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Remove From Group Error", "Failed to remove from group."),
       );
+      setRemoveGroupError(message);
+      toast.error("Failed to remove from group", { description: message });
     } finally {
       setRemoveGroupPending(false);
     }
-  }, [currentMemberRef, membershipsQuery, removeGroupMembersMutation, removeGroupTarget]);
+  }, [currentMemberRef, detailTarget?.displayName, membershipsQuery, removeGroupMembersMutation, removeGroupTarget]);
 
   const tabs = [
     { label: "All", value: "all" },
@@ -877,6 +936,7 @@ export function DirectoryScreen() {
           <div className="bg-white rounded-xl border border-[var(--color-outline-variant)]/20 overflow-hidden shadow-sm flex-1 flex flex-col min-h-0">
             <TableToolbar
               searchPlaceholder="Search by name, email, or handle"
+              searchValue={searchText}
               onSearch={setSearchText}
               filters={
                 <>
@@ -1433,14 +1493,9 @@ export function DirectoryScreen() {
         onAddGroups={() => {
           void handleAddGroups();
         }}
-        addGroupResult={addGroupResult}
         addGroupError={addGroupError}
-        removeGroupResult={removeGroupResult}
-        removedGroupName={removedGroupName}
         onRequestRemoveGroup={(group) => {
           setRemoveGroupError(null);
-          setRemoveGroupResult(null);
-          setRemovedGroupName(null);
           setRemoveGroupTarget(group);
         }}
       />
