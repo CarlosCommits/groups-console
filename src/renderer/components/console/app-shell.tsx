@@ -11,6 +11,16 @@ export interface AppShellProps {
   className?: string;
 }
 
+type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
+
+const SCREEN_TITLES: Record<Screen, string> = {
+  dashboard: "Dashboard",
+  groups: "Groups",
+  directory: "Directory Workspace",
+  reports: "Reports",
+  settings: "Settings",
+};
+
 export function AppShell({
   children,
   className,
@@ -43,6 +53,7 @@ export function AppShell({
         userRole={summary?.secondaryLine ?? "Loading application state"}
       />
       <AppHeader
+        title={SCREEN_TITLES[currentScreen]}
         graphConnected={summary?.graphConnected ?? false}
         exchangeActive={summary?.exchangeActive ?? false}
       />
