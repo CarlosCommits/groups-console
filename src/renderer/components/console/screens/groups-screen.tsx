@@ -72,6 +72,13 @@ import {
   handleMutationDialogOpenChange,
 } from "@/renderer/components/console/mutation-dialog-guard";
 import {
+  formatSingleRemoveMemberSuccessDescription,
+  getPrimaryRemoveMemberStatus,
+  getRemoveMembersIssueDescriptions,
+  getRemoveMembersIssueMessage,
+  REMOVE_MEMBER_STATUS_LABELS,
+} from "@/renderer/components/console/group-members-mutation-outcome";
+import {
   CONSOLE_ROW_ACTION_ICON_BUTTON,
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER_COMPACT,
@@ -247,14 +254,6 @@ const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"
   failed: "Failed",
 };
 
-const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["status"], string> = {
-  removed: "Removed",
-  notMember: "Not a member",
-  invalid: "Invalid",
-  verificationFailed: "Verification failed",
-  failed: "Failed",
-};
-
 function isCandidateSelectable(candidate: RecipientSearchItem): boolean {
   if (candidate.membershipSupport === "exchangeDirect" && candidate.exchangeIdentity !== null) {
     return true;
@@ -285,10 +284,6 @@ function isAddStatusClean(status: GroupsAddMembersResult["items"][number]["statu
   return status === "added" || status === "alreadyMember";
 }
 
-function isRemoveStatusClean(status: GroupsRemoveMembersResult["items"][number]["status"]): boolean {
-  return status === "removed" || status === "notMember";
-}
-
 function getAddMembersIssueMessage(result: GroupsAddMembersResult): string | null {
   const issue = result.items.find((item) => !isAddStatusClean(item.status));
   if (!issue) {
@@ -297,16 +292,6 @@ function getAddMembersIssueMessage(result: GroupsAddMembersResult): string | nul
 
   const label = issue.member.primaryEmail ?? issue.member.exchangeIdentity;
   return `${label}: ${ADD_STATUS_LABELS[issue.status]}: ${issue.detail}`;
-}
-
-function getRemoveMembersIssueMessage(result: GroupsRemoveMembersResult): string | null {
-  const issue = result.items.find((item) => !isRemoveStatusClean(item.status));
-  if (!issue) {
-    return null;
-  }
-
-  const label = issue.member.primaryEmail ?? issue.member.exchangeIdentity;
-  return `${label}: ${REMOVE_STATUS_LABELS[issue.status]}: ${issue.detail}`;
 }
 
 function showAddMembersToast(groupName: string, result: GroupsAddMembersResult): void {
@@ -324,35 +309,45 @@ function showAddMembersToast(groupName: string, result: GroupsAddMembersResult):
     return;
   }
 
-  toast.success("Members added", {
-    description: [
-      `${result.items.length} member${result.items.length === 1 ? "" : "s"} processed for ${groupName}.`,
-      `Verification: ${result.verification.detail}`,
-    ].join("\n"),
-  });
-}
+  const addedCount = result.items.filter((item) => item.status === "added").length;
+  const alreadyMemberCount = result.items.filter((item) => item.status === "alreadyMember").length;
 
-function showRemoveMemberToast(memberName: string, groupName: string, result: GroupsRemoveMembersResult): void {
-  const issues = result.items.filter((item) => !isRemoveStatusClean(item.status));
-
-  if (issues.length > 0) {
-    toast.warning("Remove member needs attention", {
-      description: issues
-        .map((item) => {
-          const label = item.member.primaryEmail ?? item.member.exchangeIdentity;
-          return `${label}: ${REMOVE_STATUS_LABELS[item.status]} - ${item.detail}`;
-        })
-        .join("\n"),
+  if (addedCount > 0 && alreadyMemberCount === 0) {
+    toast.success(addedCount === 1 ? "Member added" : "Members added", {
+      description: `${addedCount} member${addedCount === 1 ? "" : "s"} added to ${groupName}`,
     });
     return;
   }
 
-  const status = result.items[0]?.status ?? "removed";
-  toast.success(REMOVE_STATUS_LABELS[status], {
-    description:
-      status === "notMember"
-        ? `${memberName} was not a member of ${groupName}.\nVerification: ${result.verification.detail}`
-        : `${memberName} was removed from ${groupName}.\nVerification: ${result.verification.detail}`,
+  if (addedCount === 0) {
+    toast.success("Already a member", {
+      description: `${result.items.length} member${result.items.length === 1 ? "" : "s"} already in ${groupName}`,
+    });
+    return;
+  }
+
+  toast.success("Memberships updated", {
+    description: `${addedCount} added; ${alreadyMemberCount} already in ${groupName}`,
+  });
+}
+
+function showRemoveMemberToast(
+  memberName: string,
+  groupName: string,
+  result: GroupsRemoveMembersResult,
+): void {
+  const issues = getRemoveMembersIssueDescriptions(result);
+
+  if (issues.length > 0) {
+    toast.warning("Remove member needs attention", {
+      description: issues.join("\n"),
+    });
+    return;
+  }
+
+  const status = getPrimaryRemoveMemberStatus(result, "removed");
+  toast.success(REMOVE_MEMBER_STATUS_LABELS[status], {
+    description: formatSingleRemoveMemberSuccessDescription(memberName, groupName, result),
   });
 }
 
