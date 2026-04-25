@@ -3,10 +3,16 @@ import { describe, expect, it } from "vitest";
 import type { GroupsAddMembersResult, GroupsRemoveMembersResult } from "@/shared/contracts/exchange";
 
 import {
+  formatSingleRemoveMemberSuccessDescription,
+  getPrimaryRemoveMemberStatus,
+  getRemoveMembersIssueDescriptions,
+  getRemoveMembersIssueMessage,
   hasInventoryChangingAddOutcome,
   hasInventoryChangingRemoveOutcome,
   hasMembersRefreshableAddOutcome,
   hasMembersRefreshableRemoveOutcome,
+  isRemoveMemberStatusClean,
+  REMOVE_MEMBER_STATUS_LABELS,
 } from "./group-members-mutation-outcome";
 
 function makeAddResult(status: GroupsAddMembersResult["items"][number]["status"]): GroupsAddMembersResult {
@@ -108,5 +114,43 @@ describe("group members mutation outcomes", () => {
     expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("invalid"))).toBe(false);
     expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("verificationFailed"))).toBe(false);
     expect(hasMembersRefreshableRemoveOutcome(makeRemoveResult("failed"))).toBe(false);
+  });
+
+  it("classifies clean remove statuses for shared UI handling", () => {
+    expect(isRemoveMemberStatusClean("removed")).toBe(true);
+    expect(isRemoveMemberStatusClean("notMember")).toBe(true);
+    expect(isRemoveMemberStatusClean("invalid")).toBe(false);
+    expect(isRemoveMemberStatusClean("verificationFailed")).toBe(false);
+    expect(isRemoveMemberStatusClean("failed")).toBe(false);
+  });
+
+  it("formats shared remove status labels and issue messages", () => {
+    expect(REMOVE_MEMBER_STATUS_LABELS.removed).toBe("Removed");
+    expect(getRemoveMembersIssueMessage(makeRemoveResult("failed"))).toBe(
+      "member-1@example.com: Failed: failed",
+    );
+    expect(getRemoveMembersIssueDescriptions(makeRemoveResult("verificationFailed"))).toEqual([
+      "member-1@example.com: Verification failed - verificationFailed",
+    ]);
+    expect(getRemoveMembersIssueMessage(makeRemoveResult("removed"))).toBeNull();
+  });
+
+  it("returns primary remove statuses and success descriptions", () => {
+    expect(getPrimaryRemoveMemberStatus(makeRemoveResult("notMember"), "failed")).toBe("notMember");
+    expect(formatSingleRemoveMemberSuccessDescription(
+      "Test Member",
+      "Test Group",
+      makeRemoveResult("removed"),
+    )).toBe("Test Member was removed from Test Group");
+    expect(formatSingleRemoveMemberSuccessDescription(
+      "Test Member",
+      "Test Group",
+      makeRemoveResult("notMember"),
+    )).toBe("Test Member was not a member of Test Group");
+    expect(formatSingleRemoveMemberSuccessDescription(
+      "Test Member",
+      "Test Group",
+      makeRemoveResult("failed"),
+    )).toBe("Test Member was not removed from Test Group");
   });
 });
