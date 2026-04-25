@@ -36,7 +36,22 @@ function Invoke-RadAppGetGroupMemberships {
         throw "Exchange recipient '$exchangeIdentity' does not have a DistinguishedName for membership lookup."
     }
 
-    $escapedDistinguishedName = $distinguishedName.Replace("'", "''")
+    function ConvertTo-RadAppOPathStringLiteral {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$Value
+        )
+
+        if ($Value -match "[`r`n`0]") {
+            throw 'Exchange filter values cannot contain control characters.'
+        }
+
+        # Exchange OPATH single-quoted literals escape embedded single quotes by doubling them.
+        # Other DN characters, including commas, backslashes, and double quotes, remain literal.
+        return "'$($Value.Replace("'", "''"))'"
+    }
+
+    $distinguishedNameFilterLiteral = ConvertTo-RadAppOPathStringLiteral -Value $distinguishedName
 
     $memberObjectId = if ($resolvedRecipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $resolvedRecipient.ExternalDirectoryObjectId) {
         [string]$resolvedRecipient.ExternalDirectoryObjectId
@@ -71,108 +86,6 @@ function Invoke-RadAppGetGroupMemberships {
     }
     else {
         $null
-    }
-
-    function Add-RadAppIdentifier {
-        param(
-            [System.Collections.Generic.HashSet[string]]$Identifiers,
-            [Parameter(Mandatory = $false)]
-            [string]$Value
-        )
-
-        if ([string]::IsNullOrWhiteSpace($Value)) {
-            return
-        }
-
-        [void]$Identifiers.Add($Value.Trim().ToLowerInvariant())
-    }
-
-    function Get-RadAppStrongRecipientIdentifiers {
-        param(
-            [Parameter(Mandatory = $true)]
-            $Recipient,
-            [Parameter(Mandatory = $false)]
-            $FallbackMember
-        )
-
-        $identifiers = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-
-        Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$Recipient.Identity)
-
-        if ($Recipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $Recipient.ExternalDirectoryObjectId) {
-            Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$Recipient.ExternalDirectoryObjectId)
-        }
-        elseif ($Recipient.PSObject.Properties.Name -contains 'Guid' -and $Recipient.Guid) {
-            Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$Recipient.Guid)
-        }
-
-        if ($null -ne $FallbackMember) {
-            Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$FallbackMember.exchangeIdentity)
-            Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$FallbackMember.objectId)
-        }
-
-        return $identifiers
-    }
-
-    function Get-RadAppWeakRecipientIdentifiers {
-        param(
-            [Parameter(Mandatory = $true)]
-            $Recipient,
-            [Parameter(Mandatory = $false)]
-            $FallbackMember
-        )
-
-        $identifiers = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-
-        Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$Recipient.Alias)
-        Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$Recipient.PrimarySmtpAddress)
-        Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$Recipient.WindowsEmailAddress)
-
-        if ($Recipient.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $Recipient.ExternalEmailAddress) {
-            $rawExternalEmail = $Recipient.ExternalEmailAddress.ToString()
-            if ($rawExternalEmail -match '^(?i)smtp:(.+)$') {
-                Add-RadAppIdentifier -Identifiers $identifiers -Value $Matches[1]
-            }
-            else {
-                Add-RadAppIdentifier -Identifiers $identifiers -Value $rawExternalEmail
-            }
-        }
-
-        if ($null -ne $FallbackMember) {
-            Add-RadAppIdentifier -Identifiers $identifiers -Value ([string]$FallbackMember.primaryEmail)
-        }
-
-        return $identifiers
-    }
-
-    function Test-RadAppGroupMemberMatch {
-        param(
-            [Parameter(Mandatory = $true)]
-            $GroupMember,
-            [System.Collections.Generic.HashSet[string]]$StrongRecipientIdentifiers,
-            [System.Collections.Generic.HashSet[string]]$WeakRecipientIdentifiers
-        )
-
-        $strongCandidateIdentifiers = Get-RadAppStrongRecipientIdentifiers -Recipient $GroupMember
-        $weakCandidateIdentifiers = Get-RadAppWeakRecipientIdentifiers -Recipient $GroupMember
-
-        if ($StrongRecipientIdentifiers.Count -gt 0 -or $strongCandidateIdentifiers.Count -gt 0) {
-            foreach ($candidateIdentifier in $strongCandidateIdentifiers) {
-                if ($StrongRecipientIdentifiers.Contains($candidateIdentifier)) {
-                    return $true
-                }
-            }
-
-            return $false
-        }
-
-        foreach ($candidateIdentifier in $weakCandidateIdentifiers) {
-            if ($WeakRecipientIdentifiers.Contains($candidateIdentifier)) {
-                return $true
-            }
-        }
-
-        return $false
     }
 
     function ConvertTo-RadAppGroupMembershipItem {
@@ -221,10 +134,8 @@ function Invoke-RadAppGetGroupMemberships {
         }
     }
 
-    $strongRecipientIdentifiers = Get-RadAppStrongRecipientIdentifiers -Recipient $resolvedRecipient -FallbackMember $member
-    $weakRecipientIdentifiers = Get-RadAppWeakRecipientIdentifiers -Recipient $resolvedRecipient -FallbackMember $member
-    $groupReferenceItems = @(
-        Get-DistributionGroup -ResultSize Unlimited -IncludeManagedByWithDisplayNames -Filter "Members -eq '$escapedDistinguishedName'" -ErrorAction SilentlyContinue |
+    $items = @(
+        Get-DistributionGroup -ResultSize Unlimited -IncludeManagedByWithDisplayNames -Filter "Members -eq $distinguishedNameFilterLiteral" -ErrorAction Stop |
             ForEach-Object {
                 $membershipItem = ConvertTo-RadAppGroupMembershipItem -ResolvedGroup $_
                 if ($null -ne $membershipItem) {
@@ -232,39 +143,6 @@ function Invoke-RadAppGetGroupMemberships {
                 }
             }
     )
-
-    $items = if ($groupReferenceItems.Count -gt 0) {
-        $groupReferenceItems
-    }
-    else {
-        @(
-            $resolvedGroups = Get-DistributionGroup -ResultSize Unlimited -IncludeManagedByWithDisplayNames -ErrorAction Stop
-
-            foreach ($resolvedGroup in $resolvedGroups) {
-                $membershipItem = ConvertTo-RadAppGroupMembershipItem -ResolvedGroup $resolvedGroup
-                if ($null -eq $membershipItem) {
-                    continue
-                }
-
-                $groupMembers = @(Get-DistributionGroupMember -Identity $resolvedGroup.Identity -ResultSize Unlimited -ErrorAction SilentlyContinue)
-                if ($groupMembers.Count -eq 0) {
-                    continue
-                }
-
-                $hasMatch = $false
-                foreach ($groupMember in $groupMembers) {
-                    if (Test-RadAppGroupMemberMatch -GroupMember $groupMember -StrongRecipientIdentifiers $strongRecipientIdentifiers -WeakRecipientIdentifiers $weakRecipientIdentifiers) {
-                        $hasMatch = $true
-                        break
-                    }
-                }
-
-                if ($hasMatch) {
-                    $membershipItem
-                }
-            }
-        )
-    }
 
     $items = @($items | Sort-Object DisplayName)
 
