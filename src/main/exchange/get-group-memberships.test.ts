@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 vi.mock('@/main/logging/logger', () => ({
   writeSystemLogEvent: vi.fn(),
@@ -468,5 +471,21 @@ describe('getGroupMemberships', () => {
 
     expect(exchangeSessionManager.listGroups).not.toHaveBeenCalled();
     expect(exchangeSessionManager.getGroupMembers).not.toHaveBeenCalled();
+  });
+});
+
+describe('get-group-memberships PowerShell command', () => {
+  it('does not enumerate group members after a zero-result DN membership lookup', () => {
+    const testDirectory = dirname(fileURLToPath(import.meta.url));
+    const commandScript = readFileSync(
+      resolve(testDirectory, '../../../powershell/commands/get-group-memberships.ps1'),
+      'utf8',
+    );
+
+    expect(commandScript).toContain('function ConvertTo-RadAppOPathStringLiteral');
+    expect(commandScript).toContain('Exchange OPATH single-quoted literals escape embedded single quotes');
+    expect(commandScript).toContain("-Filter \"Members -eq $distinguishedNameFilterLiteral\"");
+    expect(commandScript).toContain('-ErrorAction Stop');
+    expect(commandScript).not.toMatch(/\bGet-DistributionGroupMember\b/);
   });
 });
