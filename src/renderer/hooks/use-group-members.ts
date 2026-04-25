@@ -1,4 +1,4 @@
-import { QueryClient, queryOptions, useQuery } from "@tanstack/react-query";
+import { type QueryClient, queryOptions, useQuery } from "@tanstack/react-query";
 
 import {
   formatPresentedCommandFailure,
