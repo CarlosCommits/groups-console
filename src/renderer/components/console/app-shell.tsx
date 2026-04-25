@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/renderer/lib/utils";
 import { AppSidebar } from "./app-sidebar";
 import { AppHeader } from "./app-header";
-import { useApp } from "./app-context";
+import { useApp, type Screen } from "./app-context";
 import { deriveShellReadiness } from "./shell-readiness";
 import { ShellAuthPanel } from "./shell-auth-panel";
 
@@ -10,6 +10,14 @@ export interface AppShellProps {
   children: React.ReactNode;
   className?: string;
 }
+
+const SCREEN_TITLES: Record<Screen, string> = {
+  dashboard: "Dashboard",
+  groups: "Groups",
+  directory: "Directory Workspace",
+  reports: "Reports",
+  settings: "Settings",
+};
 
 export function AppShell({
   children,
@@ -43,6 +51,7 @@ export function AppShell({
         userRole={summary?.secondaryLine ?? "Loading application state"}
       />
       <AppHeader
+        title={SCREEN_TITLES[currentScreen]}
         graphConnected={summary?.graphConnected ?? false}
         exchangeActive={summary?.exchangeActive ?? false}
       />
