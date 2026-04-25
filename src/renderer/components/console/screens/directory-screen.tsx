@@ -36,7 +36,6 @@ import {
   AppShell,
   TableToolbar,
   FilterSegmentedControl,
-  TableFilterButton,
 } from "@/renderer/components/console";
 import { RecipientDetailDialog } from "@/renderer/components/console/directory/recipient-detail-dialog";
 import { useApp } from "@/renderer/components/console/app-context";
@@ -861,28 +860,8 @@ export function DirectoryScreen() {
     <AppShell>
       <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                Workspace / Directory
-              </p>
-              <h1 className="text-2xl font-extrabold font-headline tracking-tight text-[var(--color-foreground)]">
-                Directory Workspace
-              </h1>
-              <p className="mt-1 max-w-3xl text-sm text-slate-500">
-                Manage users, cross-functional groups, and external guests in a
-                high-density operational view.
-              </p>
-            </div>
+          <div className="flex justify-end items-center mb-4 pt-6">
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs font-semibold"
-                disabled
-              >
-                Export Registry
-              </Button>
               <Button
                 size="sm"
                 className="text-xs font-semibold"
@@ -906,7 +885,6 @@ export function DirectoryScreen() {
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
                   />
-                  <TableFilterButton label="Filters" className="pointer-events-none opacity-50" />
                 </>
               }
             />
@@ -928,7 +906,7 @@ export function DirectoryScreen() {
                 <div className="text-center py-16 px-8">
                   <Loader2 className="size-8 text-[var(--color-primary)] mx-auto mb-4 animate-spin" />
                   <p className="text-sm text-slate-500">
-                    Searching directory\u2026
+                    Searching directory
                   </p>
                 </div>
               </div>

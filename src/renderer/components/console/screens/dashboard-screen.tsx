@@ -31,7 +31,6 @@ import {
 import { Button } from "@/renderer/components/ui/button";
 import {
   AppShell,
-  PageHeader,
   StatCard,
   StatusBadge,
 } from "@/renderer/components/console";
@@ -196,7 +195,6 @@ export function DashboardScreen() {
   if (shell.isHydrating && !shell.session) {
     return (
       <AppShell>
-        <PageHeader title="System Home" description="Operational summary and quick management utilities." />
         <div className="flex items-center justify-center py-24">
           <Loader2 className="size-8 text-[var(--color-primary)] animate-spin mr-3" />
           <span className="text-sm text-slate-500">Loading shell state…</span>
@@ -207,24 +205,20 @@ export function DashboardScreen() {
 
   return (
     <AppShell>
-      <PageHeader
-        title="System Home"
-        description="Operational summary and quick management utilities."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            disabled={isRefreshing}
-            onClick={() => {
-              void handleRefresh();
-            }}
-          >
-            <RefreshCw className={cn("size-3.5 mr-1.5", isRefreshing && "animate-spin")} />
-            Refresh
-          </Button>
-        }
-      />
+      <div className="py-6 flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs"
+          disabled={isRefreshing}
+          onClick={() => {
+            void handleRefresh();
+          }}
+        >
+          <RefreshCw className={cn("size-3.5 mr-1.5", isRefreshing && "animate-spin")} />
+          Refresh
+        </Button>
+      </div>
 
       <div className="grid grid-cols-12 gap-5">
         <div className="col-span-12 lg:col-span-8 space-y-5">
