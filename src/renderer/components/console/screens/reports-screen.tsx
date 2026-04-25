@@ -464,10 +464,10 @@ export function ReportsScreen() {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                       size="sm"
-                       className="flex-1 text-xs"
-                       onClick={() => void handleRetry()}
-                     >
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => void handleRetry()}
+                    >
                       <RefreshCw className="size-3.5 mr-1.5" />
                       Retry
                     </Button>
@@ -475,7 +475,7 @@ export function ReportsScreen() {
                       variant="outline"
                       size="sm"
                       className="flex-1 text-xs"
-                       onClick={() => void handleRetry()}
+                      onClick={handleReset}
                     >
                       Dismiss
                     </Button>
