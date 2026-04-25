@@ -140,15 +140,7 @@ export function SettingsScreen() {
   return (
     <AppShell>
       <div className="py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-extrabold text-[var(--color-foreground)] font-headline tracking-tight">
-              Settings
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Configure application preferences and security settings.
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
           <Button
             variant="outline"
             size="sm"

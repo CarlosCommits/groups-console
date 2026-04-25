@@ -11,12 +11,6 @@ const { useAppMock, useExchangeGroupsQueryMock, buttonProps } = vi.hoisted(() =>
 vi.mock('@/renderer/components/console', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-slot': 'app-shell' }, children),
-  PageHeader: ({ children, actions, title, description }: {
-    children?: React.ReactNode;
-    actions?: React.ReactNode;
-    title: string;
-    description?: string;
-  }) => React.createElement('div', { 'data-slot': 'page-header' }, title, description, actions, children),
   StatusBadge: ({ children }: { children?: React.ReactNode }) =>
     React.createElement('span', null, children),
 }));
@@ -112,7 +106,7 @@ const groupsQueryResult = {
   appliedKind: 'all' as const,
   isLoading: false,
   error: null,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 describe('ReportsScreen membership matrix states', () => {
@@ -132,7 +126,7 @@ describe('ReportsScreen membership matrix states', () => {
         result: null,
         error: null,
       },
-      generateMembershipMatrix: vi.fn(async () => undefined),
+      generateMembershipMatrix: vi.fn(() => Promise.resolve(undefined)),
       clearMembershipMatrixGeneration: vi.fn(),
     });
   });
@@ -148,7 +142,7 @@ describe('ReportsScreen membership matrix states', () => {
         result: null,
         error: null,
       },
-      generateMembershipMatrix: vi.fn(async () => undefined),
+      generateMembershipMatrix: vi.fn(() => Promise.resolve(undefined)),
       clearMembershipMatrixGeneration: vi.fn(),
     });
 
@@ -179,7 +173,7 @@ describe('ReportsScreen membership matrix states', () => {
         },
         error: null,
       },
-      generateMembershipMatrix: vi.fn(async () => undefined),
+      generateMembershipMatrix: vi.fn(() => Promise.resolve(undefined)),
       clearMembershipMatrixGeneration: vi.fn(),
     });
 
@@ -201,7 +195,7 @@ describe('ReportsScreen membership matrix states', () => {
         result: null,
         error: 'Report generation failed.',
       },
-      generateMembershipMatrix: vi.fn(async () => undefined),
+      generateMembershipMatrix: vi.fn(() => Promise.resolve(undefined)),
       clearMembershipMatrixGeneration: vi.fn(),
     });
 
@@ -212,7 +206,7 @@ describe('ReportsScreen membership matrix states', () => {
   });
 
   it('retries with the persisted requested kind after remount', async () => {
-    const generateMembershipMatrixMock = vi.fn(async () => undefined);
+    const generateMembershipMatrixMock = vi.fn(() => Promise.resolve(undefined));
 
     useAppMock.mockReturnValue({
       shell: connectedShell,
@@ -239,5 +233,37 @@ describe('ReportsScreen membership matrix states', () => {
     await (onClick as () => Promise<void>)();
 
     expect(generateMembershipMatrixMock).toHaveBeenCalledWith('mailEnabledSecurityGroup');
+  });
+
+  it('dismisses a persisted generation error without retrying', () => {
+    const generateMembershipMatrixMock = vi.fn(() => Promise.resolve(undefined));
+    const clearMembershipMatrixGenerationMock = vi.fn();
+
+    useAppMock.mockReturnValue({
+      shell: connectedShell,
+      membershipMatrixGeneration: {
+        requestedKind: 'mailEnabledSecurityGroup',
+        phase: 'error',
+        progressMessage: '',
+        progressPercent: 0,
+        result: null,
+        error: 'Report generation failed.',
+      },
+      generateMembershipMatrix: generateMembershipMatrixMock,
+      clearMembershipMatrixGeneration: clearMembershipMatrixGenerationMock,
+    });
+
+    renderToStaticMarkup(React.createElement(ReportsScreen));
+
+    const dismissButton = buttonProps.find((props) => getTextContent(props.children as React.ReactNode).includes('Dismiss'));
+    expect(dismissButton).toBeDefined();
+
+    const onClick = dismissButton?.onClick;
+    expect(typeof onClick).toBe('function');
+
+    (onClick as () => void)();
+
+    expect(clearMembershipMatrixGenerationMock).toHaveBeenCalledOnce();
+    expect(generateMembershipMatrixMock).not.toHaveBeenCalled();
   });
 });
