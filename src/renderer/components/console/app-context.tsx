@@ -18,7 +18,7 @@ import type { ProgressEvent } from "@/shared/contracts/command";
 import { formatPresentedCommandFailure, presentCommandFailure } from "./command-failure-presenter";
 import { purgeAppQueryCacheForConnectionBoundary } from "@/renderer/lib/query-client";
 
-type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
+export type Screen = "dashboard" | "groups" | "directory" | "reports" | "settings";
 
 export type PendingAction =
   | "graphConnect"
