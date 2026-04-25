@@ -178,6 +178,61 @@ describe('graph-client', () => {
     expect(result.verification.companyApplied).toBe(true);
   });
 
+  it('treats empty successful Graph update responses as success', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'guest-1',
+          companyName: 'Guest Co',
+        }),
+      });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await updateGraphGuestCompany('token', {
+      guestUserId: 'guest-1',
+      companyName: 'Guest Co',
+    });
+
+    expect(result.verification.companyApplied).toBe(true);
+  });
+
+  it('clears guest company when the requested value is blank', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'guest-1',
+          companyName: null,
+        }),
+      });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await updateGraphGuestCompany('token', {
+      guestUserId: 'guest-1',
+      companyName: '',
+    });
+
+    const patchInit = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(typeof patchInit?.body).toBe('string');
+    expect(JSON.parse(patchInit?.body as string)).toEqual({ companyName: null });
+    expect(result.companyName).toBeNull();
+    expect(result.verification.companyApplied).toBe(true);
+  });
+
   it('preserves Graph status and backend code on failed requests', async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: false,

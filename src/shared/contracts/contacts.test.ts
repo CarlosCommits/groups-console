@@ -34,6 +34,13 @@ describe('contact contracts', () => {
     ).not.toThrow();
 
     expect(() =>
+      contactsUpdateCompanyPayloadSchema.parse({
+        exchangeIdentity: 'jane@example.com',
+        companyName: '',
+      }),
+    ).not.toThrow();
+
+    expect(() =>
       contactsGetDetailsPayloadSchema.parse({
         stableKey: 'exchange:objectId:contact-1',
       }),
