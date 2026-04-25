@@ -42,7 +42,7 @@ export async function readSystemLogEvents(
 
   return {
     items,
-    nextCursor: hasMore && items.length > 0 ? encodeSystemLogCursor(items[items.length - 1]!) : null,
+    nextCursor: hasMore && items.length > 0 ? encodeSystemLogCursor(items[items.length - 1]) : null,
   };
 }
 

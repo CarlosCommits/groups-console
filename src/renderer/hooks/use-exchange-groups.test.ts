@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import type * as ReactQuery from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ExchangeListGroupsResult } from "@/shared/contracts/exchange";
@@ -8,7 +9,7 @@ const { useQueryMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", async () => {
-  const actual = await vi.importActual<typeof import("@tanstack/react-query")>(
+  const actual = await vi.importActual<typeof ReactQuery>(
     "@tanstack/react-query",
   );
 
@@ -78,7 +79,7 @@ describe("useExchangeGroupsQuery", () => {
   });
 
   it("configures the shared query as disabled when Exchange is disconnected", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
 
     useQueryMock.mockReturnValue({
       data: undefined,
@@ -113,7 +114,7 @@ describe("useExchangeGroupsQuery", () => {
   });
 
   it("maps successful query data into the shared screen-facing shape", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
     const data = makeGroupsResult();
 
     useQueryMock.mockReturnValue({
@@ -140,7 +141,7 @@ describe("useExchangeGroupsQuery", () => {
   });
 
   it("formats query failures with the shared command failure presenter", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
 
     useQueryMock.mockReturnValue({
       data: undefined,

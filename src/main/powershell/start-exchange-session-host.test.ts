@@ -168,7 +168,7 @@ describe('startExchangeSessionHost', () => {
 
     expect(settled).toBe(false);
     expect(child.writes).toHaveLength(1);
-    expect(JSON.parse(child.writes[0]!.trim())).toMatchObject({
+    expect(JSON.parse(child.writes[0].trim())).toMatchObject({
       requestId: 'host-bootstrap-readiness',
       command: 'getStatus',
     });
