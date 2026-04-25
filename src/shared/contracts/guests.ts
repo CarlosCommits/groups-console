@@ -99,7 +99,7 @@ export const guestsInviteResultSchema = z.discriminatedUnion('outcome', [
 export const guestsUpdateCompanyPayloadSchema = z
   .object({
     guestUserId: z.string().min(1),
-    companyName: z.string().trim().min(1).max(64),
+    companyName: z.string().trim().max(64),
   })
   .strict();
 

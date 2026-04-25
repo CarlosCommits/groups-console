@@ -366,10 +366,13 @@ export async function updateGraphGuestCompany(
   accessToken: string,
   payload: GuestsUpdateCompanyPayload,
 ): Promise<GuestsUpdateCompanyResult> {
+  const requestedCompanyName = payload.companyName.trim();
+  const graphCompanyName = requestedCompanyName.length > 0 ? requestedCompanyName : null;
+
   await graphFetchJson(`https://graph.microsoft.com/v1.0/users/${payload.guestUserId}`, accessToken, {
     method: 'PATCH',
     body: JSON.stringify({
-      companyName: payload.companyName,
+      companyName: graphCompanyName,
     }),
   });
 
@@ -387,9 +390,9 @@ export async function updateGraphGuestCompany(
       verification: {
         attempted: true,
         foundGuest: true,
-        companyApplied: verifiedGuest.companyName === payload.companyName,
+        companyApplied: (verifiedGuest.companyName ?? null) === graphCompanyName,
         detail:
-          verifiedGuest.companyName === payload.companyName
+          (verifiedGuest.companyName ?? null) === graphCompanyName
             ? 'Verified guest company update.'
             : 'Guest update succeeded, but verification did not match the requested company value.',
       },
@@ -490,6 +493,10 @@ async function graphFetchJson(
       ...(backendCode ? { backendCode } : {}),
       ...(backendMessage ? { details: backendMessage } : {}),
     });
+  }
+
+  if (response.status === 204) {
+    return {};
   }
 
   return (await response.json()) as unknown;

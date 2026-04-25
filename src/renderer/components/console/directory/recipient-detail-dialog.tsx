@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import {
   Loader2,
   AlertCircle,
@@ -6,6 +6,8 @@ import {
   UserPlus,
   UserMinus,
   Search,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { Button } from "@/renderer/components/ui/button";
 import { Badge } from "@/renderer/components/ui/badge";
@@ -126,6 +128,89 @@ function DetailRow({ label, value }: DetailRowProps) {
   );
 }
 
+interface EditableCompanyRowProps {
+  companyName: string | null;
+  canEdit: boolean;
+  editValue: string;
+  onEditValueChange: (value: string) => void;
+  pending: boolean;
+  onSubmit: () => void;
+  onStartEditing: () => void;
+  editing: boolean;
+}
+
+function EditableCompanyRow({
+  companyName,
+  canEdit,
+  editValue,
+  onEditValueChange,
+  pending,
+  onSubmit,
+  onStartEditing,
+  editing,
+}: EditableCompanyRowProps) {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (pending) {
+      return;
+    }
+    onSubmit();
+  };
+
+  const displayValue = companyName?.trim() ? companyName : "\u2014";
+
+  return (
+    <DetailRow
+      label="Company"
+      value={
+        editing ? (
+          <form className="flex min-w-0 max-w-full items-center gap-1.5" onSubmit={handleSubmit}>
+            <Input
+              id="company-name-inline"
+              className="h-7 min-w-0 flex-1 bg-background px-2 py-1 text-sm"
+              value={editValue}
+              onChange={(event) => onEditValueChange(event.target.value)}
+              disabled={pending}
+              placeholder="Company name"
+              autoFocus
+              aria-label="Company name"
+            />
+            <Button
+              type="submit"
+              variant="outline"
+              size="icon-sm"
+              className="size-7"
+              disabled={pending}
+              aria-label="Save company name"
+            >
+              {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            </Button>
+          </form>
+        ) : (
+          <span className="flex min-w-0 max-w-full items-center gap-1.5">
+            <span className="min-w-0 flex-1 [overflow-wrap:anywhere] [word-break:break-word]">
+              {displayValue}
+            </span>
+            {canEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="size-6 text-muted-foreground hover:text-foreground"
+                aria-label="Edit company name"
+                onClick={onStartEditing}
+                disabled={pending}
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            )}
+          </span>
+        )
+      }
+    />
+  );
+}
+
 interface ProfileHeaderProps {
   displayName: string;
   email: string;
@@ -168,7 +253,6 @@ interface RecipientDetailDialogProps {
   updatePending: boolean;
   onUpdateSubmit: () => void;
   updateResult: { mode: "contact"; data: ContactsUpdateCompanyResult } | { mode: "guest"; data: GuestsUpdateCompanyResult } | null;
-  updateError: string | null;
   memberSelectionRef: GroupMemberSelectionRef | null;
   membershipsLoading: boolean;
   membershipsError: string | null;
@@ -209,7 +293,6 @@ export function RecipientDetailDialog({
   updatePending,
   onUpdateSubmit,
   updateResult,
-  updateError,
   memberSelectionRef,
   membershipsLoading,
   membershipsError,
@@ -234,6 +317,27 @@ export function RecipientDetailDialog({
   addGroupError,
   onRequestRemoveGroup,
 }: RecipientDetailDialogProps) {
+  const [editingCompany, setEditingCompany] = useState(false);
+
+  useEffect(() => {
+    setEditingCompany(false);
+  }, [detailTarget?.stableKey]);
+
+  useEffect(() => {
+    if (updateResult) {
+      setEditingCompany(false);
+    }
+  }, [updateResult]);
+
+  const startEditingCompany = (companyName: string | null) => {
+    onUpdateCompanyNameChange(companyName ?? "");
+    setEditingCompany(true);
+  };
+
+  const submitCompanyUpdate = () => {
+    onUpdateSubmit();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -275,48 +379,6 @@ export function RecipientDetailDialog({
                             badgeLabel="CONTACT"
                             avatarKey={detailTarget?.stableKey ?? ""}
                           />
-                          {detailCanUpdateCompany && (
-                            <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden">
-                              <div className="min-w-0">
-                                <label
-                                  htmlFor="contact-company-name"
-                                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                                >
-                                  Company name
-                                </label>
-                                <p className="text-xs text-muted-foreground leading-tight">
-                                  Update the company value directly.
-                                </p>
-                              </div>
-                              <div className="flex min-w-0 flex-col gap-2">
-                                <Input
-                                  id="contact-company-name"
-                                  className="w-full min-w-0 max-w-full bg-background text-sm"
-                                  value={updateCompanyName}
-                                  onChange={(e) => onUpdateCompanyNameChange(e.target.value)}
-                                  disabled={updatePending}
-                                  placeholder="Enter company name"
-                                />
-                                <Button
-                                  size="sm"
-                                  className="w-full min-w-0"
-                                  disabled={updatePending || updateCompanyName.trim().length === 0}
-                                  onClick={onUpdateSubmit}
-                                >
-                                  {updatePending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
-                                  Save Changes
-                                </Button>
-                              </div>
-                              {updateResult && (
-                                <p className="text-sm text-emerald-700">
-                                  {updateResult.data.verification.detail}
-                                </p>
-                              )}
-                              {updateError && (
-                                <p className="text-sm text-[var(--color-error)]">{updateError}</p>
-                              )}
-                            </div>
-                          )}
                           <Separator />
                           <div className="min-w-0 max-w-full divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 px-3 py-1">
                             {detailResult.data.primaryEmail && (
@@ -325,8 +387,27 @@ export function RecipientDetailDialog({
                             {detailResult.data.alias && (
                               <DetailRow label="Alias" value={detailResult.data.alias} />
                             )}
-                            {detailResult.data.companyName && (
-                              <DetailRow label="Company" value={detailResult.data.companyName} />
+                            {(detailResult.data.companyName || detailCanUpdateCompany) && (
+                              <EditableCompanyRow
+                                companyName={
+                                  updateResult?.mode === "contact"
+                                    ? updateResult.data.contact.companyName
+                                    : detailResult.data.companyName
+                                }
+                                canEdit={detailCanUpdateCompany}
+                                editValue={updateCompanyName}
+                                onEditValueChange={onUpdateCompanyNameChange}
+                                pending={updatePending}
+                                onSubmit={submitCompanyUpdate}
+                                onStartEditing={() =>
+                                  startEditingCompany(
+                                    updateResult?.mode === "contact"
+                                      ? updateResult.data.contact.companyName
+                                      : detailResult.data.companyName,
+                                  )
+                                }
+                                editing={editingCompany}
+                              />
                             )}
                             {detailResult.data.firstName && (
                               <DetailRow label="First Name" value={detailResult.data.firstName} />
@@ -372,48 +453,6 @@ export function RecipientDetailDialog({
                             badgeLabel="GUEST"
                             avatarKey={detailTarget?.stableKey ?? ""}
                           />
-                          {detailCanUpdateCompany && (
-                            <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden">
-                              <div className="min-w-0">
-                                <label
-                                  htmlFor="guest-company-name"
-                                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                                >
-                                  Company name
-                                </label>
-                                <p className="text-xs text-muted-foreground leading-tight">
-                                  Update the company value directly.
-                                </p>
-                              </div>
-                              <div className="flex min-w-0 flex-col gap-2">
-                                <Input
-                                  id="guest-company-name"
-                                  className="w-full min-w-0 max-w-full bg-background text-sm"
-                                  value={updateCompanyName}
-                                  onChange={(e) => onUpdateCompanyNameChange(e.target.value)}
-                                  disabled={updatePending}
-                                  placeholder="Enter company name"
-                                />
-                                <Button
-                                  size="sm"
-                                  className="w-full min-w-0"
-                                  disabled={updatePending || updateCompanyName.trim().length === 0}
-                                  onClick={onUpdateSubmit}
-                                >
-                                  {updatePending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
-                                  Save Changes
-                                </Button>
-                              </div>
-                              {updateResult && (
-                                <p className="text-sm text-emerald-700">
-                                  {updateResult.data.verification.detail}
-                                </p>
-                              )}
-                              {updateError && (
-                                <p className="text-sm text-[var(--color-error)]">{updateError}</p>
-                              )}
-                            </div>
-                          )}
                           <Separator />
                           <div className="min-w-0 max-w-full divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 px-3 py-1">
                             {detailResult.data.primaryEmail && (
@@ -422,8 +461,27 @@ export function RecipientDetailDialog({
                             {detailResult.data.userPrincipalName && (
                               <DetailRow label="UPN" value={detailResult.data.userPrincipalName} />
                             )}
-                            {detailResult.data.companyName && (
-                              <DetailRow label="Company" value={detailResult.data.companyName} />
+                            {(detailResult.data.companyName || detailCanUpdateCompany) && (
+                              <EditableCompanyRow
+                                companyName={
+                                  updateResult?.mode === "guest"
+                                    ? updateResult.data.companyName
+                                    : detailResult.data.companyName
+                                }
+                                canEdit={detailCanUpdateCompany}
+                                editValue={updateCompanyName}
+                                onEditValueChange={onUpdateCompanyNameChange}
+                                pending={updatePending}
+                                onSubmit={submitCompanyUpdate}
+                                onStartEditing={() =>
+                                  startEditingCompany(
+                                    updateResult?.mode === "guest"
+                                      ? updateResult.data.companyName
+                                      : detailResult.data.companyName,
+                                  )
+                                }
+                                editing={editingCompany}
+                              />
                             )}
                             {detailResult.data.givenName && (
                               <DetailRow label="First Name" value={detailResult.data.givenName} />

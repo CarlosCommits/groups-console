@@ -58,6 +58,13 @@ describe('guest contracts', () => {
       }),
     ).not.toThrow();
 
+    expect(() =>
+      guestsUpdateCompanyPayloadSchema.parse({
+        guestUserId: 'guest-1',
+        companyName: '',
+      }),
+    ).not.toThrow();
+
     const result = guestsInviteResultSchema.parse({
       outcome: 'invited',
       invitationId: 'invite-1',
