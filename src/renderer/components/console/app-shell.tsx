@@ -23,7 +23,7 @@ export function AppShell({
   children,
   className,
 }: AppShellProps) {
-  const { shell, currentScreen, setCurrentScreen } = useApp();
+  const { shell, currentScreen } = useApp();
   const hasResolvedShell =
     shell.session !== null ||
     shell.graphConnection !== null ||
@@ -32,15 +32,10 @@ export function AppShell({
     shell.loadError !== null;
   const summary = hasResolvedShell ? deriveShellReadiness(shell) : null;
 
-  const handleNavigateSettings = React.useCallback(() => {
-    setCurrentScreen("settings");
-  }, [setCurrentScreen]);
-
   const authPanel = summary && summary.readiness !== "ready" ? (
     <ShellAuthPanel
       setupStep={summary.setupStep}
       blocking={summary.readiness === "signedOut"}
-      onNavigateSettings={currentScreen !== "settings" ? handleNavigateSettings : undefined}
     />
   ) : null;
 

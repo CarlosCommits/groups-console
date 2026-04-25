@@ -1,4 +1,4 @@
-import { Plug, Unplug, AlertTriangle, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { Plug, Unplug, AlertTriangle, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/renderer/components/ui/button";
 import { Input } from "@/renderer/components/ui/input";
 import { StatusBadge } from "./status-badge";
@@ -8,7 +8,6 @@ import type { AuthSetupStep } from "./shell-readiness";
 interface ShellAuthPanelProps {
   setupStep: AuthSetupStep;
   blocking?: boolean;
-  onNavigateSettings?: () => void;
 }
 
 function StepIcon({ step }: { step: AuthSetupStep }) {
@@ -66,7 +65,7 @@ function StepDescription({ step }: { step: AuthSetupStep }) {
   }
 }
 
-export function ShellAuthPanel({ setupStep, blocking, onNavigateSettings }: ShellAuthPanelProps) {
+export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
   const {
     shell,
     pendingAction,
@@ -82,11 +81,15 @@ export function ShellAuthPanel({ setupStep, blocking, onNavigateSettings }: Shel
   const isBusy = pendingAction !== null || shell.isHydrating;
 
   const panelClass = blocking
-    ? "bg-white border border-[var(--color-outline-variant)]/30 rounded-lg p-6"
-    : "bg-amber-50 border border-amber-200/60 rounded-lg p-4";
+    ? "relative overflow-hidden rounded-lg border border-[var(--color-outline-variant)]/25 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbfb_100%)] p-7 shadow-[0_18px_45px_rgba(25,28,30,0.08)]"
+    : "rounded-lg border border-amber-200/70 bg-amber-50 p-4 shadow-sm";
 
   return (
     <div className={panelClass}>
+      {blocking && (
+        <div className="absolute inset-x-0 top-0 h-1 bg-[var(--color-primary)]" />
+      )}
+
       {shell.loadError && (
         <div className="mb-4 flex items-start gap-2 rounded-md border border-[var(--color-error)]/20 bg-red-50 px-3 py-2 text-sm text-[var(--color-error)]">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -94,38 +97,30 @@ export function ShellAuthPanel({ setupStep, blocking, onNavigateSettings }: Shel
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-3">
-        <StepIcon step={setupStep} />
-        <h2 className="text-sm font-extrabold font-headline">
-          <StepTitle step={setupStep} />
-        </h2>
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-[var(--color-primary)]/15 bg-[var(--color-primary)]/8">
+          <StepIcon step={setupStep} />
+        </div>
+        <div className="min-w-0 space-y-2">
+          <h2 className="font-headline text-base font-extrabold leading-tight text-[var(--color-foreground)]">
+            <StepTitle step={setupStep} />
+          </h2>
+          <StepDescription step={setupStep} />
+        </div>
       </div>
 
-      <StepDescription step={setupStep} />
-
       {setupStep === "graphNeeded" && (
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
+            size="lg"
+            className="bg-[var(--color-primary)] px-4 text-white shadow-sm hover:bg-[var(--color-primary-container)]"
             disabled={isBusy}
             onClick={() => { void connectGraph(); }}
           >
-            {shell.graphConnection?.state === "connected" ? (
-              <>
-                <Unplug className="size-3.5" />
-                Disconnect Graph
-              </>
-            ) : (
-              <>
-                <Plug className="size-3.5" />
-                Connect Graph
-              </>
-            )}
+            Connect Graph
           </Button>
           {actionErrors.graph && (
-            <p className="text-xs text-[var(--color-error)]">{actionErrors.graph}</p>
+            <p className="text-xs font-medium text-[var(--color-error)]">{actionErrors.graph}</p>
           )}
         </div>
       )}
@@ -224,18 +219,6 @@ export function ShellAuthPanel({ setupStep, blocking, onNavigateSettings }: Shel
         </div>
       )}
 
-      {onNavigateSettings && (
-        <div className="mt-4 pt-3 border-t border-[var(--color-outline-variant)]/10">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-xs text-[var(--color-outline)] hover:text-[var(--color-foreground)] transition-colors"
-            onClick={onNavigateSettings}
-          >
-            View detailed status in Settings
-            <ArrowRight className="size-3" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

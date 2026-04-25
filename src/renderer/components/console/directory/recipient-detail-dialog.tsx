@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/renderer/components/ui/dialog";
 import { cn } from "@/renderer/lib/utils";
+import { CONSOLE_ROW_ACTION_ICON_BUTTON } from "@/renderer/components/console/surface-styles";
 import type {
   RecipientSearchItem,
   RecipientSearchType,
@@ -628,7 +629,7 @@ export function RecipientDetailDialog({
                                   <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-[var(--color-error)]"
+                                    className={CONSOLE_ROW_ACTION_ICON_BUTTON}
                                     aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
                                     onClick={() => {
                                       onRequestRemoveGroup(group);
