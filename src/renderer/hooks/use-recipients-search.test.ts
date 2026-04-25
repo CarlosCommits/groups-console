@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import type * as ReactQuery from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RecipientsSearchResult } from "@/shared/contracts/recipients";
@@ -8,7 +9,7 @@ const { useQueryMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", async () => {
-  const actual = await vi.importActual<typeof import("@tanstack/react-query")>(
+  const actual = await vi.importActual<typeof ReactQuery>(
     "@tanstack/react-query",
   );
 
@@ -88,7 +89,7 @@ describe("useRecipientsSearchQuery", () => {
   });
 
   it("configures the shared query as disabled when the caller disables search", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
 
     useQueryMock.mockReturnValue({
       data: undefined,
@@ -115,7 +116,7 @@ describe("useRecipientsSearchQuery", () => {
   });
 
   it("configures the shared query as disabled when query is too short", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
 
     useQueryMock.mockReturnValue({
       data: undefined,
@@ -139,7 +140,7 @@ describe("useRecipientsSearchQuery", () => {
   });
 
   it("maps successful query data into the shared screen-facing shape", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
     const data = makeSearchResult();
 
     useQueryMock.mockReturnValue({
@@ -164,7 +165,7 @@ describe("useRecipientsSearchQuery", () => {
   });
 
   it("formats query failures with the shared command failure presenter", () => {
-    const refetch = vi.fn(async () => undefined);
+    const refetch = vi.fn(() => Promise.resolve(undefined));
 
     useQueryMock.mockReturnValue({
       data: undefined,

@@ -87,11 +87,11 @@ function flattenText(node: React.ReactNode): string {
   }
 
   if (Array.isArray(node)) {
-    return node.map((child) => flattenText(child)).join("");
+    return node.map((child: React.ReactNode) => flattenText(child)).join("");
   }
 
-  if (React.isValidElement(node)) {
-    return flattenText((node.props as { children?: React.ReactNode }).children);
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return flattenText(node.props.children);
   }
 
   return "";
@@ -130,8 +130,8 @@ describe("SystemLogsPanel", () => {
       isFetchingNextPage: false,
       error: null,
       errorPresentation: null,
-      loadMore: vi.fn(async () => undefined),
-      refresh: vi.fn(async () => undefined),
+      loadMore: vi.fn(() => Promise.resolve(undefined)),
+      refresh: vi.fn(() => Promise.resolve(undefined)),
     });
   });
 
@@ -144,8 +144,8 @@ describe("SystemLogsPanel", () => {
       isFetchingNextPage: false,
       error: null,
       errorPresentation: null,
-      loadMore: vi.fn(async () => undefined),
-      refresh: vi.fn(async () => undefined),
+      loadMore: vi.fn(() => Promise.resolve(undefined)),
+      refresh: vi.fn(() => Promise.resolve(undefined)),
     });
 
     const markup = renderPanel();
@@ -154,7 +154,7 @@ describe("SystemLogsPanel", () => {
   });
 
   it("renders the panel-level error branch and retries through refresh", () => {
-    const refresh = vi.fn(async () => undefined);
+    const refresh = vi.fn(() => Promise.resolve(undefined));
     useSystemLogsQueryMock.mockReturnValue({
       events: [],
       hasNextPage: false,
@@ -163,7 +163,7 @@ describe("SystemLogsPanel", () => {
       isFetchingNextPage: false,
       error: "System logs request timed out.",
       errorPresentation: null,
-      loadMore: vi.fn(async () => undefined),
+      loadMore: vi.fn(() => Promise.resolve(undefined)),
       refresh,
     });
 
@@ -196,8 +196,8 @@ describe("SystemLogsPanel", () => {
   });
 
   it("renders events and wires refresh and load-more actions through the shared hook", () => {
-    const refresh = vi.fn(async () => undefined);
-    const loadMore = vi.fn(async () => undefined);
+    const refresh = vi.fn(() => Promise.resolve(undefined));
+    const loadMore = vi.fn(() => Promise.resolve(undefined));
 
     useSystemLogsQueryMock.mockReturnValue({
       events: [makeEvent()],
@@ -237,8 +237,8 @@ describe("SystemLogsPanel", () => {
       isFetchingNextPage: true,
       error: null,
       errorPresentation: null,
-      loadMore: vi.fn(async () => undefined),
-      refresh: vi.fn(async () => undefined),
+      loadMore: vi.fn(() => Promise.resolve(undefined)),
+      refresh: vi.fn(() => Promise.resolve(undefined)),
     });
 
     renderPanel();

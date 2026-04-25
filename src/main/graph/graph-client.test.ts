@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  GraphConnectionError,
-  GraphRequestError,
+  type GraphConnectionError,
+  type GraphRequestError,
   getGraphGuestById,
   getGraphGuestDetailsById,
   inviteGraphGuest,

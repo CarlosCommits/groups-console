@@ -310,6 +310,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const userEditedUpn = useRef(false);
   const previousExchangeUpnPreset = useRef(exchangeUpnPreset);
   const shellConnectionBoundaryRef = useRef(getShellConnectionBoundary(initialShellState));
+  const previousExchangeConnectionRef = useRef<ExchangeConnectionStatus | null>(
+    initialShellState.exchangeConnection,
+  );
   const exchangeConnectInFlight = useRef(false);
 
   useEffect(() => {
@@ -352,6 +355,7 @@ export function AppProvider({ children }: AppProviderProps) {
       shellConnectionBoundaryRef.current = nextBoundary;
     }
 
+    previousExchangeConnectionRef.current = nextShell.exchangeConnection;
     setShell(nextShell);
   }, []);
 
@@ -382,7 +386,7 @@ export function AppProvider({ children }: AppProviderProps) {
       setLastExchangeConnectFailure((currentFailure) =>
         resolveLastExchangeConnectFailureAfterRefresh(
           currentFailure,
-          shell.exchangeConnection,
+          previousExchangeConnectionRef.current,
           exchangeConnection,
         ),
       );
