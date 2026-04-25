@@ -11,12 +11,6 @@ const { useAppMock, useExchangeGroupsQueryMock, buttonProps } = vi.hoisted(() =>
 vi.mock('@/renderer/components/console', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-slot': 'app-shell' }, children),
-  PageHeader: ({ children, actions, title, description }: {
-    children?: React.ReactNode;
-    actions?: React.ReactNode;
-    title: string;
-    description?: string;
-  }) => React.createElement('div', { 'data-slot': 'page-header' }, title, description, actions, children),
   StatusBadge: ({ children }: { children?: React.ReactNode }) =>
     React.createElement('span', null, children),
 }));
