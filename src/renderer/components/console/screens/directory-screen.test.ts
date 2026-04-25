@@ -39,7 +39,6 @@ vi.mock('@/renderer/components/console', () => ({
     React.createElement('div', { 'data-slot': 'app-shell' }, children),
   TableToolbar: () => React.createElement('div', { 'data-slot': 'table-toolbar' }),
   FilterSegmentedControl: () => React.createElement('div', { 'data-slot': 'filter-segmented-control' }),
-  TableFilterButton: () => React.createElement('button', { type: 'button' }, 'Filters'),
 }));
 
 vi.mock('@/renderer/components/console/app-context', () => ({
@@ -171,7 +170,7 @@ const defaultSearchQueryResult = {
   isFetching: false,
   error: null,
   errorPresentation: null,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 const defaultContactDetailsQueryResult = {
@@ -180,7 +179,7 @@ const defaultContactDetailsQueryResult = {
   isFetching: false,
   error: null,
   errorPresentation: null,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 const defaultGuestDetailsQueryResult = {
@@ -189,7 +188,7 @@ const defaultGuestDetailsQueryResult = {
   isFetching: false,
   error: null,
   errorPresentation: null,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 const defaultExchangeRecipientDetailsQueryResult = {
@@ -198,7 +197,7 @@ const defaultExchangeRecipientDetailsQueryResult = {
   isFetching: false,
   error: null,
   errorPresentation: null,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 const defaultExchangeGroupsQueryResult = {
@@ -208,7 +207,7 @@ const defaultExchangeGroupsQueryResult = {
   isFetching: false,
   error: null,
   errorPresentation: null,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 const defaultGroupMembershipsQueryResult = {
@@ -219,7 +218,7 @@ const defaultGroupMembershipsQueryResult = {
   error: null,
   errorPresentation: null,
   hasData: false,
-  refetch: vi.fn(async () => undefined),
+  refetch: vi.fn(() => Promise.resolve(undefined)),
 };
 
 describe('DirectoryScreen exchange recipient details', () => {

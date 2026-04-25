@@ -4,11 +4,13 @@ import { createElement } from "react";
 import { AppHeader, READY_TOOLTIP } from "./app-header";
 
 function render(props: {
+  title?: string;
   graphConnected?: boolean;
   exchangeActive?: boolean;
 }) {
   return renderToStaticMarkup(
     createElement(AppHeader, {
+      title: props.title ?? "Dashboard",
       graphConnected: props.graphConnected ?? false,
       exchangeActive: props.exchangeActive ?? false,
     })
@@ -16,6 +18,11 @@ function render(props: {
 }
 
 describe("AppHeader", () => {
+  it("renders the active page title", () => {
+    const html = render({ title: "Directory Workspace" });
+    expect(html).toContain("Directory Workspace");
+  });
+
   it("does not render a search input", () => {
     const html = render({ graphConnected: false, exchangeActive: false });
     expect(html).not.toContain("Search resources");
