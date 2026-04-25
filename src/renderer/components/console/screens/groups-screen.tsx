@@ -8,8 +8,6 @@ import {
   Wrench,
   Loader2,
   AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
   WifiOff,
   Info,
 } from "lucide-react";
@@ -74,6 +72,7 @@ import {
 import { toGroupMemberSelectionRef } from "@/renderer/lib/group-member-selection";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
+import { toast } from "sonner";
 import {
   useExchangeGroupsQuery,
 } from "@/renderer/hooks/use-exchange-groups";
@@ -212,6 +211,73 @@ function isRemoveStatusClean(status: GroupsRemoveMembersResult["items"][number][
   return status === "removed" || status === "notMember";
 }
 
+function getAddMembersIssueMessage(result: GroupsAddMembersResult): string | null {
+  const issue = result.items.find((item) => !isAddStatusClean(item.status));
+  if (!issue) {
+    return null;
+  }
+
+  const label = issue.member.primaryEmail ?? issue.member.exchangeIdentity;
+  return `${label}: ${ADD_STATUS_LABELS[issue.status]}: ${issue.detail}`;
+}
+
+function getRemoveMembersIssueMessage(result: GroupsRemoveMembersResult): string | null {
+  const issue = result.items.find((item) => !isRemoveStatusClean(item.status));
+  if (!issue) {
+    return null;
+  }
+
+  const label = issue.member.primaryEmail ?? issue.member.exchangeIdentity;
+  return `${label}: ${REMOVE_STATUS_LABELS[issue.status]}: ${issue.detail}`;
+}
+
+function showAddMembersToast(groupName: string, result: GroupsAddMembersResult): void {
+  const issues = result.items.filter((item) => !isAddStatusClean(item.status));
+
+  if (issues.length > 0) {
+    toast.warning("Some members need attention", {
+      description: issues
+        .map((item) => {
+          const label = item.member.primaryEmail ?? item.member.exchangeIdentity;
+          return `${label}: ${ADD_STATUS_LABELS[item.status]} - ${item.detail}`;
+        })
+        .join("\n"),
+    });
+    return;
+  }
+
+  toast.success("Members added", {
+    description: [
+      `${result.items.length} member${result.items.length === 1 ? "" : "s"} processed for ${groupName}.`,
+      `Verification: ${result.verification.detail}`,
+    ].join("\n"),
+  });
+}
+
+function showRemoveMemberToast(memberName: string, groupName: string, result: GroupsRemoveMembersResult): void {
+  const issues = result.items.filter((item) => !isRemoveStatusClean(item.status));
+
+  if (issues.length > 0) {
+    toast.warning("Remove member needs attention", {
+      description: issues
+        .map((item) => {
+          const label = item.member.primaryEmail ?? item.member.exchangeIdentity;
+          return `${label}: ${REMOVE_STATUS_LABELS[item.status]} - ${item.detail}`;
+        })
+        .join("\n"),
+    });
+    return;
+  }
+
+  const status = result.items[0]?.status ?? "removed";
+  toast.success(REMOVE_STATUS_LABELS[status], {
+    description:
+      status === "notMember"
+        ? `${memberName} was not a member of ${groupName}.\nVerification: ${result.verification.detail}`
+        : `${memberName} was removed from ${groupName}.\nVerification: ${result.verification.detail}`,
+  });
+}
+
 const CANDIDATE_SEARCH_TYPES: RecipientSearchType[] = [
   "mailbox",
   "mailContact",
@@ -223,7 +289,7 @@ const CANDIDATE_SEARCH_TYPES: RecipientSearchType[] = [
 ];
 
 export function GroupsScreen() {
-  const { shell } = useApp();
+  const { shell, groupsScreenState, setGroupsScreenState } = useApp();
   const exchangeConnection = shell.exchangeConnection;
   const exchangeConnected = exchangeConnection?.state === "connected";
   const {
@@ -234,12 +300,43 @@ export function GroupsScreen() {
     refetch: refetchGroups,
   } = useExchangeGroupsQuery(exchangeConnection);
 
-  const [selectedGroup, setSelectedGroup] = useState<ExchangeGroupListItem | null>(null);
-
-  const [activeTab, setActiveTab] = useState("members");
-  const [sortBy, setSortBy] = useState("name");
-  const [groupFilter, setGroupFilter] = useState("");
-  const [memberFilter, setMemberFilter] = useState("");
+  const {
+    selectedGroupExchangeIdentity,
+    activeTab,
+    sortBy,
+    groupFilter,
+    memberFilter,
+  } = groupsScreenState;
+  const setSelectedGroupExchangeIdentity = useCallback((value: string | null) => {
+    setGroupsScreenState((previous) => ({
+      ...previous,
+      selectedGroupExchangeIdentity: value,
+    }));
+  }, [setGroupsScreenState]);
+  const setActiveTab = useCallback((value: string) => {
+    setGroupsScreenState((previous) => ({
+      ...previous,
+      activeTab: value,
+    }));
+  }, [setGroupsScreenState]);
+  const setSortBy = useCallback((value: string) => {
+    setGroupsScreenState((previous) => ({
+      ...previous,
+      sortBy: value,
+    }));
+  }, [setGroupsScreenState]);
+  const setGroupFilter = useCallback((value: string) => {
+    setGroupsScreenState((previous) => ({
+      ...previous,
+      groupFilter: value,
+    }));
+  }, [setGroupsScreenState]);
+  const setMemberFilter = useCallback((value: string) => {
+    setGroupsScreenState((previous) => ({
+      ...previous,
+      memberFilter: value,
+    }));
+  }, [setGroupsScreenState]);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addSearchQuery, setAddSearchQuery] = useState("");
@@ -249,16 +346,37 @@ export function GroupsScreen() {
   const [addSearchError, setAddSearchError] = useState<string | null>(null);
   const [addSearchResult, setAddSearchResult] = useState<RecipientsSearchResult | null>(null);
   const [addPending, setAddPending] = useState(false);
-  const [addResult, setAddResult] = useState<GroupsAddMembersResult | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
 
   const [removeConfirmTarget, setRemoveConfirmTarget] = useState<GroupMemberListItem | null>(null);
   const [removePending, setRemovePending] = useState(false);
-  const [removeResult, setRemoveResult] = useState<GroupsRemoveMembersResult | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   const hasGroupsData = appliedKind !== null;
   const showStaleGroupsError = groupsError !== null && hasGroupsData;
+  const filteredGroups = useMemo(() => {
+    if (!groupFilter.trim()) return groups;
+    const lower = groupFilter.toLowerCase();
+    return groups.filter(
+      (g) =>
+        g.displayName.toLowerCase().includes(lower) ||
+        (g.primaryEmail ?? "").toLowerCase().includes(lower) ||
+        (g.alias ?? "").toLowerCase().includes(lower),
+      );
+  }, [groups, groupFilter]);
+
+  const selectedGroup = useMemo(() => {
+    if (filteredGroups.length === 0) {
+      return null;
+    }
+
+    return (
+      filteredGroups.find(
+        (group) => group.exchangeIdentity === selectedGroupExchangeIdentity,
+      ) ?? filteredGroups[0]
+    );
+  }, [filteredGroups, selectedGroupExchangeIdentity]);
+
   const {
     members,
     isLoading: membersLoading,
@@ -273,52 +391,28 @@ export function GroupsScreen() {
   const removeGroupMembersMutation = useRemoveGroupMembersMutation(exchangeConnection);
 
   useEffect(() => {
-    if (groups.length === 0) {
-      setSelectedGroup(null);
+    if (groupsLoading) {
       return;
     }
-    setSelectedGroup((prev) => {
-      if (prev) {
-        const stillPresent = groups.find(
-          (g) => g.exchangeIdentity === prev.exchangeIdentity,
-        );
-        if (stillPresent) return stillPresent;
-      }
-      return groups[0];
-    });
-  }, [groups]);
 
-  const filteredGroups = useMemo(() => {
-    if (!groupFilter.trim()) return groups;
-    const lower = groupFilter.toLowerCase();
-    return groups.filter(
-      (g) =>
-        g.displayName.toLowerCase().includes(lower) ||
-        (g.primaryEmail ?? "").toLowerCase().includes(lower) ||
-        (g.alias ?? "").toLowerCase().includes(lower),
-      );
-  }, [groups, groupFilter]);
-
-  useEffect(() => {
     if (filteredGroups.length === 0) {
-      setSelectedGroup(null);
+      setSelectedGroupExchangeIdentity(null);
       return;
     }
 
-    setSelectedGroup((prev) => {
-      if (prev) {
-        const stillVisible = filteredGroups.find(
-          (group) => group.exchangeIdentity === prev.exchangeIdentity,
-        );
+    const stillVisible = filteredGroups.some(
+      (group) => group.exchangeIdentity === selectedGroupExchangeIdentity,
+    );
 
-        if (stillVisible) {
-          return stillVisible;
-        }
-      }
-
-      return filteredGroups[0];
-    });
-  }, [filteredGroups]);
+    if (!stillVisible) {
+      setSelectedGroupExchangeIdentity(filteredGroups[0].exchangeIdentity);
+    }
+  }, [
+    filteredGroups,
+    groupsLoading,
+    selectedGroupExchangeIdentity,
+    setSelectedGroupExchangeIdentity,
+  ]);
 
   const visibleMembers = useMemo(() => {
     let list = [...members];
@@ -404,7 +498,6 @@ export function GroupsScreen() {
     setAddSearchError(null);
     setAddSearchResult(null);
     setAddPending(false);
-    setAddResult(null);
     setAddError(null);
     setAddDialogOpen(true);
   }, []);
@@ -425,19 +518,25 @@ export function GroupsScreen() {
     const groupRef = groupRefFromListItem(selectedGroup);
     setAddPending(true);
     setAddError(null);
-    setAddResult(null);
     try {
       const result = await addGroupMembersMutation.mutateAsync({
         groupRef,
         memberRefs,
       });
-      setAddResult(result);
+      showAddMembersToast(selectedGroup.displayName, result);
+      const issueMessage = getAddMembersIssueMessage(result);
+      if (issueMessage) {
+        setAddError(issueMessage);
+      } else {
+        setAddSelectedKeys(new Set());
+        setAddDialogOpen(false);
+      }
     } catch (err) {
-      setAddError(
-        formatPresentedCommandFailure(
-          presentCommandFailure(err, "Add Members Error", "Failed to add members."),
-        ),
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Add Members Error", "Failed to add members."),
       );
+      setAddError(message);
+      toast.error("Failed to add members", { description: message });
     } finally {
       setAddPending(false);
     }
@@ -453,24 +552,24 @@ export function GroupsScreen() {
     const groupRef = groupRefFromListItem(selectedGroup);
     setRemovePending(true);
     setRemoveError(null);
-    setRemoveResult(null);
     try {
       const result = await removeGroupMembersMutation.mutateAsync({
         groupRef,
         memberRefs: [memberRef],
       });
-      setRemoveResult(result);
-      const allClean = result.items.every((item) => isRemoveStatusClean(item.status));
-      if (allClean) {
+      showRemoveMemberToast(removeConfirmTarget.displayName, selectedGroup.displayName, result);
+      const issueMessage = getRemoveMembersIssueMessage(result);
+      if (issueMessage) {
+        setRemoveError(issueMessage);
+      } else {
         setRemoveConfirmTarget(null);
-        setRemoveResult(null);
       }
     } catch (err) {
-      setRemoveError(
-        formatPresentedCommandFailure(
-          presentCommandFailure(err, "Remove Member Error", "Failed to remove member."),
-        ),
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Remove Member Error", "Failed to remove member."),
       );
+      setRemoveError(message);
+      toast.error("Failed to remove member", { description: message });
     } finally {
       setRemovePending(false);
     }
@@ -620,7 +719,7 @@ export function GroupsScreen() {
                           ? "bg-[var(--color-primary)]/5 border-[var(--color-primary)]"
                           : "hover:bg-white border-transparent"
                       )}
-                      onClick={() => setSelectedGroup(group)}
+                      onClick={() => setSelectedGroupExchangeIdentity(group.exchangeIdentity)}
                     >
                       <TableCell>
                         <p
@@ -971,60 +1070,26 @@ export function GroupsScreen() {
             </DialogDescription>
           </DialogHeader>
 
-          {addResult ? (
-            <div className="flex-1 overflow-y-auto space-y-2 py-2">
-              {addResult.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "flex items-start gap-2 rounded-md px-3 py-2 text-xs",
-                    isAddStatusClean(item.status)
-                      ? "bg-emerald-50 text-emerald-800"
-                      : "bg-red-50 text-red-800",
-                  )}
-                >
-                  {isAddStatusClean(item.status) ? (
-                    <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
-                  ) : (
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-red-600" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-semibold">{item.member.exchangeIdentity}</p>
-                    <p className="text-[11px] opacity-80">
-                      {ADD_STATUS_LABELS[item.status]}
-                      {item.detail && item.detail !== ADD_STATUS_LABELS[item.status] && ` — ${item.detail}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {addResult.verification && (
-                <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-200">
-                  Verification: {addResult.verification.verifiedAdded} of {addResult.summary.requested} confirmed added. {addResult.verification.detail}
-                </div>
-              )}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 size-3.5" />
+            <Input
+              className="w-full bg-slate-50 border-slate-200 rounded-md py-2 pl-8 pr-3 text-xs"
+              placeholder="Search by name or email (min 2 chars)..."
+              type="text"
+              value={addSearchQuery}
+              onChange={(e) => setAddSearchQuery(e.target.value)}
+              disabled={addPending}
+            />
+          </div>
+
+          {addDegradationNote && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
+              <Info className="size-3.5 shrink-0" />
+              <span>{formatSourceDegradationNote(addDegradationNote)}</span>
             </div>
-          ) : (
-            <>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 size-3.5" />
-                <Input
-                  className="w-full bg-slate-50 border-slate-200 rounded-md py-2 pl-8 pr-3 text-xs"
-                  placeholder="Search by name or email (min 2 chars)..."
-                  type="text"
-                  value={addSearchQuery}
-                  onChange={(e) => setAddSearchQuery(e.target.value)}
-                  disabled={addPending}
-                />
-              </div>
+          )}
 
-              {addDegradationNote && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
-                  <Info className="size-3.5 shrink-0" />
-                  <span>{formatSourceDegradationNote(addDegradationNote)}</span>
-                </div>
-              )}
-
-              <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4">
+          <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4">
                 {addSearchLoading && (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="size-5 text-[var(--color-primary)] animate-spin mr-2" />
@@ -1095,9 +1160,7 @@ export function GroupsScreen() {
                     </div>
                   );
                 })}
-              </div>
-            </>
-          )}
+          </div>
 
           {addError && (
             <div className="flex items-center gap-2 text-xs text-[var(--color-error)] bg-red-50 rounded-md px-3 py-2">
@@ -1107,27 +1170,19 @@ export function GroupsScreen() {
           )}
 
           <DialogFooter>
-            {addResult ? (
-              <Button size="sm" onClick={() => setAddDialogOpen(false)}>
-                Close
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)} disabled={addPending}>
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={addSelectedKeys.size === 0 || addPending}
-                  onClick={() => {
-                    void handleAddMembers();
-                  }}
-                >
-                  {addPending && <Loader2 className="size-3.5 mr-1 animate-spin" />}
-                  Add {addSelectedKeys.size > 0 ? `${addSelectedKeys.size} Member${addSelectedKeys.size > 1 ? "s" : ""}` : "Members"}
-                </Button>
-              </>
-            )}
+            <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)} disabled={addPending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={addSelectedKeys.size === 0 || addPending}
+              onClick={() => {
+                void handleAddMembers();
+              }}
+            >
+              {addPending && <Loader2 className="size-3.5 mr-1 animate-spin" />}
+              Add {addSelectedKeys.size > 0 ? `${addSelectedKeys.size} Member${addSelectedKeys.size > 1 ? "s" : ""}` : "Members"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1137,7 +1192,6 @@ export function GroupsScreen() {
         onOpenChange={(open) => {
           handleMutationDialogOpenChange(open, removePending, () => {
             setRemoveConfirmTarget(null);
-            setRemoveResult(null);
             setRemoveError(null);
           });
         }}
@@ -1162,38 +1216,6 @@ export function GroupsScreen() {
             </DialogDescription>
           </DialogHeader>
 
-          {removeResult && (
-            <div className="space-y-2 py-2">
-              {removeResult.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "flex items-start gap-2 rounded-md px-3 py-2 text-xs",
-                    isRemoveStatusClean(item.status)
-                      ? "bg-emerald-50 text-emerald-800"
-                      : "bg-red-50 text-red-800",
-                  )}
-                >
-                  {isRemoveStatusClean(item.status) ? (
-                    <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
-                  ) : (
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-red-600" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-semibold">{item.member.exchangeIdentity}</p>
-                    <p className="text-[11px] opacity-80">
-                      {REMOVE_STATUS_LABELS[item.status]}
-                      {item.detail && item.detail !== REMOVE_STATUS_LABELS[item.status] && ` — ${item.detail}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <div className="text-[11px] text-slate-500 pt-1">
-                Verification: {removeResult.verification.detail}
-              </div>
-            </div>
-          )}
-
           {removeError && (
             <div className="flex items-center gap-2 text-xs text-[var(--color-error)] bg-red-50 rounded-md px-3 py-2">
               <AlertCircle className="size-4 shrink-0" />
@@ -1205,24 +1227,22 @@ export function GroupsScreen() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setRemoveConfirmTarget(null); setRemoveResult(null); setRemoveError(null); }}
+              onClick={() => { setRemoveConfirmTarget(null); setRemoveError(null); }}
               disabled={removePending}
             >
-              {removeResult ? "Close" : "Cancel"}
+              Cancel
             </Button>
-            {!removeResult && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  void handleRemoveMember();
-                }}
-                disabled={removePending}
-              >
-                {removePending && <Loader2 className="size-3.5 mr-1 animate-spin" />}
-                Remove
-              </Button>
-            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                void handleRemoveMember();
+              }}
+              disabled={removePending}
+            >
+              {removePending && <Loader2 className="size-3.5 mr-1 animate-spin" />}
+              Remove
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
