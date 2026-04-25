@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Search,
   Filter,
@@ -44,6 +44,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/renderer/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/renderer/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -115,6 +121,44 @@ const RECIPIENT_TYPE_LABELS: Record<GroupMemberListItem["recipientType"], string
 };
 
 const STICKY_TABLE_HEAD_CLASS = "sticky top-0 z-20 bg-slate-50/95";
+
+function TruncatedEmailText({ email }: { email: string }) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const measure = useCallback(() => {
+    const textElement = textRef.current;
+    if (!textElement) return;
+    setIsTruncated(textElement.scrollWidth > textElement.clientWidth);
+  }, []);
+
+  useEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [email, measure]);
+
+  const emailText = (
+    <span ref={textRef} className="block max-w-72 truncate">
+      {email}
+    </span>
+  );
+
+  if (!isTruncated) {
+    return emailText;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {emailText}
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6}>
+        {email}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -923,14 +967,15 @@ export function GroupsScreen() {
                             <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.35)]">
                               <TableRow className="hover:bg-transparent">
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Name</TableHead>
-                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Email</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 w-72 max-w-72 px-3 text-sm font-bold text-slate-700")}>Email</TableHead>
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Recipient Details</TableHead>
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Type</TableHead>
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 w-12 px-3 text-right")}></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {visibleMembers.map((member) => (
+                              <TooltipProvider>
+                                {visibleMembers.map((member) => (
                                 <TableRow
                                   key={member.exchangeIdentity}
                                   className="hover:bg-slate-50/60 transition-colors group"
@@ -947,8 +992,12 @@ export function GroupsScreen() {
                                       </span>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="px-3 py-3 text-sm text-slate-600 font-medium">
-                                    {member.primaryEmail ?? "—"}
+                                  <TableCell className="w-72 max-w-72 px-3 py-3 text-sm text-slate-600 font-medium">
+                                    {member.primaryEmail ? (
+                                      <TruncatedEmailText email={member.primaryEmail} />
+                                    ) : (
+                                      "-"
+                                    )}
                                   </TableCell>
                                   <TableCell className="px-3 py-3 text-sm text-slate-600">
                                     {member.recipientTypeDetails || "—"}
@@ -973,7 +1022,8 @@ export function GroupsScreen() {
                                     </Button>
                                   </TableCell>
                                 </TableRow>
-                              ))}
+                                ))}
+                              </TooltipProvider>
                             </TableBody>
                           </Table>
                         </div>
