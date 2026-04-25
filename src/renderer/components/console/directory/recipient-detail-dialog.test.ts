@@ -8,7 +8,7 @@ import type {
 } from '@/shared/contracts/exchange';
 import type { ContactDetails } from '@/shared/contracts/contacts';
 import type { GuestDetails } from '@/shared/contracts/guests';
-import type { ExchangeRecipientDetails, GroupsRemoveMembersResult } from '@/shared/contracts/exchange';
+import type { ExchangeRecipientDetails } from '@/shared/contracts/exchange';
 import type { RecipientSearchItem } from '@/shared/contracts/recipients';
 
 const { checkboxProps, tableRowProps } = vi.hoisted(() => ({
@@ -161,43 +161,6 @@ function makeGroup(overrides?: Partial<ExchangeGroupListItem>): ExchangeGroupLis
   };
 }
 
-function makeRemoveResult(
-  status: GroupsRemoveMembersResult['items'][number]['status'],
-  detail = 'Verification failed.',
-): GroupsRemoveMembersResult {
-  return {
-    group: {
-      exchangeIdentity: 'group-1@example.com',
-      objectId: 'group-1',
-      groupKind: 'distributionList',
-    },
-    summary: {
-      requested: 1,
-      removed: status === 'removed' ? 1 : 0,
-      notMember: status === 'notMember' ? 1 : 0,
-      invalid: status === 'invalid' ? 1 : 0,
-      verificationFailed: status === 'verificationFailed' ? 1 : 0,
-      failed: status === 'failed' ? 1 : 0,
-    },
-    items: [
-      {
-        member: {
-          exchangeIdentity: 'contact@example.com',
-          objectId: null,
-          primaryEmail: 'contact@example.com',
-        },
-        status,
-        detail,
-      },
-    ],
-    verification: {
-      attempted: true,
-      verifiedRemoved: status === 'removed' ? 1 : 0,
-      detail,
-    },
-  };
-}
-
 function makeDetailTarget(overrides?: Partial<RecipientSearchItem>): RecipientSearchItem {
   return {
     source: 'exchange',
@@ -259,10 +222,7 @@ const defaultProps = {
   selectedGroupsCount: 0,
   addGroupPending: false,
   onAddGroups: vi.fn(),
-  addGroupResult: null,
   addGroupError: null,
-  removeGroupResult: null,
-  removedGroupName: null,
   onRequestRemoveGroup: vi.fn(),
 };
 
@@ -483,16 +443,6 @@ describe('RecipientDetailDialog', () => {
     renderToStaticMarkup(React.createElement(RecipientDetailDialog, defaultProps));
     expect(tableRowProps.every((props) => props.onClick === undefined)).toBe(true);
     expect(checkboxProps.some((props) => typeof props.onCheckedChange === 'function')).toBe(true);
-  });
-
-  it('renders remove-group attention feedback for resolved unsuccessful outcomes', () => {
-    const props = {
-      ...defaultProps,
-      removeGroupResult: makeRemoveResult('verificationFailed'),
-    };
-    const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, props));
-    expect(markup).toContain('Remove from group needs attention');
-    expect(markup).toContain('Verification failed');
   });
 
   it('provides an accessible label for current-group remove actions', () => {

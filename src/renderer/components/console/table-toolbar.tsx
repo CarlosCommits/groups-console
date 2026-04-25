@@ -9,6 +9,7 @@ import {
 
 export interface TableToolbarProps {
   searchPlaceholder?: string;
+  searchValue?: string;
   onSearch?: (value: string) => void;
   filters?: React.ReactNode;
   actions?: React.ReactNode;
@@ -17,6 +18,7 @@ export interface TableToolbarProps {
 
 export function TableToolbar({
   searchPlaceholder = "Search...",
+  searchValue,
   onSearch,
   filters,
   actions,
@@ -33,6 +35,7 @@ export function TableToolbar({
         <InputGroupInput
           className="px-4 text-sm"
           placeholder={searchPlaceholder}
+          value={searchValue}
           onChange={(e) => onSearch?.(e.target.value)}
           type="text"
         />

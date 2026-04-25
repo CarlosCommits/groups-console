@@ -2,7 +2,6 @@ import { type ReactNode } from "react";
 import {
   Loader2,
   AlertCircle,
-  CheckCircle2,
   AlertTriangle,
   UserPlus,
   UserMinus,
@@ -29,8 +28,6 @@ import type {
 import type {
   ExchangeGroupListItem,
   GroupMemberSelectionRef,
-  GroupsAddMembersResult,
-  GroupsRemoveMembersResult,
 } from "@/shared/contracts/exchange";
 import type {
   ContactsUpdateCompanyResult,
@@ -59,30 +56,6 @@ const GROUP_KIND_LABELS: Record<ExchangeGroupListItem["groupKind"], string> = {
   distributionList: "Distribution",
   mailEnabledSecurityGroup: "Security",
 };
-
-const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"], string> = {
-  added: "Added",
-  alreadyMember: "Already a member",
-  invalid: "Invalid",
-  verificationFailed: "Verification failed",
-  failed: "Failed",
-};
-
-const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["status"], string> = {
-  removed: "Removed",
-  notMember: "Not a member",
-  invalid: "Invalid",
-  verificationFailed: "Verification failed",
-  failed: "Failed",
-};
-
-function isAddStatusClean(status: GroupsAddMembersResult["items"][number]["status"]): boolean {
-  return status === "added" || status === "alreadyMember";
-}
-
-function isRemoveStatusClean(status: GroupsRemoveMembersResult["items"][number]["status"]): boolean {
-  return status === "removed";
-}
 
 const AVATAR_COLORS = [
   "bg-teal-100 text-teal-700",
@@ -133,11 +106,6 @@ type DetailResult =
   | { mode: "contact"; data: ContactDetails }
   | { mode: "guest"; data: GuestDetails }
   | { mode: "exchangeRecipient"; data: ExchangeRecipientDetails };
-
-type GroupAddBatchResult = {
-  group: ExchangeGroupListItem;
-  result: GroupsAddMembersResult;
-};
 
 interface DetailRowProps {
   label: string;
@@ -221,10 +189,7 @@ interface RecipientDetailDialogProps {
   selectedGroupsCount: number;
   addGroupPending: boolean;
   onAddGroups: () => void;
-  addGroupResult: GroupAddBatchResult[] | null;
   addGroupError: string | null;
-  removeGroupResult: GroupsRemoveMembersResult | null;
-  removedGroupName: string | null;
   onRequestRemoveGroup: (group: ExchangeGroupListItem) => void;
 }
 
@@ -265,21 +230,9 @@ export function RecipientDetailDialog({
   selectedGroupsCount,
   addGroupPending,
   onAddGroups,
-  addGroupResult,
   addGroupError,
-  removeGroupResult,
-  removedGroupName,
   onRequestRemoveGroup,
 }: RecipientDetailDialogProps) {
-  const addGroupIssues = addGroupResult?.flatMap(({ group, result }) =>
-    result.items
-      .filter((item) => !isAddStatusClean(item.status))
-      .map((item) => ({ groupName: group.displayName, status: item.status, detail: item.detail })),
-  ) ?? [];
-  const addGroupHadIssues = addGroupIssues.length > 0;
-  const removeGroupStatus = removeGroupResult?.items[0]?.status ?? null;
-  const removeGroupHadIssues = removeGroupStatus ? !isRemoveStatusClean(removeGroupStatus) : false;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -621,25 +574,6 @@ export function RecipientDetailDialog({
                     </Alert>
                   )}
 
-                  {removeGroupResult && removeGroupStatus && (
-                    removeGroupHadIssues ? (
-                      <Alert variant="destructive">
-                        <AlertCircle className="size-4" />
-                        <AlertTitle>Remove from group needs attention</AlertTitle>
-                        <AlertDescription>
-                          {REMOVE_STATUS_LABELS[removeGroupStatus]}: {removeGroupResult.items[0]?.detail ?? "Membership update failed."}
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <span>
-                          {REMOVE_STATUS_LABELS[removeGroupStatus]} — <span className="font-semibold">{removedGroupName ?? "group"}</span>.
-                        </span>
-                      </div>
-                    )
-                  )}
-
                   {!memberSelectionRef ? (
                     <Alert>
                       <AlertTriangle className="size-4" />
@@ -790,38 +724,6 @@ export function RecipientDetailDialog({
               )}
               <ScrollArea className="directory-detail-pane-scroll min-h-0 flex-1">
                 <div className="p-4 flex flex-col gap-4">
-                  {addGroupResult && addGroupResult.length > 0 && (
-                    addGroupHadIssues ? (
-                      <Alert variant="destructive">
-                        <AlertCircle className="size-4" />
-                        <AlertTitle>Some group updates need attention</AlertTitle>
-                        <AlertDescription>
-                          <div className="flex flex-col gap-1">
-                            {addGroupIssues.map((issue) => (
-                              <span key={`${issue.groupName}:${issue.status}:${issue.detail}`}>
-                                <span className="font-semibold">{issue.groupName}</span>: {ADD_STATUS_LABELS[issue.status]} — {issue.detail}
-                              </span>
-                            ))}
-                          </div>
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <div className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <div className="flex flex-col gap-1">
-                          {addGroupResult.map(({ group, result }) => {
-                            const status = result.items[0]?.status ?? "failed";
-                            return (
-                              <span key={group.exchangeIdentity}>
-                                <span className="font-semibold">{group.displayName}</span>: {ADD_STATUS_LABELS[status]}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )
-                  )}
-
                   {addGroupError && (
                     <p className="text-sm text-[var(--color-error)]">{addGroupError}</p>
                   )}
