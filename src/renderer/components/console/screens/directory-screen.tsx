@@ -79,6 +79,13 @@ import {
   canDismissMutationDialog,
   handleMutationDialogOpenChange,
 } from "@/renderer/components/console/mutation-dialog-guard";
+import {
+  formatSingleRemoveMemberSuccessDescription,
+  getPrimaryRemoveMemberStatus,
+  getRemoveMembersIssueMessage,
+  isRemoveMemberStatusClean,
+  REMOVE_MEMBER_STATUS_LABELS,
+} from "@/renderer/components/console/group-members-mutation-outcome";
 import { cn } from "@/renderer/lib/utils";
 import { toast } from "sonner";
 import type {
@@ -90,7 +97,6 @@ import type {
   ExchangeGroupRef,
   GroupMemberSelectionRef,
   GroupsAddMembersResult,
-  GroupsRemoveMembersResult,
 } from "@/shared/contracts/exchange";
 import type {
   ContactsCreateResult,
@@ -120,14 +126,6 @@ type DetailResult =
 const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"], string> = {
   added: "Added",
   alreadyMember: "Already a member",
-  invalid: "Invalid",
-  verificationFailed: "Verification failed",
-  failed: "Failed",
-};
-
-const REMOVE_STATUS_LABELS: Record<GroupsRemoveMembersResult["items"][number]["status"], string> = {
-  removed: "Removed",
-  notMember: "Not a member",
   invalid: "Invalid",
   verificationFailed: "Verification failed",
   failed: "Failed",
@@ -231,13 +229,28 @@ function showAddGroupsToast(
     return;
   }
 
+  const cleanStatuses = batchResults.flatMap(({ result }) =>
+    result.items.map((item) => item.status),
+  );
+  const addedCount = cleanStatuses.filter((status) => status === "added").length;
+  const alreadyMemberCount = cleanStatuses.filter((status) => status === "alreadyMember").length;
+
+  if (addedCount > 0 && alreadyMemberCount === 0) {
+    toast.success(addedCount === 1 ? "Added to group" : "Added to groups", {
+      description: `${addedCount} membership${addedCount === 1 ? "" : "s"} added`,
+    });
+    return;
+  }
+
+  if (addedCount === 0) {
+    toast.success("Already a member", {
+      description: `${alreadyMemberCount} membership${alreadyMemberCount === 1 ? "" : "s"} already existed`,
+    });
+    return;
+  }
+
   toast.success("Group memberships updated", {
-    description: batchResults
-      .map(({ group, result }) => {
-        const status = result.items[0]?.status ?? "added";
-        return `${group.displayName}: ${ADD_STATUS_LABELS[status]}`;
-      })
-      .join("\n"),
+    description: `${addedCount} added; ${alreadyMemberCount} already existed`,
   });
 }
 
@@ -838,22 +851,24 @@ export function DirectoryScreen() {
         memberRefs: [currentMemberRef],
       });
 
-      const status = result.items[0]?.status ?? "failed";
-      const detail = result.items[0]?.detail ?? "Membership update failed.";
+      const status = getPrimaryRemoveMemberStatus(result, "failed");
 
-      if (status === "removed" || status === "notMember") {
-        toast.success(REMOVE_STATUS_LABELS[status], {
-          description:
-            status === "notMember"
-              ? `${detailTarget?.displayName ?? "Recipient"} was not a member of ${removeGroupTarget.displayName}.`
-              : `${detailTarget?.displayName ?? "Recipient"} was removed from ${removeGroupTarget.displayName}.`,
+      if (isRemoveMemberStatusClean(status)) {
+        toast.success(REMOVE_MEMBER_STATUS_LABELS[status], {
+          description: formatSingleRemoveMemberSuccessDescription(
+            detailTarget?.displayName ?? "Recipient",
+            removeGroupTarget.displayName,
+            result,
+          ),
         });
         setRemoveGroupTarget(null);
         await membershipsQuery.refetch();
         return;
       }
 
-      const message = `${REMOVE_STATUS_LABELS[status]}: ${detail}`;
+      const message =
+        getRemoveMembersIssueMessage(result) ??
+        `${REMOVE_MEMBER_STATUS_LABELS[status]}: Membership update failed.`;
       setRemoveGroupError(message);
       toast.warning("Remove from group needs attention", {
         description: `${removeGroupTarget.displayName}: ${message}`,
