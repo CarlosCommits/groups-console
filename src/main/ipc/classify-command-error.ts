@@ -110,10 +110,73 @@ export function classifyCommandError(input: {
         operation: input.commandName,
         guidance:
           backend === 'graph'
-            ? 'Verify Microsoft Graph admin consent, guest invitation policy, and the operator directory role before retrying.'
+            ? getGraphAuthorizationGuidance(input.commandName)
             : backend === 'exchange'
               ? 'Verify Exchange RBAC, manager or owner requirements, and the operator account permissions before retrying.'
               : 'Verify the operator permissions and any required policy approvals before retrying.',
+        ...(normalized.statusCode ? { statusCode: normalized.statusCode } : {}),
+        ...(normalized.backendCode ? { backendCode: normalized.backendCode } : {}),
+      },
+    };
+  }
+
+  if (isValidationFailure(backend, normalized)) {
+    return {
+      code: `${backend}_validation_failure`,
+      message: normalized.message,
+      retryable: false,
+      details: normalized.details,
+      classification: {
+        category: 'validationFailure',
+        remediation: 'correctInput',
+        backend,
+        operation: input.commandName,
+        guidance:
+          backend === 'graph'
+            ? 'Review the guest email, invitation message fields, tenant invitation settings, and redirect URL, then retry.'
+            : 'Review the submitted values and retry.',
+        ...(normalized.statusCode ? { statusCode: normalized.statusCode } : {}),
+        ...(normalized.backendCode ? { backendCode: normalized.backendCode } : {}),
+      },
+    };
+  }
+
+  if (isConflictFailure(backend, normalized)) {
+    return {
+      code: `${backend}_conflict_failure`,
+      message: normalized.message,
+      retryable: false,
+      details: normalized.details,
+      classification: {
+        category: 'conflictFailure',
+        remediation: 'resolveConflict',
+        backend,
+        operation: input.commandName,
+        guidance:
+          backend === 'graph'
+            ? 'Check whether the guest already exists or the directory object is in a conflicting state, then retry after resolving it.'
+            : 'Resolve the conflicting directory state, then retry.',
+        ...(normalized.statusCode ? { statusCode: normalized.statusCode } : {}),
+        ...(normalized.backendCode ? { backendCode: normalized.backendCode } : {}),
+      },
+    };
+  }
+
+  if (isThrottlingFailure(backend, normalized)) {
+    return {
+      code: `${backend}_throttling_failure`,
+      message: normalized.message,
+      retryable: true,
+      details: normalized.details,
+      classification: {
+        category: 'throttlingFailure',
+        remediation: 'retryAfterDelay',
+        backend,
+        operation: input.commandName,
+        guidance:
+          backend === 'graph'
+            ? 'Microsoft Graph throttled the request. Wait briefly, then retry without repeated immediate attempts.'
+            : 'The backend throttled the request. Wait briefly, then retry.',
         ...(normalized.statusCode ? { statusCode: normalized.statusCode } : {}),
         ...(normalized.backendCode ? { backendCode: normalized.backendCode } : {}),
       },
@@ -221,4 +284,28 @@ function isAuthorizationFailure(backendOwner: BackendOwner, error: NormalizedErr
   }
 
   return /unauthorized/i.test(error.message) || /forbidden/i.test(error.message);
+}
+
+function getGraphAuthorizationGuidance(commandName: string): string {
+  if (commandName === 'guests.updateCompany') {
+    return 'Tell your Microsoft/IT admin you need the Microsoft Entra User Administrator role, or an equivalent custom role that can update basic user properties, plus tenant-admin consent for this app\'s delegated Microsoft Graph User.ReadWrite.All permission.';
+  }
+
+  if (commandName === 'guests.invite') {
+    return 'Tell your Microsoft/IT admin you need guest invitation access, such as Guest Inviter or Microsoft Entra User Administrator depending on tenant policy, plus tenant-admin consent for this app\'s delegated Microsoft Graph User.Invite.All permission. If you are filling guest profile details, you also need User Administrator or equivalent user-profile update rights and User.ReadWrite.All consent.';
+  }
+
+  return 'Tell your Microsoft/IT admin you need the Microsoft Entra role required for this Graph operation and tenant-admin consent for the delegated Microsoft Graph permissions requested by this app.';
+}
+
+function isValidationFailure(backendOwner: BackendOwner, error: NormalizedError): boolean {
+  return backendOwner === 'graph' && error.statusCode === 400;
+}
+
+function isConflictFailure(backendOwner: BackendOwner, error: NormalizedError): boolean {
+  return backendOwner === 'graph' && error.statusCode === 409;
+}
+
+function isThrottlingFailure(backendOwner: BackendOwner, error: NormalizedError): boolean {
+  return backendOwner === 'graph' && error.statusCode === 429;
 }
