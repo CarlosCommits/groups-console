@@ -907,10 +907,16 @@ export function GroupsScreen() {
       });
       const match = findBestRecipientMatch(member, result);
       if (detailResolveTokenRef.current !== resolveToken) return;
-      setDetailTarget(match ?? fallbackTarget);
-      if (member.recipientType === "guestMailUser" && match?.recipientType !== "guestUser") {
-        setDetailResolveError("Guest details require a matching Microsoft Graph guest record.");
+      if (!match) {
+        setDetailTarget(fallbackTarget);
+        setDetailResolveError(
+          member.recipientType === "guestMailUser"
+            ? "Guest details require a matching Microsoft Graph guest record."
+            : "Could not resolve this member in directory search. Refresh the group and try again.",
+        );
+        return;
       }
+      setDetailTarget(match);
     } catch (err) {
       if (detailResolveTokenRef.current !== resolveToken) return;
       const message = formatPresentedCommandFailure(
@@ -968,26 +974,24 @@ export function GroupsScreen() {
     setAddGroupPending(true);
     setAddGroupError(null);
     try {
-      const settledResults = await Promise.allSettled(
-        selectedGroups.map(async (group) => ({
-          group,
-          result: await addGroupMembersMutation.mutateAsync({
+      const successfulResults = [];
+      const failedResults: string[] = [];
+
+      for (const group of selectedGroups) {
+        try {
+          const result = await addGroupMembersMutation.mutateAsync({
             groupRef: groupRefFromListItem(group),
             memberRefs: [detailMemberSelectionRef],
-          }),
-        })),
-      );
-      const successfulResults = settledResults.flatMap((settled) =>
-        settled.status === "fulfilled" ? [settled.value] : [],
-      );
-      const failedResults = settledResults.flatMap((settled, index) => {
-        if (settled.status === "fulfilled") return [];
-        const group = selectedGroups[index];
-        const message = formatPresentedCommandFailure(
-          presentCommandFailure(settled.reason, "Add Groups Error", `Failed to add member to ${group.displayName}.`),
-        );
-        return [`${group.displayName}: ${message}`];
-      });
+          });
+          successfulResults.push({ group, result });
+        } catch (err) {
+          const message = formatPresentedCommandFailure(
+            presentCommandFailure(err, "Add Groups Error", `Failed to add member to ${group.displayName}.`),
+          );
+          failedResults.push(`${group.displayName}: ${message}`);
+        }
+      }
+
       const itemIssues = successfulResults.flatMap(({ group, result }) =>
         result.items
           .filter((item) => !isAddStatusClean(item.status))
@@ -996,7 +1000,11 @@ export function GroupsScreen() {
       const issues = [...failedResults, ...itemIssues];
 
       if (issues.length > 0) {
-        const issueMessage = issues.slice(0, 3).join("\n");
+        const hiddenIssueCount = Math.max(issues.length - 3, 0);
+        const issueMessage = [
+          ...issues.slice(0, 3),
+          ...(hiddenIssueCount > 0 ? [`${hiddenIssueCount} more issue${hiddenIssueCount === 1 ? "" : "s"}.`] : []),
+        ].join("\n");
         setAddGroupError(issueMessage);
         await refetchMemberships();
         if (successfulResults.length > 0) {
