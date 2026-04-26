@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 import type { ProgressEvent } from "@/shared/contracts/command";
+import type { SessionStatusSchema } from "@/shared/contracts/session";
 
 import {
   applyMembershipMatrixProgress,
@@ -10,6 +11,7 @@ import {
   createMembershipMatrixErrorState,
   createMembershipMatrixSuccessState,
   getExchangeUpnPreset,
+  deriveExchangePrerequisiteBlocker,
   resolveLastExchangeConnectFailureAfterRefresh,
   getShellConnectionBoundary,
   initialMembershipMatrixGenerationState,
@@ -58,6 +60,20 @@ function makeShell(overrides: Partial<ShellState> = {}): ShellState {
     exchangeConnection: null,
     isHydrating: false,
     loadError: null,
+    ...overrides,
+  };
+}
+
+function makeSession(overrides: Partial<SessionStatusSchema> = {}): SessionStatusSchema {
+  return {
+    appVersion: "1.0.0",
+    environment: "development",
+    checks: [],
+    security: {
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+    },
     ...overrides,
   };
 }
@@ -217,6 +233,163 @@ describe("getExchangeUpnPreset", () => {
     });
 
     expect(getExchangeUpnPreset(shell)).toBe("graph@example.com");
+  });
+});
+
+describe("deriveExchangePrerequisiteBlocker", () => {
+  it("blocks Exchange auth when PowerShell is missing", () => {
+    const result = deriveExchangePrerequisiteBlocker(makeShell({
+      session: makeSession({
+        checks: [
+          {
+            id: "powershell",
+            label: "PowerShell runtime",
+            status: "missing",
+            detail: "No supported PowerShell runtime executable was found.",
+          },
+          {
+            id: "exchangeModule",
+            label: "Exchange module",
+            status: "missing",
+            detail: "Exchange module check could not run.",
+          },
+        ],
+      }),
+    }));
+
+    expect(result).toEqual({
+      kind: "missingPowerShell",
+      title: "PowerShell is required for Exchange Online",
+      detail: "No supported PowerShell runtime executable was found.",
+      guidance: "Install Windows PowerShell 5.1 or PowerShell 7, then restart Groups Console so the prerequisite check can run again.",
+      canInstallModule: false,
+    });
+  });
+
+  it("allows the app to install the Exchange module when only that prerequisite is missing", () => {
+    const result = deriveExchangePrerequisiteBlocker(makeShell({
+      session: makeSession({
+        checks: [
+          {
+            id: "powershell",
+            label: "PowerShell runtime",
+            status: "ready",
+            detail: "Detected Windows PowerShell.",
+          },
+          {
+            id: "exchangeModule",
+            label: "Exchange module",
+            status: "missing",
+            detail: "ExchangeOnlineManagement was not found.",
+          },
+        ],
+      }),
+    }));
+
+    expect(result).toEqual({
+      kind: "missingExchangeModule",
+      title: "ExchangeOnlineManagement is required",
+      detail: "ExchangeOnlineManagement was not found.",
+      guidance: "Use the install button to add ExchangeOnlineManagement for the current Windows user, or have IT deploy the module to this workstation.",
+      canInstallModule: true,
+    });
+  });
+
+  it("blocks Exchange auth when the Exchange module is installed but not importable", () => {
+    const result = deriveExchangePrerequisiteBlocker(makeShell({
+      session: makeSession({
+        checks: [
+          {
+            id: "powershell",
+            label: "PowerShell runtime",
+            status: "ready",
+            detail: "Detected Windows PowerShell.",
+          },
+          {
+            id: "exchangeModule",
+            label: "Exchange module",
+            status: "warning",
+            detail: "ExchangeOnlineManagement is installed but not importable.",
+          },
+        ],
+      }),
+      exchangeCapabilities: {
+        status: "warning",
+        detail: "ExchangeOnlineManagement is installed but not importable.",
+        runtime: {
+          command: "powershell.exe",
+          label: "Windows PowerShell",
+          version: "5.1",
+          edition: "Desktop",
+        },
+        exchangeModule: {
+          installed: true,
+          importable: false,
+          version: "3.9.0",
+          moduleBase: "C:/Users/Admin/Documents/WindowsPowerShell/Modules/ExchangeOnlineManagement",
+          importError: "File cannot be loaded because running scripts is disabled on this system.",
+          commandChecks: {
+            connectExchangeOnline: false,
+            disconnectExchangeOnline: false,
+            getConnectionInformation: false,
+          },
+        },
+      },
+    }));
+
+    expect(result).toEqual({
+      kind: "exchangeModuleNotImportable",
+      title: "ExchangeOnlineManagement could not be loaded",
+      detail: "File cannot be loaded because running scripts is disabled on this system.",
+      guidance: "Ask IT to review the module import failure. This is usually caused by a corrupted module install, missing dependency, or workstation security policy such as Constrained Language Mode, AppLocker, WDAC, or script-signing enforcement.",
+      canInstallModule: false,
+    });
+  });
+
+  it("blocks Exchange auth when the Exchange module probe fails before capabilities are available", () => {
+    const result = deriveExchangePrerequisiteBlocker(makeShell({
+      session: makeSession({
+        checks: [
+          {
+            id: "powershell",
+            label: "PowerShell runtime",
+            status: "ready",
+            detail: "Detected Windows PowerShell.",
+          },
+          {
+            id: "exchangeModule",
+            label: "Exchange module",
+            status: "warning",
+            detail: "Exchange module check failed: worker crashed.",
+          },
+        ],
+      }),
+      exchangeCapabilities: {
+        status: "warning",
+        detail: "Exchange capability check failed.",
+        runtime: null,
+        exchangeModule: {
+          installed: false,
+          importable: false,
+          version: null,
+          moduleBase: null,
+          importError: null,
+          commandChecks: {
+            connectExchangeOnline: false,
+            disconnectExchangeOnline: false,
+            getConnectionInformation: false,
+          },
+        },
+      },
+    }));
+
+    expect(result).toEqual({
+      kind: "exchangeModuleCheckFailed",
+      title: "Exchange prerequisite check failed",
+      detail: "Exchange module check failed: worker crashed.",
+      guidance: "Restart Groups Console and try again. If this warning persists, ask IT to review the PowerShell bootstrap error before connecting to Exchange Online.",
+      canInstallModule: false,
+    });
   });
 });
 

@@ -21,6 +21,8 @@ These are the global conditions the app should evaluate before presenting a read
 
 Both sessions must be valid for the same tenant before the app presents a fully connected state. If only one side is connected, the UI must show degraded capability, not false readiness. This is consistent with the session coordination rule in `05-exchange-graph-integration.md`.
 
+The auth panel is allowed to surface local Exchange prerequisites before the operator starts Exchange sign-in. This is a local dependency readiness check, not an authorization pre-check: the app still does not claim to know whether the operator has sufficient Graph roles, Graph consent, Exchange RBAC, or group ownership rights until the relevant backend operation runs.
+
 ## Exchange Online prerequisites
 
 Exchange Online PowerShell operations require a specific local and account environment.
@@ -30,12 +32,14 @@ Exchange Online PowerShell operations require a specific local and account envir
 | Supported Windows workstation | Bootstrap check: `powershell` | App shows unsupported-host message; Exchange operations unavailable |
 | PowerShell runtime available | Bootstrap check: `powershell` | App shows missing-runtime message; Exchange operations unavailable |
 | Windows PowerShell 5.1 preferred | Bootstrap check: `powershell` | If only PowerShell 7 is found, app shows warning; some Exchange module behavior may differ |
-| ExchangeOnlineManagement installed | Bootstrap check: `exchangeModule` | App shows module-not-found message; Exchange operations unavailable |
-| ExchangeOnlineManagement importable | Bootstrap check: `exchangeModule` | App shows import error detail; Exchange operations unavailable |
+| ExchangeOnlineManagement installed | Bootstrap check: `exchangeModule` | Auth panel shows module-not-found message; Exchange operations unavailable until remediated; app can offer the `exchange.installModule` action |
+| ExchangeOnlineManagement importable | Bootstrap/capability check: `exchangeModule` and `exchange.getCapabilities` | Auth panel shows import error detail and IT remediation guidance; Exchange operations unavailable |
 | Process-scoped execution policy permits worker scripts | Bootstrap check: `powershell` | App surfaces a clear prerequisite message; does not change user or machine policy |
 | Account allowed to use Exchange Online PowerShell | Operation-time: Exchange connection attempt | Connection fails with Exchange-side error; app surfaces the error |
 
 The app handles execution policy at process scope only. It does not require local admin rights or machine-wide execution policy changes. If MachinePolicy or UserPolicy blocks execution, the app surfaces a clear prerequisite error rather than silently mutating policy. This follows the stance in `05-exchange-graph-integration.md` and `09-packaging-deployment.md`.
+
+`exchange.installModule` is a narrow setup/remediation command. It is exposed through typed preload/main IPC and runs the packaged PowerShell worker path to install ExchangeOnlineManagement for the current Windows user where allowed. It is not a generic package-management surface and must not change persistent ExecutionPolicy as part of remediation.
 
 ## Graph guest workflows
 
@@ -163,6 +167,7 @@ The following permission-related areas are not yet in scope and should not be as
 - Every implemented workflow has a documented permission or prerequisite requirement in this matrix.
 - Authorization failures are classified separately from connection failures and preflight conflicts.
 - The app does not claim to pre-check Entra roles, Exchange RBAC, or token scope consent.
+- The app does document local prerequisite/bootstrap checks and the ExchangeOnlineManagement install remediation path separately from authorization pre-checks.
 - Graph is not listed as the write path for distribution list or mail-enabled security group operations.
 - Exchange role group names are described as likely requirements, not as universally mandatory guarantees.
 - The app does not require local admin rights or machine-wide execution policy changes.

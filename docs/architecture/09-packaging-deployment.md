@@ -33,6 +33,7 @@ This is an internal admin tool. The preferred deployment path is enterprise-frie
 - include packaged PowerShell scripts/modules needed by app
 - verify PowerShell availability on first run
 - verify Exchange module availability on first run and guide install/remediation if missing
+- support an app-owned ExchangeOnlineManagement install/remediation path after launch through the main-process IPC and packaged PowerShell worker, without broadening the renderer into a privileged shell
 
 ## Execution policy rule
 
@@ -57,10 +58,12 @@ The app must not require permanent execution-policy changes as a normal setup st
 ## Bootstrap checks on first run
 
 1. PowerShell version availability
-2. Exchange module presence and version
+2. ExchangeOnlineManagement module presence, version, and importability
 3. write access for log directory
 4. tenant configuration presence
 5. whether effective execution policy permits the worker strategy in this environment
+
+The shell/auth UI consumes these checks immediately. It can block or defer Exchange sign-in when PowerShell is missing, ExchangeOnlineManagement is missing, or the module is installed but cannot be imported. Missing ExchangeOnlineManagement may be remediated through the app-owned install action; installed-but-not-importable failures should be surfaced with the import error and IT remediation guidance.
 
 ## Rollback support
 

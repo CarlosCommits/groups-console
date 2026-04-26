@@ -119,6 +119,17 @@ const radAppApi = {
 
       return exchangeCapabilitiesSchema.parse(response.data);
     },
+    async installModule(): Promise<ExchangeCapabilities> {
+      const request = createCommandRequest('exchange.installModule', {});
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw createCommandFailure(response.error, 'Unable to install ExchangeOnlineManagement.');
+      }
+
+      return exchangeCapabilitiesSchema.parse(response.data);
+    },
     async connect(userPrincipalName: string): Promise<ExchangeConnectionStatus> {
       const request = createCommandRequest('exchange.connect', {
         userPrincipalName,

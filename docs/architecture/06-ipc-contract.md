@@ -60,10 +60,12 @@ type ProgressEvent = {
 ### Exchange
 
 - `exchange.getCapabilities`
+- `exchange.installModule`
 - `exchange.connect`
 - `exchange.getConnectionStatus`
 - `exchange.disconnect`
 - `exchange.listGroups`
+- `exchange.getRecipientDetails`
 
 ### Graph
 
@@ -78,19 +80,27 @@ type ProgressEvent = {
 ### Groups
 
 - `groups.getMembers`
+- `groups.getMemberships`
 - `groups.addMembers`
 - `groups.removeMembers`
 
 ### Contacts
 
+- `contacts.getDetails`
 - `contacts.create`
 - `contacts.updateCompany`
 
 ### Guests
 
 - `guests.search`
+- `guests.getDetails`
 - `guests.invite`
 - `guests.updateCompany`
+
+### Diagnostics and logs
+
+- `diagnostics.export`
+- `systemLogs.listEvents`
 
 ### Reports
 
@@ -99,8 +109,9 @@ type ProgressEvent = {
 ## Backend routing rules
 
 - commands beginning with `exchange.` route to EXO worker or Exchange session host
+- `exchange.installModule` is a narrow setup command routed through the main process to the packaged PowerShell worker path; it may install ExchangeOnlineManagement for the current user, but it must not expose arbitrary module installation or arbitrary PowerShell execution
 - commands beginning with `graph.` route to the main-process Graph session manager
-- group-listing currently lives under `exchange.listGroups`; member operations remain planned under `groups.*`
+- group-listing lives under `exchange.listGroups`; membership reads/writes and membership lookup live under `groups.*`
 - commands beginning with `contacts.` route to EXO worker
 - commands beginning with `guests.` route to Graph adapter
 - `recipients.search` routes through the app-owned recipient directory, which can combine Exchange and Graph providers
