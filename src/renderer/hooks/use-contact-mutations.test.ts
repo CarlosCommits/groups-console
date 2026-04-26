@@ -148,6 +148,8 @@ describe("contact mutation options", () => {
   it("delegates contact creation through the shared mutation layer", async () => {
     const queryClient = createQueryClient();
     const payload: ContactsCreatePayload = {
+      displayName: "Jane Example",
+      alias: "jexample",
       firstName: "Jane",
       lastName: "Example",
       email: "jane@example.com",
