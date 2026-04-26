@@ -239,7 +239,7 @@ describe("getSystemLogsQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           systemLogs: {
             listEvents: listEventsMock,
           },

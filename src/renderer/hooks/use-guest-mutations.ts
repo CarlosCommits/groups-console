@@ -43,8 +43,8 @@ export function getInviteGuestMutationOptions(
   graphConnection?: GraphConnectionIdentityInput | null,
 ) {
   return {
-    mutationFn: async (payload: GuestsInvitePayload) => window.radApp.guests.invite(payload),
-    onSuccess: async (result: Awaited<ReturnType<typeof window.radApp.guests.invite>>) => {
+    mutationFn: async (payload: GuestsInvitePayload) => window.groupsConsole.guests.invite(payload),
+    onSuccess: async (result: Awaited<ReturnType<typeof window.groupsConsole.guests.invite>>) => {
       if (result.outcome !== "invited") {
         return;
       }
@@ -70,9 +70,9 @@ export function getUpdateGuestCompanyMutationOptions(
 ) {
   return {
     mutationFn: async ({ payload }: UpdateGuestCompanyMutationVariables) =>
-      window.radApp.guests.updateCompany(payload),
+      window.groupsConsole.guests.updateCompany(payload),
     onSuccess: async (
-      _result: Awaited<ReturnType<typeof window.radApp.guests.updateCompany>>,
+      _result: Awaited<ReturnType<typeof window.groupsConsole.guests.updateCompany>>,
       variables: UpdateGuestCompanyMutationVariables,
     ) => {
       await invalidateGuestMutationSearches(queryClient, exchangeConnection, graphConnection);

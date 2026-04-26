@@ -200,7 +200,7 @@ describe("getRecipientsSearchQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           recipients: {
             search: searchMock,
           },

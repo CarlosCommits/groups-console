@@ -26,7 +26,7 @@ export function getGuestDetailsQueryOptions(
     queryKey: queryKeys.guestDetails(connectionIdentity, stableKey ?? "none"),
     enabled,
     queryFn: async (): Promise<GuestsGetDetailsResult> =>
-      window.radApp.guests.getDetails({ stableKey: stableKey! }),
+      window.groupsConsole.guests.getDetails({ stableKey: stableKey! }),
   });
 }
 

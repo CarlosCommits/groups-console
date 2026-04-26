@@ -41,7 +41,7 @@ export function getGroupMembersQueryOptions(
     queryKey: queryKeys.exchangeGroupMembersList(connectionIdentity, selectedGroup?.exchangeIdentity ?? "none"),
     enabled,
     queryFn: async (): Promise<GroupsGetMembersResult> =>
-      window.radApp.groups.getMembers(groupRefFromSelectedGroup(selectedGroup!)),
+      window.groupsConsole.groups.getMembers(groupRefFromSelectedGroup(selectedGroup!)),
   });
 }
 

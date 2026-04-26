@@ -1,10 +1,10 @@
-function Invoke-RadAppGetContactDetails {
+function Invoke-GroupsConsoleGetContactDetails {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before reading contact details.'
     }
 
@@ -27,7 +27,7 @@ function Invoke-RadAppGetContactDetails {
     }
 
     $primaryEmail = if ($mailContact.ExternalEmailAddress) {
-        Get-RadAppNormalizedExternalEmailAddress -MailContact $mailContact
+        Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $mailContact
     }
     elseif ($mailContact.PrimarySmtpAddress) {
         [string]$mailContact.PrimarySmtpAddress

@@ -23,7 +23,7 @@ export function getRecipientsSearchQueryOptions(
     queryKey: queryKeys.recipientsSearch(connectionIdentity, query, types),
     enabled,
     queryFn: async (): Promise<RecipientsSearchResult> =>
-      window.radApp.recipients.search({ query, types }),
+      window.groupsConsole.recipients.search({ query, types }),
   });
 }
 

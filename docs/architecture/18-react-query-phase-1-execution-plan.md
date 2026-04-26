@@ -26,7 +26,7 @@ Phase 1 covers only the shared groups inventory read path.
 
 Included in this phase:
 
-- define one canonical shared groups inventory query domain for `window.radApp.exchange.listGroups()`
+- define one canonical shared groups inventory query domain for `window.groupsConsole.exchange.listGroups()`
 - migrate Dashboard to use the shared groups inventory query
 - migrate Reports to use the shared groups inventory query
 - migrate Groups to use the shared groups inventory query for the groups list only
@@ -56,9 +56,9 @@ Current reality that this phase must respect:
   - `src/renderer/lib/query-client.ts` owns the QueryClient and its default policy
   - `src/renderer/lib/query-keys.ts` owns the shared key taxonomy
   - `src/renderer/components/console/app-context.tsx` already purges app query cache when the authoritative Graph/Exchange connection boundary changes
-- Dashboard currently owns a local `groups`, `groupsLoading`, `groupsError`, and `hasLoadedGroups` state machine around `window.radApp.exchange.listGroups()`.
-- Reports currently owns a second local `groups`, `groupsLoading`, `groupsError`, and `hasLoadedGroups` state machine around the same `window.radApp.exchange.listGroups()` call.
-- Groups currently owns a third local `groups`, `groupsLoading`, and `groupsError` state machine around the same `window.radApp.exchange.listGroups()` call.
+- Dashboard currently owns a local `groups`, `groupsLoading`, `groupsError`, and `hasLoadedGroups` state machine around `window.groupsConsole.exchange.listGroups()`.
+- Reports currently owns a second local `groups`, `groupsLoading`, `groupsError`, and `hasLoadedGroups` state machine around the same `window.groupsConsole.exchange.listGroups()` call.
+- Groups currently owns a third local `groups`, `groupsLoading`, and `groupsError` state machine around the same `window.groupsConsole.exchange.listGroups()` call.
 - Groups also owns `selectedGroup`, `groupFilter`, and the entire members/add/remove flow locally; only the groups-list read belongs to Phase 1.
 - Dashboard and Reports derive counts from the local groups array after independently loading the same remote data.
 
@@ -250,7 +250,7 @@ Keep local to the screen:
 
 Goal:
 
-- create the canonical shared groups inventory query that wraps `window.radApp.exchange.listGroups()` using the Phase 0 QueryClient and key taxonomy
+- create the canonical shared groups inventory query that wraps `window.groupsConsole.exchange.listGroups()` using the Phase 0 QueryClient and key taxonomy
 
 Expected implementation touchpoints:
 
@@ -261,7 +261,7 @@ Expected implementation touchpoints:
 This work item should also define:
 
 - the exact connection identity input for the shared key helper
-- the query function boundary around `window.radApp.exchange.listGroups()`
+- the query function boundary around `window.groupsConsole.exchange.listGroups()`
 - the shared error-mapping path using `presentCommandFailure` and `formatPresentedCommandFailure`
 
 Deliverable:
