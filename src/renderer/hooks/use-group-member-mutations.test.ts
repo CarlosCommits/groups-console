@@ -162,7 +162,7 @@ describe("group member mutation options", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           groups: {
             addMembers: addMembersMock,
             removeMembers: removeMembersMock,

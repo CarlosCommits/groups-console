@@ -1,10 +1,10 @@
-function Invoke-RadAppResolveGuestMailUser {
+function Invoke-GroupsConsoleResolveGuestMailUser {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before resolving guest membership targets.'
     }
 
@@ -82,7 +82,7 @@ function Invoke-RadAppResolveGuestMailUser {
         [string]$resolvedRecipient.PrimarySmtpAddress
     }
     else {
-        $normalizedExternalEmail = Get-RadAppNormalizedExternalEmailAddress -MailContact $resolvedRecipient
+        $normalizedExternalEmail = Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $resolvedRecipient
         if ($normalizedExternalEmail) {
             $normalizedExternalEmail
         }

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/main/powershell/execute-radapp-worker-command', () => ({
-  executeRadAppWorkerCommand: vi.fn(),
+vi.mock('@/main/powershell/execute-powershell-worker-command', () => ({
+  executePowerShellWorkerCommand: vi.fn(),
 }));
 
-import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from '@/main/powershell/execute-powershell-worker-command';
 
 import { installExchangeModule } from './install-exchange-module';
 
@@ -37,7 +37,7 @@ function makeInstallStdout(overrides: Record<string, unknown> = {}) {
 
 describe('installExchangeModule', () => {
   it('normalizes ready PowerShell 7 install results to a warning', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'executed',
       runtime: {
         command: 'pwsh.exe',
@@ -63,7 +63,7 @@ describe('installExchangeModule', () => {
   });
 
   it('preserves installed module details when install completes but import is not ready', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'executed',
       runtime: {
         command: 'powershell.exe',

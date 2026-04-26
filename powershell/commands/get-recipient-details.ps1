@@ -1,10 +1,10 @@
-function Invoke-RadAppGetRecipientDetails {
+function Invoke-GroupsConsoleGetRecipientDetails {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before reading recipient details.'
     }
 
@@ -46,7 +46,7 @@ function Invoke-RadAppGetRecipientDetails {
     }
 
     $externalEmailAddress = if ($recipientType -eq 'mailUser' -and $mailRecipient.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $mailRecipient.ExternalEmailAddress) {
-        $normalizedExternalEmail = Get-RadAppNormalizedExternalEmailAddress -MailContact $mailRecipient
+        $normalizedExternalEmail = Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $mailRecipient
         if ($normalizedExternalEmail) { $normalizedExternalEmail } else { $null }
     }
     else {

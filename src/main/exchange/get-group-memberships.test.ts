@@ -128,7 +128,7 @@ describe('getGroupMemberships', () => {
       },
     });
     vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
-      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+      new Error("The term 'Invoke-GroupsConsoleGetGroupMemberships' is not recognized as the name of a cmdlet"),
     );
     vi.mocked(exchangeSessionManager.listGroups).mockResolvedValue({
       appliedKind: 'all',
@@ -229,7 +229,7 @@ describe('getGroupMemberships', () => {
         result: 'partial',
         authoritative: false,
         summary:
-          'Loaded 1 group membership(s) via fallback because Invoke-RadAppGetGroupMemberships was unavailable.',
+          'Loaded 1 group membership(s) via fallback because Invoke-GroupsConsoleGetGroupMemberships was unavailable.',
       }),
     );
   });
@@ -244,7 +244,7 @@ describe('getGroupMemberships', () => {
       },
     });
     vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
-      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+      new Error("The term 'Invoke-GroupsConsoleGetGroupMemberships' is not recognized as the name of a cmdlet"),
     );
     vi.mocked(exchangeSessionManager.listGroups).mockResolvedValue({
       appliedKind: 'all',
@@ -304,7 +304,7 @@ describe('getGroupMemberships', () => {
       },
     });
     vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
-      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+      new Error("The term 'Invoke-GroupsConsoleGetGroupMemberships' is not recognized as the name of a cmdlet"),
     );
     vi.mocked(exchangeSessionManager.listGroups).mockResolvedValue({
       appliedKind: 'all',
@@ -363,7 +363,7 @@ describe('getGroupMemberships', () => {
       },
     });
     vi.mocked(exchangeSessionManager.getGroupMemberships).mockRejectedValue(
-      new Error("The term 'Invoke-RadAppGetGroupMemberships' is not recognized as the name of a cmdlet"),
+      new Error("The term 'Invoke-GroupsConsoleGetGroupMemberships' is not recognized as the name of a cmdlet"),
     );
     vi.mocked(exchangeSessionManager.listGroups).mockRejectedValue(
       new Error('Exchange session host is not running. Connect to Exchange Online first.'),
@@ -399,7 +399,7 @@ describe('getGroupMemberships', () => {
         result: 'failed',
         authoritative: false,
         summary:
-          'Fallback was triggered because Invoke-RadAppGetGroupMemberships was unavailable, but loading group memberships still failed.',
+          'Fallback was triggered because Invoke-GroupsConsoleGetGroupMemberships was unavailable, but loading group memberships still failed.',
       }),
     );
   });
@@ -482,7 +482,7 @@ describe('get-group-memberships PowerShell command', () => {
       'utf8',
     );
 
-    expect(commandScript).toContain('function ConvertTo-RadAppOPathStringLiteral');
+    expect(commandScript).toContain('function ConvertTo-GroupsConsoleOPathStringLiteral');
     expect(commandScript).toContain('Exchange OPATH single-quoted literals escape embedded single quotes');
     expect(commandScript).toContain("-Filter \"Members -eq $distinguishedNameFilterLiteral\"");
     expect(commandScript).toContain('-ErrorAction Stop');

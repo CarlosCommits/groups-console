@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/main/powershell/execute-radapp-worker-command', () => ({
-  executeRadAppWorkerCommand: vi.fn(),
+vi.mock('@/main/powershell/execute-powershell-worker-command', () => ({
+  executePowerShellWorkerCommand: vi.fn(),
 }));
 
-import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from '@/main/powershell/execute-powershell-worker-command';
 
 import { getExchangeCapabilities } from './get-exchange-capabilities';
 
 describe('getExchangeCapabilities', () => {
   it('maps executed worker output into exchange capabilities', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'executed',
       runtime: {
         command: 'powershell.exe',
@@ -51,7 +51,7 @@ describe('getExchangeCapabilities', () => {
   });
 
   it('degrades worker errors into a warning response', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'worker-error',
       detail: 'Worker failed to start.',
     });
@@ -64,7 +64,7 @@ describe('getExchangeCapabilities', () => {
   });
 
   it('downgrades pwsh-only readiness to warning for consistency with bootstrap policy', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'executed',
       runtime: {
         command: 'pwsh.exe',

@@ -30,11 +30,11 @@ Phase 3 covers only the Directory screen’s read paths.
 
 Included in this phase:
 
-- define one shared query domain for `window.radApp.recipients.search()`
+- define one shared query domain for `window.groupsConsole.recipients.search()`
 - define dialog-driven detail query domains for:
-  - `window.radApp.contacts.getDetails()`
-  - `window.radApp.guests.getDetails()`
-  - `window.radApp.exchange.getRecipientDetails()`
+  - `window.groupsConsole.contacts.getDetails()`
+  - `window.groupsConsole.guests.getDetails()`
+  - `window.groupsConsole.exchange.getRecipientDetails()`
 - migrate `directory-screen.tsx` to consume those query domains
 - preserve debounce and dialog-local state while moving read data/loading/error ownership into TanStack Query
 - add tests for query keys, query hooks, and screen behavior relevant to the migrated read paths
@@ -56,7 +56,7 @@ Explicit non-goals:
 
 Current reality that this phase must respect:
 
-- `DirectoryScreen` currently debounces `searchText` into `effectiveQuery` locally and runs `window.radApp.recipients.search()` from an imperative `useEffect`.
+- `DirectoryScreen` currently debounces `searchText` into `effectiveQuery` locally and runs `window.groupsConsole.recipients.search()` from an imperative `useEffect`.
 - The search surface currently owns local `results`, `loading`, and `error` state.
 - Detail dialogs currently run imperative reads for contacts, guests, and exchange recipients.
 - `detailRequestIdRef` currently protects against stale or out-of-order detail responses and that safety must be preserved.

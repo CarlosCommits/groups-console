@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { getRadAppLogDirectory } from '@/main/app/paths';
+import { getGroupsConsoleLogDirectory } from '@/main/app/paths';
 import {
   systemLogEventItemSchema,
   type SystemLogEventItem,
@@ -31,7 +31,7 @@ export async function writeSystemLogEvent(event: SystemLogEvent): Promise<void> 
 export async function readSystemLogEvents(
   payload: SystemLogsListEventsPayload,
 ): Promise<SystemLogsListEventsResult> {
-  const allEvents = await readAllSystemLogEvents(getRadAppLogDirectory());
+  const allEvents = await readAllSystemLogEvents(getGroupsConsoleLogDirectory());
   const filteredEvents = allEvents.filter((event) => matchesSystemLogPayload(event, payload));
   filteredEvents.sort(compareSystemLogEvents);
 
@@ -48,7 +48,7 @@ export async function readSystemLogEvents(
 
 export async function exportDiagnosticsArtifacts(outputDirectory: string): Promise<number> {
   await mkdir(outputDirectory, { recursive: true });
-  const logDirectory = getRadAppLogDirectory();
+  const logDirectory = getGroupsConsoleLogDirectory();
   let fileCount = 0;
 
   try {
@@ -76,7 +76,7 @@ export async function exportDiagnosticsArtifacts(outputDirectory: string): Promi
 
 export async function readLastErrorSummary(): Promise<Record<string, unknown> | null> {
   try {
-    const contents = await readFile(path.join(getRadAppLogDirectory(), LAST_ERROR_FILE), 'utf8');
+    const contents = await readFile(path.join(getGroupsConsoleLogDirectory(), LAST_ERROR_FILE), 'utf8');
     return JSON.parse(contents) as Record<string, unknown>;
   } catch {
     return null;
@@ -104,7 +104,7 @@ async function writeJsonLine(
   stream: 'ops' | 'system-logs',
   entry: OperationalLogEntry | SystemLogEvent,
 ): Promise<void> {
-  const logDirectory = getRadAppLogDirectory();
+  const logDirectory = getGroupsConsoleLogDirectory();
   const currentPath = await rotateIfNeeded(logDirectory, stream);
   const safeEntry = redactForLog(entry);
 
@@ -112,7 +112,7 @@ async function writeJsonLine(
 }
 
 async function writeLastError(entry: OperationalLogEntry): Promise<void> {
-  const logDirectory = getRadAppLogDirectory();
+  const logDirectory = getGroupsConsoleLogDirectory();
   await mkdir(logDirectory, { recursive: true });
   await writeFile(
     path.join(logDirectory, LAST_ERROR_FILE),

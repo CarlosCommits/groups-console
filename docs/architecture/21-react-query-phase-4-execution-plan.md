@@ -4,7 +4,7 @@
 
 Turn Phase 4 from `docs/architecture/16-react-query-roadmap.md` into an implementation-ready execution plan.
 
-Phase 4 converts the current cursor-based `window.radApp.systemLogs.listEvents()` read path in `src/renderer/components/console/system-logs-panel.tsx` into a TanStack Query pagination flow while preserving the current panel UX and staying out of mutation, filter, or settings redesign work.
+Phase 4 converts the current cursor-based `window.groupsConsole.systemLogs.listEvents()` read path in `src/renderer/components/console/system-logs-panel.tsx` into a TanStack Query pagination flow while preserving the current panel UX and staying out of mutation, filter, or settings redesign work.
 
 ## Scope basis
 
@@ -27,7 +27,7 @@ Phase 4 covers only the System Logs panel’s paginated read path.
 
 Included in this phase:
 
-- define one shared paginated query domain for `window.radApp.systemLogs.listEvents()`
+- define one shared paginated query domain for `window.groupsConsole.systemLogs.listEvents()`
 - migrate the current cursor bookkeeping into TanStack Query pagination
 - preserve current loading, error, empty, refresh, and load-more behavior
 - add tests for query keys, query hook behavior, and System Logs panel behavior

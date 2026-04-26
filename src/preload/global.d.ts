@@ -22,12 +22,13 @@ import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
   interface Window {
-    radApp: {
+    groupsConsole: {
       session: {
         getStatus: () => Promise<SessionStatusSchema>;
       };
       exchange: {
         getCapabilities: () => Promise<ExchangeCapabilities>;
+        installModule: () => Promise<ExchangeCapabilities>;
         connect: (userPrincipalName: string) => Promise<ExchangeConnectionStatus>;
         getConnectionStatus: () => Promise<ExchangeConnectionStatus>;
         disconnect: () => Promise<ExchangeConnectionStatus>;

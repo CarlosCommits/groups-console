@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process';
 
-import { getRadAppWorkerScriptPath } from '@/main/app/paths';
+import { getGroupsConsoleWorkerScriptPath } from '@/main/app/paths';
 
-export type RadAppWorkerCommand =
+export type PowerShellWorkerCommand =
   | 'bootstrap.inspectEnvironment'
   | 'exchange.getCapabilities'
   | 'exchange.installModule';
@@ -38,8 +38,8 @@ const WINDOWS_CANDIDATES: Array<{
   { command: 'pwsh.exe', label: 'PowerShell' },
 ];
 
-export async function executeRadAppWorkerCommand(
-  workerCommand: RadAppWorkerCommand,
+export async function executePowerShellWorkerCommand(
+  workerCommand: PowerShellWorkerCommand,
   options: { timeoutMs?: number } = {},
 ): Promise<WorkerExecutionResult> {
   if (process.platform !== 'win32') {
@@ -49,7 +49,7 @@ export async function executeRadAppWorkerCommand(
     };
   }
 
-  const workerScriptPath = getRadAppWorkerScriptPath();
+  const workerScriptPath = getGroupsConsoleWorkerScriptPath();
 
   for (const candidate of WINDOWS_CANDIDATES) {
     try {
@@ -98,7 +98,7 @@ export async function executeRadAppWorkerCommand(
 function execPowerShellWorker(
   command: 'powershell.exe' | 'pwsh.exe',
   workerScriptPath: string,
-  workerCommand: RadAppWorkerCommand,
+  workerCommand: PowerShellWorkerCommand,
   options: { timeoutMs?: number },
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {

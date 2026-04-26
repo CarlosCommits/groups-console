@@ -18,7 +18,7 @@ try {
     . "$PSScriptRoot\..\commands\get-group-memberships.ps1"
     . "$PSScriptRoot\..\commands\export-report-data.ps1"
 
-    Get-Command Invoke-RadAppGetGroupMemberships -ErrorAction Stop | Out-Null
+    Get-Command Invoke-GroupsConsoleGetGroupMemberships -ErrorAction Stop | Out-Null
 }
 catch {
     [Console]::Out.WriteLine((@{
@@ -32,10 +32,10 @@ catch {
     exit 1
 }
 
-$script:RadAppExchangeConnectionContext = $null
-$script:RadAppCurrentRequestId = $null
+$script:GroupsConsoleExchangeConnectionContext = $null
+$script:GroupsConsoleCurrentRequestId = $null
 
-function ConvertTo-RadAppHashtable {
+function ConvertTo-GroupsConsoleHashtable {
     param(
         [Parameter(Mandatory = $false)]
         $Value
@@ -57,7 +57,7 @@ function ConvertTo-RadAppHashtable {
     return $result
 }
 
-function Write-RadAppProgress {
+function Write-GroupsConsoleProgress {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Phase,
@@ -67,12 +67,12 @@ function Write-RadAppProgress {
         [Nullable[int]]$Percent
     )
 
-    if ([string]::IsNullOrWhiteSpace($script:RadAppCurrentRequestId)) {
+    if ([string]::IsNullOrWhiteSpace($script:GroupsConsoleCurrentRequestId)) {
         return
     }
 
     $payload = @{
-        requestId = $script:RadAppCurrentRequestId
+        requestId = $script:GroupsConsoleCurrentRequestId
         phase = $Phase
         message = $Message
     }
@@ -94,10 +94,10 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
     try {
         $request = $line | ConvertFrom-Json
         $requestId = [string]$request.requestId
-        $script:RadAppCurrentRequestId = $requestId
+        $script:GroupsConsoleCurrentRequestId = $requestId
         $command = [string]$request.command
         $payload = if ($request.PSObject.Properties.Name -contains 'payload') {
-            ConvertTo-RadAppHashtable $request.payload
+            ConvertTo-GroupsConsoleHashtable $request.payload
         }
         else {
             @{}
@@ -105,55 +105,55 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
 
         switch ($command) {
             'connect' {
-                $data = Invoke-RadAppConnectExchange -Payload $payload
+                $data = Invoke-GroupsConsoleConnectExchange -Payload $payload
             }
             'getStatus' {
-                $data = Get-RadAppExchangeConnectionStatus
+                $data = Get-GroupsConsoleExchangeConnectionStatus
             }
             'disconnect' {
-                $data = Invoke-RadAppDisconnectExchange
+                $data = Invoke-GroupsConsoleDisconnectExchange
             }
             'createContact' {
-                $data = Invoke-RadAppCreateContact -Payload $payload
+                $data = Invoke-GroupsConsoleCreateContact -Payload $payload
             }
             'getRecipientDetails' {
-                $data = Invoke-RadAppGetRecipientDetails -Payload $payload
+                $data = Invoke-GroupsConsoleGetRecipientDetails -Payload $payload
             }
             'getContactDetails' {
-                $data = Invoke-RadAppGetContactDetails -Payload $payload
+                $data = Invoke-GroupsConsoleGetContactDetails -Payload $payload
             }
             'lookupRecipientOwnership' {
-                $data = Invoke-RadAppLookupRecipientOwnership -Payload $payload
+                $data = Invoke-GroupsConsoleLookupRecipientOwnership -Payload $payload
             }
             'resolveGuestMailUser' {
-                $data = Invoke-RadAppResolveGuestMailUser -Payload $payload
+                $data = Invoke-GroupsConsoleResolveGuestMailUser -Payload $payload
             }
             'updateContactCompany' {
-                $data = Invoke-RadAppUpdateContactCompany -Payload $payload
+                $data = Invoke-GroupsConsoleUpdateContactCompany -Payload $payload
             }
             'searchRecipients' {
-                $data = Invoke-RadAppSearchRecipients -Payload $payload
+                $data = Invoke-GroupsConsoleSearchRecipients -Payload $payload
             }
             'addGroupMembers' {
-                $data = Invoke-RadAppAddGroupMembers -Payload $payload
+                $data = Invoke-GroupsConsoleAddGroupMembers -Payload $payload
             }
             'removeGroupMembers' {
-                $data = Invoke-RadAppRemoveGroupMembers -Payload $payload
+                $data = Invoke-GroupsConsoleRemoveGroupMembers -Payload $payload
             }
             'listGroups' {
-                $data = Invoke-RadAppListGroups -Payload $payload
+                $data = Invoke-GroupsConsoleListGroups -Payload $payload
             }
             'getGroupMembers' {
-                $data = Invoke-RadAppGetGroupMembers -Payload $payload
+                $data = Invoke-GroupsConsoleGetGroupMembers -Payload $payload
             }
             'getGroupMemberships' {
-                $data = Invoke-RadAppGetGroupMemberships -Payload $payload
+                $data = Invoke-GroupsConsoleGetGroupMemberships -Payload $payload
             }
             'exportReportData' {
-                $data = Invoke-RadAppExportReportData -Payload $payload
+                $data = Invoke-GroupsConsoleExportReportData -Payload $payload
             }
             'shutdown' {
-                $data = Invoke-RadAppDisconnectExchange
+                $data = Invoke-GroupsConsoleDisconnectExchange
 
                 @{
                     requestId = $requestId
@@ -183,6 +183,6 @@ while (($line = [Console]::In.ReadLine()) -ne $null) {
         } | ConvertTo-Json -Compress -Depth 6
     }
     finally {
-        $script:RadAppCurrentRequestId = $null
+        $script:GroupsConsoleCurrentRequestId = $null
     }
 }

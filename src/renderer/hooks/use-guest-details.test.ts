@@ -239,7 +239,7 @@ describe("getGuestDetailsQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           guests: {
             getDetails: getDetailsMock,
           },

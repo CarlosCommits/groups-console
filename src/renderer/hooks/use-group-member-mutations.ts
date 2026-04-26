@@ -37,9 +37,9 @@ export function getAddGroupMembersMutationOptions(
 ) {
   return {
     mutationFn: async ({ groupRef, memberRefs }: AddGroupMembersMutationVariables) =>
-      window.radApp.groups.addMembers(groupRef, memberRefs),
+      window.groupsConsole.groups.addMembers(groupRef, memberRefs),
     onSuccess: async (
-      result: Awaited<ReturnType<typeof window.radApp.groups.addMembers>>,
+      result: Awaited<ReturnType<typeof window.groupsConsole.groups.addMembers>>,
       variables: AddGroupMembersMutationVariables,
     ) => {
       if (hasInventoryChangingAddOutcome(result)) {
@@ -72,9 +72,9 @@ export function getRemoveGroupMembersMutationOptions(
 ) {
   return {
     mutationFn: async ({ groupRef, memberRefs }: RemoveGroupMembersMutationVariables) =>
-      window.radApp.groups.removeMembers(groupRef, memberRefs),
+      window.groupsConsole.groups.removeMembers(groupRef, memberRefs),
     onSuccess: async (
-      result: Awaited<ReturnType<typeof window.radApp.groups.removeMembers>>,
+      result: Awaited<ReturnType<typeof window.groupsConsole.groups.removeMembers>>,
       variables: RemoveGroupMembersMutationVariables,
     ) => {
       if (hasInventoryChangingRemoveOutcome(result)) {

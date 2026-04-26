@@ -77,10 +77,10 @@ import { createCommandRequest } from '@/shared/validation/create-command-request
 
 import { createCommandFailure } from './command-failure';
 
-const COMMAND_CHANNEL = 'radapp:command';
-const PROGRESS_CHANNEL = 'radapp:progress';
+const COMMAND_CHANNEL = 'groups-console:command';
+const PROGRESS_CHANNEL = 'groups-console:progress';
 
-const radAppApi = {
+const groupsConsoleApi = {
   session: {
     async getStatus(): Promise<SessionStatusSchema> {
       const request = createCommandRequest('session.getStatus', {});
@@ -442,4 +442,4 @@ const radAppApi = {
   },
 };
 
-contextBridge.exposeInMainWorld('radApp', radAppApi);
+contextBridge.exposeInMainWorld('groupsConsole', groupsConsoleApi);

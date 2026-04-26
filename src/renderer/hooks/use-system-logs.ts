@@ -27,7 +27,7 @@ export function getSystemLogsQueryOptions(scope: SystemLogScope) {
     queryKey: queryKeys.systemLogsList(getSystemLogScopeKey(scope)),
     initialPageParam: null as SystemLogsPageParam,
     queryFn: async ({ pageParam }): Promise<SystemLogsListEventsResult> =>
-      window.radApp.systemLogs.listEvents({
+      window.groupsConsole.systemLogs.listEvents({
         scope,
         ...(pageParam ? { cursor: pageParam } : {}),
         pageSize: SYSTEM_LOGS_PAGE_SIZE,

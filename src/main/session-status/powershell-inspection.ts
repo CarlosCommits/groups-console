@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from '@/main/powershell/execute-powershell-worker-command';
 
 const executionPolicyEntrySchema = z.object({
   scope: z.string().min(1),
@@ -73,7 +73,7 @@ export type PowerShellInspection =
     };
 
 export async function inspectLocalPowerShellEnvironment(): Promise<PowerShellInspection> {
-  const execution = await executeRadAppWorkerCommand('bootstrap.inspectEnvironment');
+  const execution = await executePowerShellWorkerCommand('bootstrap.inspectEnvironment');
 
   if (execution.kind === 'unsupported-host') {
     return {

@@ -177,7 +177,7 @@ describe("getExchangeGroupsQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           exchange: {
             listGroups: listGroupsMock,
           },
