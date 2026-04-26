@@ -1,8 +1,8 @@
-# RAD-app v2 Architecture Plan
+# Groups Console v2 Architecture Plan
 
 ## Purpose
 
-Define the target architecture and rollout plan for RAD-app v2: a Windows-first Electron desktop application for Exchange Online admins, with a PowerShell execution layer for Exchange Online operations and a Graph integration path for guest-user features.
+Define the target architecture and rollout plan for Groups Console v2: a Windows-first Electron desktop application for Exchange Online admins, with a PowerShell execution layer for Exchange Online operations and a Graph integration path for guest-user features.
 
 ## Non-negotiable constraints
 

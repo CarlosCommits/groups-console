@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { PassThrough, type Writable } from 'node:stream';
 import readline from 'node:readline';
 
-import { getRadAppPowerShellAssetRoot } from '@/main/app/paths';
+import { getGroupsConsolePowerShellAssetRoot } from '@/main/app/paths';
 import { getCurrentOperationContext, writeOperationalLog } from '@/main/logging';
 import type { ProgressEvent } from '@/shared/contracts/command';
 
@@ -72,7 +72,7 @@ export async function startExchangeSessionHost(): Promise<ExchangeSessionHost> {
     throw new Error(`Exchange session host requires Windows. Current host platform is ${process.platform}.`);
   }
 
-  const hostScriptPath = `${getRadAppPowerShellAssetRoot()}\\bootstrap\\exchange-session-host.ps1`;
+  const hostScriptPath = `${getGroupsConsolePowerShellAssetRoot()}\\bootstrap\\exchange-session-host.ps1`;
 
   for (const candidate of WINDOWS_CANDIDATES) {
     try {

@@ -59,7 +59,7 @@ Current reality that this phase must respect:
 - `src/renderer/main.tsx` renders `<App />` inside `React.StrictMode` and is the renderer root insertion point.
 - `src/renderer/app/app.tsx` currently wraps the app with `AppProvider` only.
 - `src/renderer/components/console/app-context.tsx` owns shell hydration, connection status, pending auth actions, and connect/disconnect refresh behavior.
-- `src/preload/index.ts` exposes the renderer's async boundary through `window.radApp`; this remains the data boundary for query functions.
+- `src/preload/index.ts` exposes the renderer's async boundary through `window.groupsConsole`; this remains the data boundary for query functions.
 - `package.json` does not currently include `@tanstack/react-query`.
 - the current renderer uses manual `useState` + `useEffect` + `useCallback` request flows for read surfaces.
 - `exchange.listGroups()` is independently loaded in Dashboard, Groups, and Reports.
@@ -92,7 +92,7 @@ Required outcome:
 Lock the query boundary as:
 
 - query functions stay in the renderer
-- query functions call `window.radApp`
+- query functions call `window.groupsConsole`
 - no IPC contract redesign for TanStack Query
 - no renderer access to main-process internals outside preload
 

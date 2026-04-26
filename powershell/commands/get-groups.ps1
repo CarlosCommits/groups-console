@@ -1,10 +1,10 @@
-function Invoke-RadAppListGroups {
+function Invoke-GroupsConsoleListGroups {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before listing groups.'
     }
 

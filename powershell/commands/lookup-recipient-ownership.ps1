@@ -1,10 +1,10 @@
-function Invoke-RadAppLookupRecipientOwnership {
+function Invoke-GroupsConsoleLookupRecipientOwnership {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before checking recipient ownership.'
     }
 
@@ -53,9 +53,9 @@ function Invoke-RadAppLookupRecipientOwnership {
     }
 
     foreach ($recipient in ($recipientMatches | Sort-Object Identity -Unique)) {
-        $mappedRecord = ConvertTo-RadAppOwnershipRecord -Recipient $recipient -TargetEmail $normalizedEmail
+        $mappedRecord = ConvertTo-GroupsConsoleOwnershipRecord -Recipient $recipient -TargetEmail $normalizedEmail
         if ($null -ne $mappedRecord) {
-            $recordKey = Get-RadAppOwnershipRecordKey -Record $mappedRecord
+            $recordKey = Get-GroupsConsoleOwnershipRecordKey -Record $mappedRecord
             if (-not $seenKeys.Contains($recordKey)) {
                 [void]$seenKeys.Add($recordKey)
                 [void]$records.Add($mappedRecord)
@@ -73,15 +73,15 @@ function Invoke-RadAppLookupRecipientOwnership {
     $mailContactMatches += @(
         Get-MailContact -ResultSize Unlimited -ErrorAction SilentlyContinue |
             Where-Object {
-                $normalizedExternalEmail = Get-RadAppNormalizedExternalEmailAddress -MailContact $_
+                $normalizedExternalEmail = Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $_
                 $normalizedExternalEmail -and $normalizedExternalEmail -eq $normalizedEmail
             }
     )
 
     foreach ($matchedMailContact in ($mailContactMatches | Sort-Object Identity -Unique)) {
-        $contactRecord = ConvertTo-RadAppMailContactOwnershipRecord -MailContact $matchedMailContact -TargetEmail $normalizedEmail
+        $contactRecord = ConvertTo-GroupsConsoleMailContactOwnershipRecord -MailContact $matchedMailContact -TargetEmail $normalizedEmail
         if ($null -ne $contactRecord) {
-            $recordKey = Get-RadAppOwnershipRecordKey -Record $contactRecord
+            $recordKey = Get-GroupsConsoleOwnershipRecordKey -Record $contactRecord
             if (-not $seenKeys.Contains($recordKey)) {
                 [void]$seenKeys.Add($recordKey)
                 [void]$records.Add($contactRecord)
@@ -95,7 +95,7 @@ function Invoke-RadAppLookupRecipientOwnership {
     }
 }
 
-function ConvertTo-RadAppOwnershipRecord {
+function ConvertTo-GroupsConsoleOwnershipRecord {
     param(
         [Parameter(Mandatory = $true)]
         $Recipient,
@@ -120,7 +120,7 @@ function ConvertTo-RadAppOwnershipRecord {
         [string]$Recipient.PrimarySmtpAddress
     }
     elseif ($Recipient.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $Recipient.ExternalEmailAddress) {
-        Get-RadAppNormalizedExternalEmailAddress -MailContact $Recipient
+        Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $Recipient
     }
     elseif ($Recipient.PSObject.Properties.Name -contains 'WindowsEmailAddress' -and $Recipient.WindowsEmailAddress) {
         [string]$Recipient.WindowsEmailAddress
@@ -174,7 +174,7 @@ function ConvertTo-RadAppOwnershipRecord {
     }
 }
 
-function ConvertTo-RadAppMailContactOwnershipRecord {
+function ConvertTo-GroupsConsoleMailContactOwnershipRecord {
     param(
         [Parameter(Mandatory = $true)]
         $MailContact,
@@ -182,7 +182,7 @@ function ConvertTo-RadAppMailContactOwnershipRecord {
         [string]$TargetEmail
     )
 
-    $externalEmailAddress = Get-RadAppNormalizedExternalEmailAddress -MailContact $MailContact
+    $externalEmailAddress = Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $MailContact
 
     if ($externalEmailAddress -ne $TargetEmail) {
         return $null
@@ -210,7 +210,7 @@ function ConvertTo-RadAppMailContactOwnershipRecord {
     }
 }
 
-function Get-RadAppNormalizedExternalEmailAddress {
+function Get-GroupsConsoleNormalizedExternalEmailAddress {
     param(
         [Parameter(Mandatory = $true)]
         $MailContact
@@ -228,7 +228,7 @@ function Get-RadAppNormalizedExternalEmailAddress {
     return $rawValue.ToLowerInvariant()
 }
 
-function Get-RadAppOwnershipRecordKey {
+function Get-GroupsConsoleOwnershipRecordKey {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Record

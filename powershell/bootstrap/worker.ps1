@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Get-RadAppEnvironmentProbe {
+function Get-GroupsConsoleEnvironmentProbe {
     $module = Get-Module -ListAvailable -Name ExchangeOnlineManagement |
         Sort-Object Version -Descending |
         Select-Object -First 1 Name, Version, ModuleBase
@@ -76,14 +76,14 @@ function Get-RadAppEnvironmentProbe {
 
 switch ($CommandName) {
     'bootstrap.inspectEnvironment' {
-        $result = Get-RadAppEnvironmentProbe
+        $result = Get-GroupsConsoleEnvironmentProbe
 
         $result | ConvertTo-Json -Compress -Depth 6
         exit 0
     }
 
     'exchange.getCapabilities' {
-        $probe = Get-RadAppEnvironmentProbe
+        $probe = Get-GroupsConsoleEnvironmentProbe
         $exchangeModule = $probe.exchangeOnlineManagement
         $status = 'missing'
         $detail = 'ExchangeOnlineManagement is not installed for the selected PowerShell runtime.'
@@ -132,7 +132,7 @@ switch ($CommandName) {
             Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop | Out-Null
         }
 
-        $probe = Get-RadAppEnvironmentProbe
+        $probe = Get-GroupsConsoleEnvironmentProbe
         $exchangeModule = $probe.exchangeOnlineManagement
 
         if ($null -eq $exchangeModule) {

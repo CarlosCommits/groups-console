@@ -27,7 +27,7 @@ export function getExchangeGroupsQueryOptions(
   return queryOptions({
     queryKey: queryKeys.exchangeGroupsList(connectionIdentity),
     enabled,
-    queryFn: async (): Promise<ExchangeListGroupsResult> => window.radApp.exchange.listGroups(),
+    queryFn: async (): Promise<ExchangeListGroupsResult> => window.groupsConsole.exchange.listGroups(),
   });
 }
 

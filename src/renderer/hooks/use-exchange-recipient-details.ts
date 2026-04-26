@@ -26,7 +26,7 @@ export function getExchangeRecipientDetailsQueryOptions(
     queryKey: queryKeys.exchangeRecipientDetails(connectionIdentity, stableKey ?? "none"),
     enabled,
     queryFn: async (): Promise<ExchangeRecipientGetDetailsResult> =>
-      window.radApp.exchange.getRecipientDetails({ stableKey: stableKey! }),
+      window.groupsConsole.exchange.getRecipientDetails({ stableKey: stableKey! }),
   });
 }
 

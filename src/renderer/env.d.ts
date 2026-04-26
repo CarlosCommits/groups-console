@@ -26,7 +26,7 @@ import type { SessionStatusSchema } from '@/shared/contracts/session';
 
 declare global {
   interface Window {
-    radApp: {
+    groupsConsole: {
       session: {
         getStatus: () => Promise<SessionStatusSchema>;
       };

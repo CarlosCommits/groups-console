@@ -239,7 +239,7 @@ describe("getExchangeRecipientDetailsQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           exchange: {
             getRecipientDetails: getRecipientDetailsMock,
           },

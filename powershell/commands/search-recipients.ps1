@@ -1,10 +1,10 @@
-function Invoke-RadAppSearchRecipients {
+function Invoke-GroupsConsoleSearchRecipients {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before searching recipients.'
     }
 
@@ -69,7 +69,7 @@ function Invoke-RadAppSearchRecipients {
             [string]$recipient.PrimarySmtpAddress
         }
         elseif ($recipient.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $recipient.ExternalEmailAddress) {
-            $normalizedExternalEmail = Get-RadAppNormalizedExternalEmailAddress -MailContact $recipient
+            $normalizedExternalEmail = Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $recipient
             if ($normalizedExternalEmail) { $normalizedExternalEmail } else { $null }
         }
         elseif ($recipient.PSObject.Properties.Name -contains 'WindowsEmailAddress' -and $recipient.WindowsEmailAddress) {

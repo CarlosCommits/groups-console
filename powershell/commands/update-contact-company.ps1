@@ -1,10 +1,10 @@
-function Invoke-RadAppUpdateContactCompany {
+function Invoke-GroupsConsoleUpdateContactCompany {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before updating contacts.'
     }
 
@@ -47,7 +47,7 @@ function Invoke-RadAppUpdateContactCompany {
 
     $appliedCompany = if ($contact.Company) { [string]$contact.Company } else { $null }
     $primaryEmail = if ($mailContact.ExternalEmailAddress) {
-        Get-RadAppNormalizedExternalEmailAddress -MailContact $mailContact
+        Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $mailContact
     }
     elseif ($mailContact.PrimarySmtpAddress) {
         [string]$mailContact.PrimarySmtpAddress

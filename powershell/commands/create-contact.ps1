@@ -1,10 +1,10 @@
-function Invoke-RadAppCreateContact {
+function Invoke-GroupsConsoleCreateContact {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before creating contacts.'
     }
 
@@ -104,7 +104,7 @@ function Invoke-RadAppCreateContact {
 
     $appliedCompany = if ($contact.Company) { [string]$contact.Company } else { $null }
     $primaryEmail = if ($mailContact.ExternalEmailAddress) {
-        Get-RadAppNormalizedExternalEmailAddress -MailContact $mailContact
+        Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $mailContact
     }
     elseif ($mailContact.PrimarySmtpAddress) {
         [string]$mailContact.PrimarySmtpAddress

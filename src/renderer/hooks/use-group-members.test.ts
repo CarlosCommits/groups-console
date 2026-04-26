@@ -221,7 +221,7 @@ describe("getGroupMembersQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           groups: {
             getMembers: getMembersMock,
           },
