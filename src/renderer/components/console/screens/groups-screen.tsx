@@ -59,6 +59,7 @@ import {
   SelectValue,
 } from "@/renderer/components/ui/select";
 import { AppShell } from "@/renderer/components/console";
+import { RecipientDetailDialog } from "@/renderer/components/console/directory/recipient-detail-dialog";
 import {
   formatPresentedCommandFailure,
   presentCommandFailure,
@@ -93,6 +94,18 @@ import {
 import {
   useGroupMembersQuery,
 } from "@/renderer/hooks/use-group-members";
+import {
+  useContactDetailsQuery,
+} from "@/renderer/hooks/use-contact-details";
+import {
+  useGuestDetailsQuery,
+} from "@/renderer/hooks/use-guest-details";
+import {
+  useExchangeRecipientDetailsQuery,
+} from "@/renderer/hooks/use-exchange-recipient-details";
+import {
+  useGroupMembershipsQuery,
+} from "@/renderer/hooks/use-group-memberships";
 import {
   useAddGroupMembersMutation,
   useRemoveGroupMembersMutation,
@@ -161,7 +174,7 @@ function subscribeEmailTruncationMeasure(measure: () => void) {
   };
 }
 
-function TruncatedEmailText({ email }: { email: string }) {
+function TruncatedTableText({ text, className }: { text: string; className: string }) {
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -174,27 +187,45 @@ function TruncatedEmailText({ email }: { email: string }) {
   useEffect(() => {
     measure();
     return subscribeEmailTruncationMeasure(measure);
-  }, [email, measure]);
+  }, [text, measure]);
 
-  const emailText = (
-    <span ref={textRef} className="block max-w-72 truncate">
-      {email}
+  const displayText = (
+    <span ref={textRef} className={className}>
+      {text}
     </span>
   );
 
   if (!isTruncated) {
-    return emailText;
+    return displayText;
   }
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        {emailText}
+        {displayText}
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6}>
-        {email}
+        {text}
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+function TruncatedEmailText({ email }: { email: string }) {
+  return (
+    <TruncatedTableText
+      text={email}
+      className="block max-w-72 truncate"
+    />
+  );
+}
+
+function TruncatedNameText({ name }: { name: string }) {
+  return (
+    <TruncatedTableText
+      text={name}
+      className="block max-w-52 truncate text-sm font-semibold text-slate-800"
+    />
   );
 }
 
@@ -262,6 +293,64 @@ function isCandidateSelectable(candidate: RecipientSearchItem): boolean {
     return true;
   }
   return false;
+}
+
+function isMemberInspectable(member: GroupMemberListItem): boolean {
+  return (
+    member.recipientType === "mailbox" ||
+    member.recipientType === "mailContact" ||
+    member.recipientType === "mailUser" ||
+    member.recipientType === "guestMailUser"
+  );
+}
+
+function memberSearchTypes(member: GroupMemberListItem): RecipientSearchType[] {
+  if (member.recipientType === "guestMailUser") {
+    return ["guestUser", "guestMailUser", "mailUser"];
+  }
+
+  return [member.recipientType];
+}
+
+function memberToFallbackRecipient(member: GroupMemberListItem): RecipientSearchItem {
+  const stableKey = member.objectId
+    ? `exchange:objectId:${member.objectId}`
+    : `exchange:identity:${member.exchangeIdentity}`;
+
+  return {
+    source: "exchange",
+    stableKey,
+    recipientType: member.recipientType === "guestMailUser" ? "mailUser" : member.recipientType,
+    membershipSupport: "exchangeDirect",
+    objectId: member.objectId,
+    exchangeIdentity: member.exchangeIdentity,
+    primaryEmail: member.primaryEmail,
+    displayName: member.displayName,
+    alias: member.alias,
+    recipientTypeDetails: member.recipientTypeDetails,
+    companyName: null,
+    companySource: "none",
+  };
+}
+
+function findBestRecipientMatch(
+  member: GroupMemberListItem,
+  result: RecipientsSearchResult,
+): RecipientSearchItem | null {
+  const normalizedEmail = member.primaryEmail?.trim().toLowerCase() ?? null;
+  const normalizedExchangeIdentity = member.exchangeIdentity.trim().toLowerCase();
+  const normalizedObjectId = member.objectId?.trim().toLowerCase() ?? null;
+  const matches = result.items.filter((item) =>
+    (normalizedObjectId !== null && item.objectId?.trim().toLowerCase() === normalizedObjectId) ||
+    item.exchangeIdentity?.trim().toLowerCase() === normalizedExchangeIdentity ||
+    (normalizedEmail !== null && item.primaryEmail?.trim().toLowerCase() === normalizedEmail),
+  );
+
+  if (member.recipientType === "guestMailUser") {
+    return matches.find((item) => item.recipientType === "guestUser") ?? matches[0] ?? null;
+  }
+
+  return matches[0] ?? null;
 }
 
 function candidateDisableReason(candidate: RecipientSearchItem): string | null {
@@ -425,6 +514,16 @@ export function GroupsScreen() {
   const [removePending, setRemovePending] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
+  const [detailResolvePendingKey, setDetailResolvePendingKey] = useState<string | null>(null);
+  const [detailResolveError, setDetailResolveError] = useState<string | null>(null);
+  const [groupFilterText, setGroupFilterText] = useState("");
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
+  const [addGroupPending, setAddGroupPending] = useState(false);
+  const [addGroupError, setAddGroupError] = useState<string | null>(null);
+  const [removeMembershipGroupTarget, setRemoveMembershipGroupTarget] = useState<ExchangeGroupListItem | null>(null);
+
   const hasGroupsData = appliedKind !== null;
   const showStaleGroupsError = groupsError !== null && hasGroupsData;
   const filteredGroups = useMemo(() => {
@@ -463,6 +562,138 @@ export function GroupsScreen() {
   const addGroupMembersMutation = useAddGroupMembersMutation(exchangeConnection);
   const removeGroupMembersMutation = useRemoveGroupMembersMutation(exchangeConnection);
   const normalizedActiveTab = activeTab === "settings" ? "details" : activeTab;
+
+  const contactDetailsQuery = useContactDetailsQuery(
+    exchangeConnection,
+    detailTarget?.recipientType === "mailContact" ? detailTarget.stableKey : undefined,
+    detailDialogOpen && detailTarget?.recipientType === "mailContact",
+  );
+  const guestDetailsQuery = useGuestDetailsQuery(
+    shell.graphConnection,
+    detailTarget?.recipientType === "guestUser" ? detailTarget.stableKey : undefined,
+    detailDialogOpen && detailTarget?.recipientType === "guestUser",
+  );
+  const exchangeRecipientDetailsQuery = useExchangeRecipientDetailsQuery(
+    exchangeConnection,
+    detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"
+      ? detailTarget.stableKey
+      : undefined,
+    detailDialogOpen &&
+      (detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"),
+  );
+
+  const detailMemberSelectionRef = useMemo((): GroupMemberSelectionRef | null => {
+    if (!detailTarget) return null;
+    return toGroupMemberSelectionRef(detailTarget);
+  }, [detailTarget]);
+  const membershipsQuery = useGroupMembershipsQuery(
+    exchangeConnection,
+    detailMemberSelectionRef,
+    detailDialogOpen && !!detailMemberSelectionRef,
+  );
+
+  const currentMemberships = membershipsQuery.groups;
+  const currentMembershipKeys = useMemo(
+    () => new Set(currentMemberships.map((group) => group.exchangeIdentity)),
+    [currentMemberships],
+  );
+  const availableGroups = useMemo(
+    () => groups.filter((group) => !currentMembershipKeys.has(group.exchangeIdentity)),
+    [currentMembershipKeys, groups],
+  );
+  const filteredAvailableGroups = useMemo(() => {
+    const filter = groupFilterText.trim().toLowerCase();
+    if (!filter) return availableGroups;
+    return availableGroups.filter((group) =>
+      [
+        group.displayName,
+        group.exchangeIdentity,
+        group.primaryEmail ?? "",
+        group.alias ?? "",
+      ].join(" ").toLowerCase().includes(filter),
+    );
+  }, [availableGroups, groupFilterText]);
+  const visibleSelectedGroupsCount = useMemo(
+    () => filteredAvailableGroups.filter((group) => selectedGroupKeys.has(group.exchangeIdentity)).length,
+    [filteredAvailableGroups, selectedGroupKeys],
+  );
+  const hasHiddenSelectedGroups = selectedGroupKeys.size > visibleSelectedGroupsCount;
+
+  const activeDetailState = useMemo(() => {
+    if (detailResolvePendingKey !== null) {
+      return {
+        pending: true,
+        error: null,
+        result: null,
+        refetch: () => Promise.resolve(undefined),
+      };
+    }
+
+    if (detailResolveError !== null) {
+      return {
+        pending: false,
+        error: detailResolveError,
+        result: null,
+        refetch: () => Promise.resolve(undefined),
+      };
+    }
+
+    if (detailTarget?.recipientType === "mailContact") {
+      return {
+        pending: contactDetailsQuery.isLoading,
+        error: contactDetailsQuery.error,
+        result: contactDetailsQuery.contact
+          ? ({ mode: "contact", data: contactDetailsQuery.contact } as const)
+          : null,
+        refetch: contactDetailsQuery.refetch,
+      };
+    }
+
+    if (detailTarget?.recipientType === "guestUser") {
+      return {
+        pending: guestDetailsQuery.isLoading,
+        error: guestDetailsQuery.error,
+        result: guestDetailsQuery.guest
+          ? ({ mode: "guest", data: guestDetailsQuery.guest } as const)
+          : null,
+        refetch: guestDetailsQuery.refetch,
+      };
+    }
+
+    if (detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser") {
+      return {
+        pending: exchangeRecipientDetailsQuery.isLoading,
+        error: exchangeRecipientDetailsQuery.error,
+        result: exchangeRecipientDetailsQuery.recipient
+          ? ({ mode: "exchangeRecipient", data: exchangeRecipientDetailsQuery.recipient } as const)
+          : null,
+        refetch: exchangeRecipientDetailsQuery.refetch,
+      };
+    }
+
+    return {
+      pending: false,
+      error: detailTarget ? "Details are not available for this recipient type." : null,
+      result: null,
+      refetch: () => Promise.resolve(undefined),
+    };
+  }, [
+    contactDetailsQuery.contact,
+    contactDetailsQuery.error,
+    contactDetailsQuery.isLoading,
+    contactDetailsQuery.refetch,
+    detailResolveError,
+    detailResolvePendingKey,
+    detailTarget,
+    exchangeRecipientDetailsQuery.error,
+    exchangeRecipientDetailsQuery.isLoading,
+    exchangeRecipientDetailsQuery.recipient,
+    exchangeRecipientDetailsQuery.refetch,
+    guestDetailsQuery.error,
+    guestDetailsQuery.guest,
+    guestDetailsQuery.isLoading,
+    guestDetailsQuery.refetch,
+  ]);
 
   useEffect(() => {
     if (groupsLoading) {
@@ -648,6 +879,167 @@ export function GroupsScreen() {
       setRemovePending(false);
     }
   }, [selectedGroup, removeConfirmTarget, removeGroupMembersMutation]);
+
+  const openMemberDetailDialog = useCallback(async (member: GroupMemberListItem) => {
+    if (!isMemberInspectable(member)) return;
+
+    const fallbackTarget = memberToFallbackRecipient(member);
+    setDetailTarget(fallbackTarget);
+    setDetailDialogOpen(true);
+    setDetailResolvePendingKey(member.exchangeIdentity);
+    setDetailResolveError(null);
+    setGroupFilterText("");
+    setSelectedGroupKeys(new Set());
+    setAddGroupError(null);
+
+    try {
+      const result = await window.radApp.recipients.search({
+        query: member.primaryEmail ?? member.displayName,
+        types: memberSearchTypes(member),
+        limit: 25,
+      });
+      const match = findBestRecipientMatch(member, result);
+      setDetailTarget(match ?? fallbackTarget);
+      if (member.recipientType === "guestMailUser" && match?.recipientType !== "guestUser") {
+        setDetailResolveError("Guest details require a matching Microsoft Graph guest record.");
+      }
+    } catch (err) {
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Detail Error", "Failed to resolve member details."),
+      );
+      setDetailResolveError(message);
+    } finally {
+      setDetailResolvePendingKey(null);
+    }
+  }, []);
+
+  const handleDetailClose = useCallback(() => {
+    setDetailDialogOpen(false);
+    setDetailTarget(null);
+    setDetailResolvePendingKey(null);
+    setDetailResolveError(null);
+    setGroupFilterText("");
+    setSelectedGroupKeys(new Set());
+    setAddGroupPending(false);
+    setAddGroupError(null);
+  }, []);
+
+  const handleToggleGroupSelection = useCallback((exchangeIdentity: string) => {
+    setSelectedGroupKeys((previous) => {
+      const next = new Set(previous);
+      if (next.has(exchangeIdentity)) {
+        next.delete(exchangeIdentity);
+      } else {
+        next.add(exchangeIdentity);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllFiltered = useCallback(() => {
+    setSelectedGroupKeys((previous) => {
+      const next = new Set(previous);
+      filteredAvailableGroups.forEach((group) => next.add(group.exchangeIdentity));
+      return next;
+    });
+  }, [filteredAvailableGroups]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedGroupKeys(new Set());
+  }, []);
+
+  const handleAddGroupsFromDetail = useCallback(async () => {
+    if (!detailMemberSelectionRef) return;
+    const selectedGroups = groups.filter((group) => selectedGroupKeys.has(group.exchangeIdentity));
+    if (selectedGroups.length === 0) return;
+
+    setAddGroupPending(true);
+    setAddGroupError(null);
+    try {
+      const results = await Promise.all(
+        selectedGroups.map(async (group) => ({
+          group,
+          result: await addGroupMembersMutation.mutateAsync({
+            groupRef: groupRefFromListItem(group),
+            memberRefs: [detailMemberSelectionRef],
+          }),
+        })),
+      );
+      const issue = results.flatMap(({ group, result }) =>
+        result.items
+          .filter((item) => !isAddStatusClean(item.status))
+          .map((item) => `${group.displayName}: ${ADD_STATUS_LABELS[item.status]} - ${item.detail}`),
+      )[0];
+
+      if (issue) {
+        setAddGroupError(issue);
+      } else {
+        setSelectedGroupKeys(new Set());
+        await membershipsQuery.refetch();
+        toast.success("Group memberships updated", {
+          description: `${selectedGroups.length} group${selectedGroups.length === 1 ? "" : "s"} updated.`,
+        });
+      }
+    } catch (err) {
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Add Groups Error", "Failed to add member to selected groups."),
+      );
+      setAddGroupError(message);
+      toast.error("Failed to add groups", { description: message });
+    } finally {
+      setAddGroupPending(false);
+    }
+  }, [
+    addGroupMembersMutation,
+    detailMemberSelectionRef,
+    groups,
+    membershipsQuery,
+    selectedGroupKeys,
+  ]);
+
+  const handleRemoveMembershipGroup = useCallback(async () => {
+    if (!membershipsQuery.member || !removeMembershipGroupTarget) {
+      return;
+    }
+
+    const memberRef: GroupMemberWriteRef = {
+      exchangeIdentity: membershipsQuery.member.exchangeIdentity,
+      objectId: membershipsQuery.member.objectId,
+      primaryEmail: membershipsQuery.member.primaryEmail,
+    };
+
+    setRemovePending(true);
+    setRemoveError(null);
+    try {
+      const result = await removeGroupMembersMutation.mutateAsync({
+        groupRef: groupRefFromListItem(removeMembershipGroupTarget),
+        memberRefs: [memberRef],
+      });
+      showRemoveMemberToast(detailTarget?.displayName ?? "Member", removeMembershipGroupTarget.displayName, result);
+      const issueMessage = getRemoveMembersIssueMessage(result);
+      if (issueMessage) {
+        setRemoveError(issueMessage);
+      } else {
+        setRemoveMembershipGroupTarget(null);
+        await membershipsQuery.refetch();
+        void refetchMembers();
+      }
+    } catch (err) {
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Remove Member Error", "Failed to remove member."),
+      );
+      setRemoveError(message);
+      toast.error("Failed to remove member", { description: message });
+    } finally {
+      setRemovePending(false);
+    }
+  }, [
+    detailTarget?.displayName,
+    membershipsQuery,
+    refetchMembers,
+    removeGroupMembersMutation,
+    removeMembershipGroupTarget,
+  ]);
 
   if (!exchangeConnected) {
     return (
@@ -992,11 +1384,11 @@ export function GroupsScreen() {
                           <Table className="text-sm" containerClassName="overflow-x-visible">
                             <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.35)]">
                               <TableRow className="hover:bg-transparent">
-                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Name</TableHead>
-                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 w-72 max-w-72 px-3 text-sm font-bold text-slate-700")}>Email</TableHead>
-                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Recipient Details</TableHead>
-                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 px-3 text-sm font-bold text-slate-700")}>Type</TableHead>
-                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-12 w-12 px-3 text-right")}></TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "w-64 max-w-64 text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Name</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "w-72 max-w-72 text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Email</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Recipient Details</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Type</TableHead>
+                                <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "w-10 text-right")}></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1004,31 +1396,44 @@ export function GroupsScreen() {
                                 {visibleMembers.map((member) => (
                                 <TableRow
                                   key={member.exchangeIdentity}
-                                  className="hover:bg-slate-50/60 transition-colors group"
+                                  className={cn(
+                                    "hover:bg-slate-50/60 transition-colors group",
+                                    isMemberInspectable(member) && "cursor-pointer",
+                                  )}
+                                  tabIndex={isMemberInspectable(member) ? 0 : undefined}
+                                  role={isMemberInspectable(member) ? "button" : undefined}
+                                  onClick={() => {
+                                    void openMemberDetailDialog(member);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (!isMemberInspectable(member)) return;
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      void openMemberDetailDialog(member);
+                                    }
+                                  }}
                                 >
-                                  <TableCell className="px-3 py-3">
-                                    <div className="flex items-center gap-3">
-                                      <Avatar className="size-8 text-xs">
+                                  <TableCell className="w-64 max-w-64">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <Avatar className="size-6 text-[10px]">
                                         <AvatarFallback className={avatarColorFor(member.exchangeIdentity)}>
                                           {getInitials(member.displayName)}
                                         </AvatarFallback>
                                       </Avatar>
-                                      <span className="text-sm font-bold text-slate-800">
-                                        {member.displayName}
-                                      </span>
+                                      <TruncatedNameText name={member.displayName} />
                                     </div>
                                   </TableCell>
-                                  <TableCell className="w-72 max-w-72 px-3 py-3 text-sm text-slate-600 font-medium">
+                                  <TableCell className="w-72 max-w-72 text-sm text-slate-600 font-medium">
                                     {member.primaryEmail ? (
                                       <TruncatedEmailText email={member.primaryEmail} />
                                     ) : (
                                       "-"
                                     )}
                                   </TableCell>
-                                  <TableCell className="px-3 py-3 text-sm text-slate-600">
+                                  <TableCell className="text-sm text-slate-600">
                                     {member.recipientTypeDetails || "—"}
                                   </TableCell>
-                                  <TableCell className="px-3 py-3">
+                                  <TableCell>
                                     <Badge
                                       variant="secondary"
                                       className="text-[11px] uppercase"
@@ -1036,13 +1441,16 @@ export function GroupsScreen() {
                                       {RECIPIENT_TYPE_LABELS[member.recipientType]}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="px-3 py-3 text-right">
+                                  <TableCell className="text-right">
                                     <Button
                                       variant="ghost"
                                       size="icon-sm"
                                       className={CONSOLE_ROW_ACTION_ICON_BUTTON}
                                       aria-label={`Remove ${member.displayName} from ${selectedGroup.displayName}`}
-                                      onClick={() => setRemoveConfirmTarget(member)}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setRemoveConfirmTarget(member);
+                                      }}
                                     >
                                       <UserMinus className="size-5" />
                                     </Button>
@@ -1272,11 +1680,67 @@ export function GroupsScreen() {
         </DialogContent>
       </Dialog>
 
+      <RecipientDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && canDismissMutationDialog(addGroupPending || removePending)) {
+            handleDetailClose();
+          }
+        }}
+        canDismiss={canDismissMutationDialog(addGroupPending || removePending)}
+        detailTarget={detailTarget}
+        detailPending={activeDetailState.pending}
+        detailError={activeDetailState.error}
+        detailResult={activeDetailState.result}
+        onRefetchDetails={() => {
+          void activeDetailState.refetch();
+        }}
+        detailCanUpdateCompany={false}
+        updateCompanyName=""
+        onUpdateCompanyNameChange={() => {}}
+        updatePending={false}
+        onUpdateSubmit={() => {}}
+        updateResult={null}
+        memberSelectionRef={detailMemberSelectionRef}
+        membershipsLoading={membershipsQuery.isLoading}
+        membershipsError={membershipsQuery.error}
+        currentMemberships={currentMemberships}
+        onRefetchMemberships={() => {
+          void membershipsQuery.refetch();
+        }}
+        allGroupsLoading={groupsLoading}
+        allGroupsError={groupsError}
+        onRefetchAllGroups={() => {
+          void refetchGroups();
+        }}
+        availableGroups={availableGroups}
+        filteredAvailableGroups={filteredAvailableGroups}
+        groupFilterText={groupFilterText}
+        onGroupFilterTextChange={setGroupFilterText}
+        selectedGroupKeys={selectedGroupKeys}
+        onToggleGroupSelection={handleToggleGroupSelection}
+        onSelectAllFiltered={handleSelectAllFiltered}
+        onClearSelection={handleClearSelection}
+        visibleSelectedGroupsCount={visibleSelectedGroupsCount}
+        hasHiddenSelectedGroups={hasHiddenSelectedGroups}
+        selectedGroupsCount={selectedGroupKeys.size}
+        addGroupPending={addGroupPending}
+        onAddGroups={() => {
+          void handleAddGroupsFromDetail();
+        }}
+        addGroupError={addGroupError}
+        onRequestRemoveGroup={(group) => {
+          setRemoveError(null);
+          setRemoveMembershipGroupTarget(group);
+        }}
+      />
+
       <Dialog
-        open={removeConfirmTarget !== null}
+        open={removeConfirmTarget !== null || removeMembershipGroupTarget !== null}
         onOpenChange={(open) => {
           handleMutationDialogOpenChange(open, removePending, () => {
             setRemoveConfirmTarget(null);
+            setRemoveMembershipGroupTarget(null);
             setRemoveError(null);
           });
         }}
@@ -1288,7 +1752,7 @@ export function GroupsScreen() {
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription>
-              {removeConfirmTarget && (
+              {removeConfirmTarget ? (
                 <>
                   Are you sure you want to remove{" "}
                   <span className="font-semibold">{removeConfirmTarget.displayName}</span>
@@ -1297,6 +1761,18 @@ export function GroupsScreen() {
                   )}
                   {" "}from this group?
                 </>
+              ) : removeMembershipGroupTarget && detailTarget ? (
+                <>
+                  Are you sure you want to remove{" "}
+                  <span className="font-semibold">{detailTarget.displayName}</span>
+                  {detailTarget.primaryEmail && (
+                    <span className="text-slate-500"> ({detailTarget.primaryEmail})</span>
+                  )}
+                  {" "}from{" "}
+                  <span className="font-semibold">{removeMembershipGroupTarget.displayName}</span>?
+                </>
+              ) : (
+                "Remove this membership?"
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1312,7 +1788,11 @@ export function GroupsScreen() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setRemoveConfirmTarget(null); setRemoveError(null); }}
+              onClick={() => {
+                setRemoveConfirmTarget(null);
+                setRemoveMembershipGroupTarget(null);
+                setRemoveError(null);
+              }}
               disabled={removePending}
             >
               Cancel
@@ -1321,7 +1801,7 @@ export function GroupsScreen() {
               variant="destructive"
               size="sm"
               onClick={() => {
-                void handleRemoveMember();
+                void (removeConfirmTarget ? handleRemoveMember() : handleRemoveMembershipGroup());
               }}
               disabled={removePending}
             >
