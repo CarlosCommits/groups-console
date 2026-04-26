@@ -50,13 +50,22 @@ function Invoke-RadAppCreateContact {
     }
 
     $appliedCompany = if ($contact.Company) { [string]$contact.Company } else { $null }
+    $primaryEmail = if ($mailContact.ExternalEmailAddress) {
+        Get-RadAppNormalizedExternalEmailAddress -MailContact $mailContact
+    }
+    elseif ($mailContact.PrimarySmtpAddress) {
+        [string]$mailContact.PrimarySmtpAddress
+    }
+    else {
+        $email
+    }
 
     return @{
         outcome = 'created'
         contact = @{
             exchangeIdentity = [string]$mailContact.Identity
             objectId = $objectId
-            primaryEmail = if ($mailContact.ExternalEmailAddress) { [string]$mailContact.ExternalEmailAddress } else { $email }
+            primaryEmail = $primaryEmail
             displayName = [string]$mailContact.DisplayName
             companyName = $appliedCompany
         }
