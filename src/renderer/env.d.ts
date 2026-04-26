@@ -32,6 +32,7 @@ declare global {
       };
       exchange: {
         getCapabilities: () => Promise<ExchangeCapabilities>;
+        installModule: () => Promise<ExchangeCapabilities>;
         connect: (userPrincipalName: string) => Promise<ExchangeConnectionStatus>;
         getConnectionStatus: () => Promise<ExchangeConnectionStatus>;
         disconnect: () => Promise<ExchangeConnectionStatus>;

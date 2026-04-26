@@ -12,6 +12,46 @@ const useAppMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./app-context", () => ({
   useApp: useAppMock,
+  deriveExchangePrerequisiteBlocker: (shell: ShellState) => {
+    const powerShell = shell.session?.checks.find((check) => check.id === "powershell");
+    if (powerShell?.status === "missing") {
+      return {
+        kind: "missingPowerShell",
+        title: "PowerShell is required for Exchange Online",
+        detail: powerShell.detail,
+        guidance: "Install Windows PowerShell 5.1 or PowerShell 7, then restart Groups Console so the prerequisite check can run again.",
+        canInstallModule: false,
+      };
+    }
+
+    const exchangeModule = shell.session?.checks.find((check) => check.id === "exchangeModule");
+    if (exchangeModule?.status === "missing") {
+      return {
+        kind: "missingExchangeModule",
+        title: "ExchangeOnlineManagement is required",
+        detail: exchangeModule.detail,
+        guidance: "Use the install button to add ExchangeOnlineManagement for the current Windows user, or have IT deploy the module to this workstation.",
+        canInstallModule: true,
+      };
+    }
+
+    if (
+      shell.exchangeCapabilities?.exchangeModule.installed === true &&
+      shell.exchangeCapabilities.exchangeModule.importable === false
+    ) {
+      return {
+        kind: "exchangeModuleNotImportable",
+        title: "ExchangeOnlineManagement could not be loaded",
+        detail:
+          shell.exchangeCapabilities.exchangeModule.importError ??
+          shell.exchangeCapabilities.detail,
+        guidance: "Ask IT to review the module import failure. This is usually caused by a corrupted module install, missing dependency, or workstation security policy such as Constrained Language Mode, AppLocker, WDAC, or script-signing enforcement.",
+        canInstallModule: false,
+      };
+    }
+
+    return null;
+  },
 }));
 
 vi.mock("@/renderer/components/ui/button", () => ({
@@ -82,6 +122,7 @@ interface MockAppValue {
   setExchangeUpn: ReturnType<typeof vi.fn>;
   connectGraph: ReturnType<typeof vi.fn>;
   disconnectGraph: ReturnType<typeof vi.fn>;
+  installExchangeModule: ReturnType<typeof vi.fn>;
   connectExchange: ReturnType<typeof vi.fn>;
   disconnectExchange: ReturnType<typeof vi.fn>;
   refreshShellState: ReturnType<typeof vi.fn>;
@@ -98,6 +139,7 @@ function makeMockApp(overrides: Partial<MockAppValue> = {}): MockAppValue {
     setExchangeUpn: vi.fn(),
     connectGraph: vi.fn(),
     disconnectGraph: vi.fn(),
+    installExchangeModule: vi.fn(),
     connectExchange: vi.fn(),
     disconnectExchange: vi.fn(),
     refreshShellState: vi.fn(),
@@ -114,7 +156,106 @@ function renderPanel(setupStep: AuthSetupStep, mockApp: Partial<MockAppValue> = 
   );
 }
 
-describe("ShellAuthPanel – exchangeNeeded branch", () => {
+describe("ShellAuthPanel - graphNeeded branch", () => {
+  beforeEach(() => {
+    useAppMock.mockReset();
+  });
+
+  it("shows Graph sign-in progress while Graph connect is pending", () => {
+    const markup = renderPanel("graphNeeded", {
+      pendingAction: "graphConnect",
+    });
+
+    expect(markup).toContain("Connecting Graph");
+    expect(markup).toContain("Opening Microsoft Graph sign-in...");
+    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toContain("disabled");
+  });
+
+  it("shows PowerShell Exchange sign-in progress after Graph connects", () => {
+    const markup = renderPanel("graphNeeded", {
+      pendingAction: "exchangeConnect",
+    });
+
+    expect(markup).toContain("Signing in to Exchange");
+    expect(markup).toContain("Graph connected. Signing in to PowerShell Exchange Online...");
+    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toContain("disabled");
+  });
+
+  it("shows install affordance when ExchangeOnlineManagement is missing", () => {
+    const markup = renderPanel("graphNeeded", {
+      shell: makeShell({
+        session: {
+          appVersion: "1.0.0",
+          environment: "development",
+          checks: [
+            {
+              id: "powershell",
+              label: "PowerShell runtime",
+              status: "ready",
+              detail: "Detected Windows PowerShell.",
+            },
+            {
+              id: "exchangeModule",
+              label: "Exchange module",
+              status: "missing",
+              detail: "ExchangeOnlineManagement was not found.",
+            },
+          ],
+          security: {
+            contextIsolation: true,
+            sandbox: true,
+            nodeIntegration: false,
+          },
+        },
+      }),
+    });
+
+    expect(markup).toContain("ExchangeOnlineManagement is required");
+    expect(markup).toContain("Use the install button to add ExchangeOnlineManagement for the current Windows user");
+    expect(markup).toContain("Install Exchange module");
+  });
+
+  it("shows import failure without install affordance when ExchangeOnlineManagement is not importable", () => {
+    const markup = renderPanel("exchangeNeeded", {
+      shell: makeShell({
+        graphConnection: makeGraph(),
+        exchangeConnection: makeExchange({ state: "disconnected" }),
+        exchangeCapabilities: {
+          status: "warning",
+          detail: "ExchangeOnlineManagement is installed but not importable.",
+          runtime: {
+            command: "powershell.exe",
+            label: "Windows PowerShell",
+            version: "5.1",
+            edition: "Desktop",
+          },
+          exchangeModule: {
+            installed: true,
+            importable: false,
+            version: "3.9.0",
+            moduleBase: "C:/Users/Admin/Documents/WindowsPowerShell/Modules/ExchangeOnlineManagement",
+            importError: "File cannot be loaded because running scripts is disabled on this system.",
+            commandChecks: {
+              connectExchangeOnline: false,
+              disconnectExchangeOnline: false,
+              getConnectionInformation: false,
+            },
+          },
+        },
+      }),
+      exchangeUpn: "admin@example.com",
+    });
+
+    expect(markup).toContain("ExchangeOnlineManagement could not be loaded");
+    expect(markup).toContain("File cannot be loaded because running scripts is disabled on this system.");
+    expect(markup).toContain("Ask IT to review the module import failure.");
+    expect(markup).not.toContain("Install Exchange module");
+  });
+});
+
+describe("ShellAuthPanel - exchangeNeeded branch", () => {
   beforeEach(() => {
     useAppMock.mockReset();
   });
@@ -130,11 +271,11 @@ describe("ShellAuthPanel – exchangeNeeded branch", () => {
     });
 
     expect(markup).toContain("Connect Exchange");
-    expect(markup).not.toContain("Connecting…");
-    expect(markup).not.toContain("Connecting to Exchange Online…");
+    expect(markup).not.toContain("Signing in...");
+    expect(markup).not.toContain("Signing in to PowerShell Exchange Online...");
   });
 
-  it("shows Connecting… label and spinner when pendingAction is exchangeConnect", () => {
+  it("shows Signing in label and spinner when pendingAction is exchangeConnect", () => {
     const markup = renderPanel("exchangeNeeded", {
       shell: makeShell({
         graphConnection: makeGraph(),
@@ -144,7 +285,7 @@ describe("ShellAuthPanel – exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).toContain("Connecting…");
+    expect(markup).toContain("Signing in...");
     expect(markup).not.toContain(">Connect Exchange<");
   });
 
@@ -158,7 +299,7 @@ describe("ShellAuthPanel – exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).toContain("Connecting to Exchange Online…");
+    expect(markup).toContain("Signing in to PowerShell Exchange Online...");
     expect(markup).toContain('aria-live="polite"');
   });
 
@@ -172,7 +313,7 @@ describe("ShellAuthPanel – exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).not.toContain("Connecting to Exchange Online…");
+    expect(markup).not.toContain("Signing in to PowerShell Exchange Online...");
   });
 
   it("disables the button when pendingAction is exchangeConnect", () => {
@@ -200,7 +341,7 @@ describe("ShellAuthPanel – exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).toContain("Connecting…");
+    expect(markup).toContain("Signing in...");
     expect(markup).toContain("Connection timed out.");
   });
 });
