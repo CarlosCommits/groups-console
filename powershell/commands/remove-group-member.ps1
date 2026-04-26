@@ -1,10 +1,10 @@
-function Invoke-RadAppRemoveGroupMembers {
+function Invoke-GroupsConsoleRemoveGroupMembers {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before removing group members.'
     }
 
@@ -119,7 +119,7 @@ function Invoke-RadAppRemoveGroupMembers {
 
         $isCurrentMember = $false
         foreach ($existingMember in $existingMembers) {
-            if (Test-RadAppRecipientIdentityMatch -LeftRecipient $existingMember -RightMember $normalizedMember) {
+            if (Test-GroupsConsoleRecipientIdentityMatch -LeftRecipient $existingMember -RightMember $normalizedMember) {
                 $isCurrentMember = $true
                 break
             }
@@ -168,7 +168,7 @@ function Invoke-RadAppRemoveGroupMembers {
         foreach ($removedMember in $removedMembers) {
             $stillPresent = $false
             foreach ($verifiedMember in $verifiedMembers) {
-                if (Test-RadAppRecipientIdentityMatch -LeftRecipient $verifiedMember -RightMember $removedMember) {
+                if (Test-GroupsConsoleRecipientIdentityMatch -LeftRecipient $verifiedMember -RightMember $removedMember) {
                     $stillPresent = $true
                     break
                 }
@@ -217,7 +217,7 @@ function Invoke-RadAppRemoveGroupMembers {
     }
 }
 
-function Test-RadAppRecipientIdentityMatch {
+function Test-GroupsConsoleRecipientIdentityMatch {
     param(
         [Parameter(Mandatory = $true)]
         $LeftRecipient,

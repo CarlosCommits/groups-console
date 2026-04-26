@@ -138,7 +138,7 @@ describe("guest mutation options", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           guests: {
             invite: inviteGuestMock,
             updateCompany: updateGuestCompanyMock,

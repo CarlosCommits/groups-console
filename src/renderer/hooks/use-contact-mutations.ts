@@ -46,8 +46,8 @@ export function getCreateContactMutationOptions(
   graphConnection?: GraphConnectionIdentityInput | null,
 ) {
   return {
-    mutationFn: async (payload: ContactsCreatePayload) => window.radApp.contacts.create(payload),
-    onSuccess: async (result: Awaited<ReturnType<typeof window.radApp.contacts.create>>) => {
+    mutationFn: async (payload: ContactsCreatePayload) => window.groupsConsole.contacts.create(payload),
+    onSuccess: async (result: Awaited<ReturnType<typeof window.groupsConsole.contacts.create>>) => {
       if (result.outcome !== "created") {
         return;
       }
@@ -73,9 +73,9 @@ export function getUpdateContactCompanyMutationOptions(
 ) {
   return {
     mutationFn: async ({ payload }: UpdateContactCompanyMutationVariables) =>
-      window.radApp.contacts.updateCompany(payload),
+      window.groupsConsole.contacts.updateCompany(payload),
     onSuccess: async (
-      _result: Awaited<ReturnType<typeof window.radApp.contacts.updateCompany>>,
+      _result: Awaited<ReturnType<typeof window.groupsConsole.contacts.updateCompany>>,
       variables: UpdateContactCompanyMutationVariables,
     ) => {
       await invalidateContactMutationSearches(queryClient, exchangeConnection, graphConnection);

@@ -10,7 +10,7 @@ let tempLogDirectory: string;
 
 vi.mock('@/main/app/paths', () => {
   return {
-    getRadAppLogDirectory: () => tempLogDirectory,
+    getGroupsConsoleLogDirectory: () => tempLogDirectory,
   };
 });
 

@@ -25,7 +25,7 @@ Phase 2 covers only the shared group-members read path inside the Groups workflo
 
 Included in this phase:
 
-- define one canonical shared query domain for `window.radApp.groups.getMembers()`
+- define one canonical shared query domain for `window.groupsConsole.groups.getMembers()`
 - key the members query by Exchange connection identity and selected group identity
 - migrate the members list in `GroupsScreen` from imperative `useEffect` loading to the shared query
 - preserve stale members data during background refreshes where cached data already exists
@@ -156,7 +156,7 @@ Keep local to the screen:
 
 Goal:
 
-- create the canonical shared members query wrapping `window.radApp.groups.getMembers()`
+- create the canonical shared members query wrapping `window.groupsConsole.groups.getMembers()`
 
 Expected implementation touchpoints:
 

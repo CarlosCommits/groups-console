@@ -26,7 +26,7 @@ export function getContactDetailsQueryOptions(
     queryKey: queryKeys.contactDetails(connectionIdentity, stableKey ?? "none"),
     enabled,
     queryFn: async (): Promise<ContactsGetDetailsResult> =>
-      window.radApp.contacts.getDetails({ stableKey: stableKey! }),
+      window.groupsConsole.contacts.getDetails({ stableKey: stableKey! }),
   });
 }
 

@@ -1,5 +1,5 @@
-function Invoke-RadAppDisconnectExchange {
-    if (-not $script:RadAppExchangeConnectionContext) {
+function Invoke-GroupsConsoleDisconnectExchange {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         return @{
             state = 'disconnected'
             detail = 'No active Exchange session.'
@@ -15,7 +15,7 @@ function Invoke-RadAppDisconnectExchange {
     }
 
     Disconnect-ExchangeOnline -Confirm:$false
-    $script:RadAppExchangeConnectionContext = $null
+    $script:GroupsConsoleExchangeConnectionContext = $null
 
     return @{
         state = 'disconnected'

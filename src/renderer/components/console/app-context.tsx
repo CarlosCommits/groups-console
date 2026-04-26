@@ -168,19 +168,19 @@ export function useApp() {
 }
 
 function requireBridge(service: string): boolean {
-  if (typeof window === "undefined" || !window.radApp) {
+  if (typeof window === "undefined" || !window.groupsConsole) {
     return false;
   }
-  if (service === "graph" && !window.radApp.graph) {
+  if (service === "graph" && !window.groupsConsole.graph) {
     return false;
   }
-  if (service === "exchange" && !window.radApp.exchange) {
+  if (service === "exchange" && !window.groupsConsole.exchange) {
     return false;
   }
-  if (service === "session" && !window.radApp.session) {
+  if (service === "session" && !window.groupsConsole.session) {
     return false;
   }
-  if (service === "reports" && !window.radApp.reports) {
+  if (service === "reports" && !window.groupsConsole.reports) {
     return false;
   }
   return true;
@@ -473,10 +473,10 @@ export function AppProvider({ children }: AppProviderProps) {
 
       const [session, exchangeCapabilities, graphConnection, exchangeConnection] =
         await Promise.all([
-          window.radApp.session.getStatus(),
-          window.radApp.exchange.getCapabilities(),
-          window.radApp.graph.getConnectionStatus(),
-          window.radApp.exchange.getConnectionStatus(),
+          window.groupsConsole.session.getStatus(),
+          window.groupsConsole.exchange.getCapabilities(),
+          window.groupsConsole.graph.getConnectionStatus(),
+          window.groupsConsole.exchange.getConnectionStatus(),
         ]);
 
       setLastExchangeConnectFailure((currentFailure) =>
@@ -543,7 +543,7 @@ export function AppProvider({ children }: AppProviderProps) {
     exchangeConnectInFlight.current = true;
 
     try {
-      const result = await window.radApp.exchange.connect(trimmedUserPrincipalName);
+      const result = await window.groupsConsole.exchange.connect(trimmedUserPrincipalName);
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
         setLastExchangeConnectFailure(result.detail);
@@ -574,7 +574,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setPendingAction("graphConnect");
     clearError("graph");
     try {
-      const result = await window.radApp.graph.connect();
+      const result = await window.groupsConsole.graph.connect();
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, graph: result.detail }));
         return;
@@ -613,7 +613,7 @@ export function AppProvider({ children }: AppProviderProps) {
     clearError("exchange");
 
     try {
-      const capabilities = await window.radApp.exchange.installModule();
+      const capabilities = await window.groupsConsole.exchange.installModule();
       if (capabilities.status !== "ready") {
         setActionErrors((prev) => ({ ...prev, exchange: capabilities.detail }));
       }
@@ -641,7 +641,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setPendingAction("graphDisconnect");
     clearError("graph");
     try {
-      const result = await window.radApp.graph.disconnect();
+      const result = await window.groupsConsole.graph.disconnect();
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, graph: result.detail }));
       }
@@ -679,7 +679,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setPendingAction("exchangeDisconnect");
     clearError("exchange");
     try {
-      const result = await window.radApp.exchange.disconnect();
+      const result = await window.groupsConsole.exchange.disconnect();
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
       } else {
@@ -708,7 +708,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setMembershipMatrixGeneration(createGeneratingMembershipMatrixState(kind));
 
     try {
-      const result = await window.radApp.reports.generateMembershipMatrix(
+      const result = await window.groupsConsole.reports.generateMembershipMatrix(
         { kind },
         (event: ProgressEvent) => {
           setMembershipMatrixGeneration((previous) =>

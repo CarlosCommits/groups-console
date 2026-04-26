@@ -21,7 +21,7 @@ The app is still evolving. It is already useful for real tenant workflows, but t
 ## Architecture at a glance
 
 - **Renderer:** React UI running in a sandboxed Electron renderer
-- **Preload:** narrow typed `window.radApp` bridge
+- **Preload:** narrow typed `window.groupsConsole` bridge
 - **Main process:** orchestration, dialogs, logging, diagnostics, Graph integration
 - **Exchange layer:** app-owned PowerShell worker/session host for Exchange Online operations
 - **Shared contracts:** Zod-validated DTOs and IPC contracts under `src/shared/**`

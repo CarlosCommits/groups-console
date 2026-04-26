@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/main/powershell/execute-radapp-worker-command', () => ({
-  executeRadAppWorkerCommand: vi.fn(),
+vi.mock('@/main/powershell/execute-powershell-worker-command', () => ({
+  executePowerShellWorkerCommand: vi.fn(),
 }));
 
-import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from '@/main/powershell/execute-powershell-worker-command';
 
 import { inspectLocalPowerShellEnvironment } from './powershell-inspection';
 
 describe('inspectLocalPowerShellEnvironment', () => {
   it('parses executed worker output into a detected runtime result', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'executed',
       runtime: {
         command: 'powershell.exe',
@@ -43,7 +43,7 @@ describe('inspectLocalPowerShellEnvironment', () => {
   });
 
   it('maps worker errors into probe-error results', async () => {
-    vi.mocked(executeRadAppWorkerCommand).mockResolvedValue({
+    vi.mocked(executePowerShellWorkerCommand).mockResolvedValue({
       kind: 'worker-error',
       detail: 'Worker failed to start.',
     });

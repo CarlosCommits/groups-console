@@ -826,7 +826,7 @@ export function GroupsScreen() {
     const timer = setTimeout(() => {
       setAddSearchLoading(true);
       setAddSearchError(null);
-      window.radApp.recipients
+      window.groupsConsole.recipients
         .search({ query: addSearchQuery.trim(), types: CANDIDATE_SEARCH_TYPES })
         .then((result) => {
           if (!cancelled) {
@@ -1021,7 +1021,7 @@ export function GroupsScreen() {
     setUpdatePending(false);
 
     try {
-      const result = await window.radApp.recipients.search({
+      const result = await window.groupsConsole.recipients.search({
         query: member.primaryEmail ?? member.displayName,
         types: memberSearchTypes(member),
         limit: 25,

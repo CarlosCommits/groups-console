@@ -2,16 +2,16 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\commands\connect-exchange.ps1')
 }
 
-Describe 'Invoke-RadAppConnectExchange' {
+Describe 'Invoke-GroupsConsoleConnectExchange' {
     BeforeEach {
-        $script:RadAppExchangeConnectionContext = $null
+        $script:GroupsConsoleExchangeConnectionContext = $null
         $script:statusResult = @{
             state             = 'connected'
             userPrincipalName = 'ccanas@theesa.com'
             tenantId          = '90e9e865-badf-483e-b6ba-440486db0fd6'
         }
 
-        Mock Get-RadAppExchangeConnectionStatus {
+        Mock Get-GroupsConsoleExchangeConnectionStatus {
             return $script:statusResult
         }
 
@@ -39,7 +39,7 @@ Describe 'Invoke-RadAppConnectExchange' {
 
         Mock Connect-ExchangeOnline {}
 
-        $result = Invoke-RadAppConnectExchange -Payload @{
+        $result = Invoke-GroupsConsoleConnectExchange -Payload @{
             userPrincipalName = 'ccanas@theesa.com'
         }
 
@@ -61,7 +61,7 @@ Describe 'Invoke-RadAppConnectExchange' {
 
         Mock Connect-ExchangeOnline {}
 
-        $result = Invoke-RadAppConnectExchange -Payload @{
+        $result = Invoke-GroupsConsoleConnectExchange -Payload @{
             userPrincipalName = 'ccanas@theesa.com'
         }
 

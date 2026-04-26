@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from '@/main/powershell/execute-powershell-worker-command';
 import {
   exchangeCapabilitiesSchema,
   type ExchangeCapabilities,
@@ -36,7 +36,7 @@ const exchangeInstallResultSchema = z.object({
 });
 
 export async function installExchangeModule(): Promise<ExchangeCapabilities> {
-  const execution = await executeRadAppWorkerCommand('exchange.installModule', {
+  const execution = await executePowerShellWorkerCommand('exchange.installModule', {
     timeoutMs: 180_000,
   });
 

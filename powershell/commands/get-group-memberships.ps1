@@ -1,10 +1,10 @@
-function Invoke-RadAppGetGroupMemberships {
+function Invoke-GroupsConsoleGetGroupMemberships {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before reading group memberships.'
     }
 
@@ -36,7 +36,7 @@ function Invoke-RadAppGetGroupMemberships {
         throw "Exchange recipient '$exchangeIdentity' does not have a DistinguishedName for membership lookup."
     }
 
-    function ConvertTo-RadAppOPathStringLiteral {
+    function ConvertTo-GroupsConsoleOPathStringLiteral {
         param(
             [Parameter(Mandatory = $true)]
             [string]$Value
@@ -51,7 +51,7 @@ function Invoke-RadAppGetGroupMemberships {
         return "'$($Value.Replace("'", "''"))'"
     }
 
-    $distinguishedNameFilterLiteral = ConvertTo-RadAppOPathStringLiteral -Value $distinguishedName
+    $distinguishedNameFilterLiteral = ConvertTo-GroupsConsoleOPathStringLiteral -Value $distinguishedName
 
     $memberObjectId = if ($resolvedRecipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $resolvedRecipient.ExternalDirectoryObjectId) {
         [string]$resolvedRecipient.ExternalDirectoryObjectId
@@ -88,7 +88,7 @@ function Invoke-RadAppGetGroupMemberships {
         $null
     }
 
-    function ConvertTo-RadAppGroupMembershipItem {
+    function ConvertTo-GroupsConsoleGroupMembershipItem {
         param(
             [Parameter(Mandatory = $true)]
             $ResolvedGroup
@@ -137,7 +137,7 @@ function Invoke-RadAppGetGroupMemberships {
     $items = @(
         Get-DistributionGroup -ResultSize Unlimited -IncludeManagedByWithDisplayNames -Filter "Members -eq $distinguishedNameFilterLiteral" -ErrorAction Stop |
             ForEach-Object {
-                $membershipItem = ConvertTo-RadAppGroupMembershipItem -ResolvedGroup $_
+                $membershipItem = ConvertTo-GroupsConsoleGroupMembershipItem -ResolvedGroup $_
                 if ($null -ne $membershipItem) {
                     $membershipItem
                 }

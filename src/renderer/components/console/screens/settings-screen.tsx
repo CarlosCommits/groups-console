@@ -477,7 +477,7 @@ export function SettingsScreen() {
               disabled={
                 diagnosticsPending ||
                 isHydrating ||
-                !window.radApp?.diagnostics ||
+                !window.groupsConsole?.diagnostics ||
                 logDirectoryCheck?.status !== "ready"
               }
               onClick={() => {
@@ -485,7 +485,7 @@ export function SettingsScreen() {
                   setDiagnosticsPending(true);
                   setDiagnosticsMessage(null);
                   try {
-                    const result = await window.radApp.diagnostics.export();
+                    const result = await window.groupsConsole.diagnostics.export();
                     setDiagnosticsMessage(`Diagnostics exported to ${result.outputPath}.`);
                   } catch (error) {
                     setDiagnosticsMessage(

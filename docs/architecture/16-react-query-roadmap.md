@@ -39,7 +39,7 @@ This means the app currently has duplicated loading logic, no shared renderer-si
 
 ## Why TanStack Query fits this repo
 
-TanStack Query is a good fit for the renderer because the preload layer already exposes promise-returning methods on `window.radApp`. The app does not need HTTP-specific APIs to benefit from query caching, background refresh, and invalidation.
+TanStack Query is a good fit for the renderer because the preload layer already exposes promise-returning methods on `window.groupsConsole`. The app does not need HTTP-specific APIs to benefit from query caching, background refresh, and invalidation.
 
 For this repo specifically, the strongest immediate fit is shared Exchange read data:
 
@@ -63,7 +63,7 @@ The rollout should preserve a clear split of responsibilities.
 
 ### TanStack Query should own
 
-- shared read caches backed by `window.radApp`
+- shared read caches backed by `window.groupsConsole`
 - background refresh for read queries
 - cache invalidation after successful writes
 - read deduplication across screens
@@ -92,7 +92,7 @@ This keeps query policy centralized and allows AppContext-owned actions to inval
 
 ### 2. Renderer-only query layer
 
-Keep query functions in the renderer and back them with the existing `window.radApp` preload bridge.
+Keep query functions in the renderer and back them with the existing `window.groupsConsole` preload bridge.
 
 Do not change the IPC contract boundary to accommodate TanStack Query. The contract in `src/shared/contracts` and the preload bridge in `src/preload/index.ts` remain the source of truth.
 

@@ -2,9 +2,9 @@ import { constants as fsConstants } from 'node:fs';
 import { access, mkdir, readFile } from 'node:fs/promises';
 
 import {
-  getRadAppDevTenantConfigPath,
-  getRadAppLogDirectory,
-  getRadAppTenantConfigPath,
+  getGroupsConsoleDevTenantConfigPath,
+  getGroupsConsoleLogDirectory,
+  getGroupsConsoleTenantConfigPath,
 } from '@/main/app/paths';
 import { isPackagedRuntime } from '@/main/app/runtime-mode';
 import type { BootstrapCheck } from '@/shared/dto/session-status';
@@ -12,7 +12,7 @@ import type { BootstrapCheck } from '@/shared/dto/session-status';
 export type LocalBootstrapCheck = Pick<BootstrapCheck, 'status' | 'detail'>;
 
 export async function checkLogDirectoryReadiness(
-  logDirectory = getRadAppLogDirectory(),
+  logDirectory = getGroupsConsoleLogDirectory(),
 ): Promise<LocalBootstrapCheck> {
   try {
     await mkdir(logDirectory, { recursive: true });
@@ -33,12 +33,12 @@ export async function checkLogDirectoryReadiness(
 }
 
 export async function checkTenantConfigPresence(
-  tenantConfigPath = getRadAppTenantConfigPath(),
+  tenantConfigPath = getGroupsConsoleTenantConfigPath(),
 ): Promise<LocalBootstrapCheck> {
   const candidatePaths = [tenantConfigPath];
 
   if (!isPackagedRuntime()) {
-    const devTenantConfigPath = getRadAppDevTenantConfigPath();
+    const devTenantConfigPath = getGroupsConsoleDevTenantConfigPath();
     if (devTenantConfigPath !== tenantConfigPath) {
       candidatePaths.push(devTenantConfigPath);
     }

@@ -9,12 +9,12 @@ vi.mock('node:child_process', () => ({
 }));
 
 vi.mock('@/main/app/paths', () => ({
-  getRadAppWorkerScriptPath: () => 'C:/GroupsConsole/powershell/bootstrap/worker.ps1',
+  getGroupsConsoleWorkerScriptPath: () => 'C:/GroupsConsole/powershell/bootstrap/worker.ps1',
 }));
 
-import { executeRadAppWorkerCommand } from './execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from './execute-powershell-worker-command';
 
-describe('executeRadAppWorkerCommand', () => {
+describe('executePowerShellWorkerCommand', () => {
   const originalPlatform = process.platform;
 
   beforeEach(() => {
@@ -32,7 +32,7 @@ describe('executeRadAppWorkerCommand', () => {
       value: 'linux',
     });
 
-    const result = await executeRadAppWorkerCommand('exchange.getCapabilities');
+    const result = await executePowerShellWorkerCommand('exchange.getCapabilities');
 
     expect(result.kind).toBe('unsupported-host');
   });
@@ -64,7 +64,7 @@ describe('executeRadAppWorkerCommand', () => {
         },
       );
 
-    const result = await executeRadAppWorkerCommand('exchange.getCapabilities');
+    const result = await executePowerShellWorkerCommand('exchange.getCapabilities');
 
     expect(execFileMock).toHaveBeenNthCalledWith(
       1,

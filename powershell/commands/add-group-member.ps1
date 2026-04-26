@@ -1,10 +1,10 @@
-function Invoke-RadAppAddGroupMembers {
+function Invoke-GroupsConsoleAddGroupMembers {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before adding group members.'
     }
 
@@ -102,7 +102,7 @@ function Invoke-RadAppAddGroupMembers {
 
         $isAlreadyMember = $false
         foreach ($existingMember in $existingMembers) {
-            if (Test-RadAppRecipientIdentityMatch -LeftRecipient $existingMember -RightMember $normalizedMember) {
+            if (Test-GroupsConsoleRecipientIdentityMatch -LeftRecipient $existingMember -RightMember $normalizedMember) {
                 $isAlreadyMember = $true
                 break
             }
@@ -151,7 +151,7 @@ function Invoke-RadAppAddGroupMembers {
         foreach ($addedMember in $addedMembers) {
             $isVerified = $false
             foreach ($verifiedMember in $verifiedMembers) {
-                if (Test-RadAppRecipientIdentityMatch -LeftRecipient $verifiedMember -RightMember $addedMember) {
+                if (Test-GroupsConsoleRecipientIdentityMatch -LeftRecipient $verifiedMember -RightMember $addedMember) {
                     $isVerified = $true
                     break
                 }
@@ -200,7 +200,7 @@ function Invoke-RadAppAddGroupMembers {
     }
 }
 
-function Test-RadAppRecipientIdentityMatch {
+function Test-GroupsConsoleRecipientIdentityMatch {
     param(
         [Parameter(Mandatory = $true)]
         $LeftRecipient,
