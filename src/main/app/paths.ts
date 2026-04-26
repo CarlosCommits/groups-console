@@ -16,6 +16,14 @@ export function getGroupsConsoleDevTenantConfigPath(): string {
   return path.join(app.getAppPath(), 'config', 'tenant.json');
 }
 
+export function getGroupsConsoleBundledTenantConfigPath(): string {
+  if (isPackagedRuntime()) {
+    return path.join(process.resourcesPath, 'config', 'tenant.json');
+  }
+
+  return getGroupsConsoleDevTenantConfigPath();
+}
+
 export function getGroupsConsoleLogDirectory(): string {
   return path.join(app.getPath('userData'), 'logs');
 }

@@ -2,11 +2,10 @@ import { constants as fsConstants } from 'node:fs';
 import { access, mkdir, readFile } from 'node:fs/promises';
 
 import {
-  getGroupsConsoleDevTenantConfigPath,
+  getGroupsConsoleBundledTenantConfigPath,
   getGroupsConsoleLogDirectory,
   getGroupsConsoleTenantConfigPath,
 } from '@/main/app/paths';
-import { isPackagedRuntime } from '@/main/app/runtime-mode';
 import type { BootstrapCheck } from '@/shared/dto/session-status';
 
 export type LocalBootstrapCheck = Pick<BootstrapCheck, 'status' | 'detail'>;
@@ -37,11 +36,9 @@ export async function checkTenantConfigPresence(
 ): Promise<LocalBootstrapCheck> {
   const candidatePaths = [tenantConfigPath];
 
-  if (!isPackagedRuntime()) {
-    const devTenantConfigPath = getGroupsConsoleDevTenantConfigPath();
-    if (devTenantConfigPath !== tenantConfigPath) {
-      candidatePaths.push(devTenantConfigPath);
-    }
+  const bundledTenantConfigPath = getGroupsConsoleBundledTenantConfigPath();
+  if (bundledTenantConfigPath !== tenantConfigPath) {
+    candidatePaths.push(bundledTenantConfigPath);
   }
 
   let firstMissingPath: string | null = null;

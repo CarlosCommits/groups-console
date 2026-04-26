@@ -63,13 +63,15 @@ export class GraphSessionManager {
 
         const organization = await fetchGraphOrganization(authResult.accessToken);
 
-        if (organization.id !== config.tenantId) {
+        const allowedTenantIds = getAllowedTenantIds(config);
+
+        if (allowedTenantIds.length > 0 && !allowedTenantIds.includes(organization.id)) {
           await signOutGraphAccount(publicClient, account);
           this.session = null;
 
           return createGraphErrorStatus(
             config,
-            `Authenticated tenant ${organization.id} did not match configured tenant ${config.tenantId}.`,
+            `Authenticated tenant ${organization.id} is not allowed by this app configuration.`,
           );
         }
 
@@ -91,7 +93,7 @@ export class GraphSessionManager {
           state: 'connected',
           detail: 'Connected to Microsoft Graph.',
           authMethod: 'interactiveBrowser',
-          configuredTenantId: this.session.config.tenantId,
+          configuredTenantId: getConfiguredTenantId(this.session.config),
           tenantId: this.session.tenantId,
           tenantDisplayName: this.session.tenantDisplayName,
           accountUsername: this.session.account.username,
@@ -132,7 +134,7 @@ export class GraphSessionManager {
           state: 'connected',
           detail: 'Connected to Microsoft Graph.',
           authMethod: 'interactiveBrowser',
-          configuredTenantId: this.session.config.tenantId,
+          configuredTenantId: getConfiguredTenantId(this.session.config),
           tenantId: this.session.tenantId,
           tenantDisplayName: this.session.tenantDisplayName,
           accountUsername: this.session.account.username,
@@ -287,7 +289,7 @@ function createGraphDisconnectedStatus(
     state: 'disconnected',
     detail,
     authMethod: null,
-    configuredTenantId: config?.tenantId ?? null,
+    configuredTenantId: config ? getConfiguredTenantId(config) : null,
     tenantId: null,
     tenantDisplayName: null,
     accountUsername: null,
@@ -307,7 +309,7 @@ function createGraphErrorStatus(
     state: 'error',
     detail,
     authMethod: null,
-    configuredTenantId: config?.tenantId ?? null,
+    configuredTenantId: config ? getConfiguredTenantId(config) : null,
     tenantId: null,
     tenantDisplayName: null,
     accountUsername: null,
@@ -345,4 +347,28 @@ async function determineExchangeAlignment(graphTenantId: string): Promise<'match
   }
 
   return exchangeStatus.tenantId === graphTenantId ? 'matched' : 'mismatched';
+}
+
+function getAllowedTenantIds(config: TenantConfig): string[] {
+  const allowedTenantIds = config.graph.allowedTenantIds ?? [];
+
+  if (config.tenantId) {
+    return Array.from(new Set([config.tenantId, ...allowedTenantIds]));
+  }
+
+  return allowedTenantIds;
+}
+
+function getConfiguredTenantId(config: TenantConfig): string | null {
+  if (config.tenantId) {
+    return config.tenantId;
+  }
+
+  const allowedTenantIds = config.graph.allowedTenantIds ?? [];
+
+  if (allowedTenantIds.length === 1) {
+    return allowedTenantIds[0] ?? null;
+  }
+
+  return null;
 }
