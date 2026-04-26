@@ -73,6 +73,14 @@ type GraphErrorResponse = {
   };
 };
 
+type GuestProfilePatch = {
+  companyName?: string;
+  jobTitle?: string;
+  department?: string;
+  officeLocation?: string;
+  mobilePhone?: string;
+};
+
 export class GraphRequestError extends Error {
   readonly statusCode: number;
   readonly backendCode?: string;
@@ -278,6 +286,28 @@ export async function inviteGraphGuest(
           inviteRedirectUrl,
           invitedUserDisplayName: payload.displayName,
           sendInvitationMessage: payload.sendInvitationMessage ?? false,
+          ...(payload.sendInvitationMessage &&
+          (payload.invitationMessage ||
+            payload.invitationCcEmail)
+            ? {
+                invitedUserMessageInfo: {
+                  ...(payload.invitationMessage
+                    ? { customizedMessageBody: payload.invitationMessage }
+                    : {}),
+                  ...(payload.invitationCcEmail
+                    ? {
+                        ccRecipients: [
+                          {
+                            emailAddress: {
+                              address: payload.invitationCcEmail,
+                            },
+                          },
+                        ],
+                      }
+                    : {}),
+                },
+              }
+            : {}),
         }),
       },
     ),
@@ -286,31 +316,26 @@ export async function inviteGraphGuest(
   let companyUpdate = {
     attempted: false,
     updated: false,
-    detail: 'No company update was requested.',
+    detail: 'No profile update was requested.',
   };
   let appliedCompanyName: string | null = null;
+  const profilePatch = getGuestProfilePatch(payload);
 
-  if (payload.companyName) {
+  if (profilePatch) {
     try {
-      const updateResult = await updateGraphGuestCompany(accessToken, {
-        guestUserId: invitation.invitedUser.id,
-        companyName: payload.companyName,
-      });
+      const updateResult = await updateGraphGuestProfile(accessToken, invitation.invitedUser.id, profilePatch);
 
       companyUpdate = {
         attempted: true,
-        updated: updateResult.verification.companyApplied,
-        detail: updateResult.verification.detail,
+        updated: updateResult.applied,
+        detail: updateResult.detail,
       };
-      appliedCompanyName = updateResult.verification.companyApplied ? updateResult.companyName : null;
+      appliedCompanyName = updateResult.companyName;
     } catch (error) {
       companyUpdate = {
         attempted: true,
         updated: false,
-        detail:
-          error instanceof Error
-            ? error.message
-            : 'Guest company update failed after the invitation was created.',
+        detail: formatGuestProfileUpdateFailure(error),
       };
     }
   }
@@ -409,6 +434,72 @@ export async function updateGraphGuestCompany(
       },
     };
   }
+}
+
+function getGuestProfilePatch(payload: GuestsInvitePayload): GuestProfilePatch | null {
+  const patch: GuestProfilePatch = {};
+  if (payload.companyName) patch.companyName = payload.companyName;
+  if (payload.jobTitle) patch.jobTitle = payload.jobTitle;
+  if (payload.department) patch.department = payload.department;
+  if (payload.officeLocation) patch.officeLocation = payload.officeLocation;
+  if (payload.mobilePhone) patch.mobilePhone = payload.mobilePhone;
+
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
+async function updateGraphGuestProfile(
+  accessToken: string,
+  guestUserId: string,
+  patch: GuestProfilePatch,
+): Promise<{ applied: boolean; companyName: string | null; detail: string }> {
+  await graphFetchJson(`https://graph.microsoft.com/v1.0/users/${guestUserId}`, accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+
+  try {
+    const verifiedGuest = graphUserSchema.parse(
+      await graphFetchJson(
+        `https://graph.microsoft.com/v1.0/users/${guestUserId}?$select=id,companyName,jobTitle,department,officeLocation,mobilePhone`,
+        accessToken,
+      ),
+    );
+    const applied =
+      (patch.companyName === undefined || (verifiedGuest.companyName ?? null) === patch.companyName) &&
+      (patch.jobTitle === undefined || (verifiedGuest.jobTitle ?? null) === patch.jobTitle) &&
+      (patch.department === undefined || (verifiedGuest.department ?? null) === patch.department) &&
+      (patch.officeLocation === undefined || (verifiedGuest.officeLocation ?? null) === patch.officeLocation) &&
+      (patch.mobilePhone === undefined || (verifiedGuest.mobilePhone ?? null) === patch.mobilePhone);
+
+    return {
+      applied,
+      companyName: verifiedGuest.companyName ?? null,
+      detail: applied
+        ? 'Verified guest profile details.'
+        : 'Guest profile update succeeded, but verification did not match every requested value.',
+    };
+  } catch {
+    return {
+      applied: false,
+      companyName: patch.companyName ?? null,
+      detail: 'Guest profile update was attempted, but verification could not read the guest user.',
+    };
+  }
+}
+
+function formatGuestProfileUpdateFailure(error: unknown): string {
+  if (error instanceof GraphRequestError && error.statusCode === 403) {
+    return [
+      'Guest was invited, but Microsoft Graph denied the profile update.',
+      'Tell your Microsoft/IT admin you need the Microsoft Entra User Administrator role, or an equivalent custom role that can update basic user properties, plus tenant-admin consent for this app\'s delegated Microsoft Graph User.ReadWrite.All permission.',
+    ].join(' ');
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Guest profile update failed after the invitation was created.';
 }
 
 function matchesGuestQuery(user: GraphUser, query: string): boolean {

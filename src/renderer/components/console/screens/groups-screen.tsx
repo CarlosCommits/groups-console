@@ -98,8 +98,14 @@ import {
   useContactDetailsQuery,
 } from "@/renderer/hooks/use-contact-details";
 import {
+  useUpdateContactCompanyMutation,
+} from "@/renderer/hooks/use-contact-mutations";
+import {
   useGuestDetailsQuery,
 } from "@/renderer/hooks/use-guest-details";
+import {
+  useUpdateGuestCompanyMutation,
+} from "@/renderer/hooks/use-guest-mutations";
 import {
   useExchangeRecipientDetailsQuery,
 } from "@/renderer/hooks/use-exchange-recipient-details";
@@ -124,6 +130,12 @@ import type {
   RecipientSearchType,
   RecipientsSearchResult,
 } from "@/shared/contracts/recipients";
+import type {
+  ContactsUpdateCompanyResult,
+} from "@/shared/contracts/contacts";
+import type {
+  GuestsUpdateCompanyResult,
+} from "@/shared/contracts/guests";
 
 const GROUP_KIND_LABELS: Record<ExchangeGroupListItem["groupKind"], string> = {
   distributionList: "Distribution",
@@ -370,6 +382,35 @@ function candidateDisableReason(candidate: RecipientSearchItem): string | null {
   return null;
 }
 
+function canUpdateCompany(
+  item: RecipientSearchItem,
+  exchangeConnected: boolean,
+  graphConnected: boolean,
+  graphTenantMatched: boolean,
+): boolean {
+  if (
+    item.recipientType === "mailContact" &&
+    item.exchangeIdentity !== null &&
+    exchangeConnected
+  ) {
+    return true;
+  }
+  if (
+    item.recipientType === "guestUser" &&
+    item.objectId !== null &&
+    graphConnected &&
+    graphTenantMatched
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function getUpdateMode(item: RecipientSearchItem): "contact" | "guest" {
+  if (item.recipientType === "mailContact") return "contact";
+  return "guest";
+}
+
 function isAddStatusClean(status: GroupsAddMembersResult["items"][number]["status"]): boolean {
   return status === "added" || status === "alreadyMember";
 }
@@ -455,6 +496,8 @@ export function GroupsScreen() {
   const { shell, groupsScreenState, setGroupsScreenState } = useApp();
   const exchangeConnection = shell.exchangeConnection;
   const exchangeConnected = exchangeConnection?.state === "connected";
+  const graphConnected = shell.graphConnection?.state === "connected";
+  const graphTenantMatched = shell.graphConnection?.exchangeAlignment === "matched";
   const {
     groups,
     appliedKind,
@@ -563,6 +606,14 @@ export function GroupsScreen() {
   const showStaleMembersError = membersError !== null && hasMembersData;
   const addGroupMembersMutation = useAddGroupMembersMutation(exchangeConnection);
   const removeGroupMembersMutation = useRemoveGroupMembersMutation(exchangeConnection);
+  const updateContactCompanyMutation = useUpdateContactCompanyMutation(
+    exchangeConnection,
+    shell.graphConnection,
+  );
+  const updateGuestCompanyMutation = useUpdateGuestCompanyMutation(
+    exchangeConnection,
+    shell.graphConnection,
+  );
   const normalizedActiveTab = activeTab === "settings" ? "details" : activeTab;
   const detailResolved = detailDialogOpen && detailResolvePendingKey === null && detailResolveError === null;
 
@@ -624,6 +675,13 @@ export function GroupsScreen() {
     [filteredAvailableGroups, selectedGroupKeys],
   );
   const hasHiddenSelectedGroups = selectedGroupKeys.size > visibleSelectedGroupsCount;
+  const [updateCompanyName, setUpdateCompanyName] = useState("");
+  const [updatePending, setUpdatePending] = useState(false);
+  const [updateResult, setUpdateResult] = useState<
+    | { mode: "contact"; data: ContactsUpdateCompanyResult }
+    | { mode: "guest"; data: GuestsUpdateCompanyResult }
+    | null
+  >(null);
 
   const activeDetailState = useMemo(() => {
     if (detailResolvePendingKey !== null) {
@@ -700,6 +758,15 @@ export function GroupsScreen() {
     guestDetailsQuery.isLoading,
     guestDetailsQuery.refetch,
   ]);
+
+  const detailCanUpdateCompany = detailTarget
+    ? canUpdateCompany(
+        detailTarget,
+        exchangeConnected,
+        graphConnected,
+        graphTenantMatched,
+      )
+    : false;
 
   useEffect(() => {
     if (groupsLoading) {
@@ -886,6 +953,56 @@ export function GroupsScreen() {
     }
   }, [selectedGroup, removeConfirmTarget, removeGroupMembersMutation]);
 
+  const handleUpdateSubmit = useCallback(async () => {
+    if (!detailTarget) return;
+    setUpdatePending(true);
+    setUpdateResult(null);
+    try {
+      const mode = getUpdateMode(detailTarget);
+      if (mode === "contact") {
+        const result = await updateContactCompanyMutation.mutateAsync({
+          payload: {
+            exchangeIdentity: detailTarget.exchangeIdentity!,
+            companyName: updateCompanyName.trim(),
+          },
+          stableKey: detailTarget.stableKey,
+        });
+        setUpdateResult({ mode: "contact", data: result });
+        if (result.verification.companyApplied) {
+          toast.success("Company updated", { description: result.verification.detail });
+        } else {
+          toast.warning("Company update needs attention", { description: result.verification.detail });
+        }
+      } else {
+        const result = await updateGuestCompanyMutation.mutateAsync({
+          payload: {
+            guestUserId: detailTarget.objectId!,
+            companyName: updateCompanyName.trim(),
+          },
+          stableKey: detailTarget.stableKey,
+        });
+        setUpdateResult({ mode: "guest", data: result });
+        if (result.verification.companyApplied) {
+          toast.success("Company updated", { description: result.verification.detail });
+        } else {
+          toast.warning("Company update needs attention", { description: result.verification.detail });
+        }
+      }
+    } catch (err) {
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Update Error", "Operation failed."),
+      );
+      toast.error("Failed to update company", { description: message });
+    } finally {
+      setUpdatePending(false);
+    }
+  }, [
+    detailTarget,
+    updateCompanyName,
+    updateContactCompanyMutation,
+    updateGuestCompanyMutation,
+  ]);
+
   const openMemberDetailDialog = useCallback(async (member: GroupMemberListItem) => {
     if (!isMemberInspectable(member)) return;
 
@@ -899,6 +1016,9 @@ export function GroupsScreen() {
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
     setAddGroupError(null);
+    setUpdateCompanyName(fallbackTarget.companyName ?? "");
+    setUpdateResult(null);
+    setUpdatePending(false);
 
     try {
       const result = await window.radApp.recipients.search({
@@ -918,6 +1038,7 @@ export function GroupsScreen() {
         return;
       }
       setDetailTarget(match);
+      setUpdateCompanyName(match.companyName ?? "");
     } catch (err) {
       if (detailResolveTokenRef.current !== resolveToken) return;
       const message = formatPresentedCommandFailure(
@@ -941,6 +1062,9 @@ export function GroupsScreen() {
     setSelectedGroupKeys(new Set());
     setAddGroupPending(false);
     setAddGroupError(null);
+    setUpdateCompanyName("");
+    setUpdateResult(null);
+    setUpdatePending(false);
   }, []);
 
   const handleToggleGroupSelection = useCallback((exchangeIdentity: string) => {
@@ -1728,11 +1852,11 @@ export function GroupsScreen() {
       <RecipientDetailDialog
         open={detailDialogOpen}
         onOpenChange={(open) => {
-          if (!open && canDismissMutationDialog(addGroupPending || removePending)) {
+          if (!open && canDismissMutationDialog(addGroupPending || removePending || updatePending)) {
             handleDetailClose();
           }
         }}
-        canDismiss={canDismissMutationDialog(addGroupPending || removePending)}
+        canDismiss={canDismissMutationDialog(addGroupPending || removePending || updatePending)}
         detailTarget={detailTarget}
         detailPending={activeDetailState.pending}
         detailError={activeDetailState.error}
@@ -1740,12 +1864,14 @@ export function GroupsScreen() {
         onRefetchDetails={() => {
           void activeDetailState.refetch();
         }}
-        detailCanUpdateCompany={false}
-        updateCompanyName=""
-        onUpdateCompanyNameChange={() => {}}
-        updatePending={false}
-        onUpdateSubmit={() => {}}
-        updateResult={null}
+        detailCanUpdateCompany={detailCanUpdateCompany}
+        updateCompanyName={updateCompanyName}
+        onUpdateCompanyNameChange={setUpdateCompanyName}
+        updatePending={updatePending}
+        onUpdateSubmit={() => {
+          void handleUpdateSubmit();
+        }}
+        updateResult={updateResult}
         memberSelectionRef={detailMemberSelectionRef}
         membershipsLoading={detailMembershipsLoading}
         membershipsError={membershipsQuery.error}
