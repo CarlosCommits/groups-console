@@ -101,7 +101,67 @@ describe('graph-client', () => {
     expect(result.verification.foundGuest).toBe(false);
   });
 
-  it('keeps invite success when optional company update fails', async () => {
+  it('sends optional invitation message settings when Graph sends the email', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'invite-1',
+          status: 'PendingAcceptance',
+          inviteRedeemUrl: 'https://example.com/invite',
+          invitedUser: {
+            id: 'guest-1',
+            displayName: 'Guest Example',
+            userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await inviteGraphGuest(
+      'token',
+      {
+        email: 'guest@example.com',
+        displayName: 'Guest Example',
+        sendInvitationMessage: true,
+        invitationMessage: 'Welcome to the project.',
+        invitationCcEmail: 'manager@example.com',
+      },
+      'https://example.com/complete',
+    );
+
+    const firstRequest = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const rawBody = firstRequest[1].body;
+    if (typeof rawBody !== 'string') {
+      throw new Error('Expected Graph invitation request body to be JSON.');
+    }
+    const requestBody = JSON.parse(rawBody) as {
+      invitedUserMessageInfo?: {
+        customizedMessageBody?: string;
+        ccRecipients?: Array<{ emailAddress?: { address?: string } }>;
+      };
+    };
+
+    expect(requestBody.invitedUserMessageInfo).toEqual({
+      customizedMessageBody: 'Welcome to the project.',
+      ccRecipients: [
+        {
+          emailAddress: {
+            address: 'manager@example.com',
+          },
+        },
+      ],
+    });
+  });
+
+  it('keeps invite success when optional profile update fails', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -139,7 +199,14 @@ describe('graph-client', () => {
 
     const result = await inviteGraphGuest(
       'token',
-      { email: 'guest@example.com', companyName: 'Guest Co' },
+      {
+        email: 'guest@example.com',
+        companyName: 'Guest Co',
+        jobTitle: 'Consultant',
+        department: 'Operations',
+        officeLocation: 'HQ-201',
+        mobilePhone: '+1 555-0100',
+      },
       'https://example.com/complete',
     );
 
@@ -150,7 +217,88 @@ describe('graph-client', () => {
 
     expect(result.invitationId).toBe('invite-1');
     expect(result.companyUpdate.updated).toBe(false);
-    expect(result.companyUpdate.detail).toContain('403');
+    expect(result.companyUpdate.detail).toContain('Microsoft Graph denied the profile update');
+    expect(result.companyUpdate.detail).toContain('Microsoft Entra User Administrator');
+    expect(result.companyUpdate.detail).toContain('User.ReadWrite.All');
+  });
+
+  it('updates requested guest profile fields after invitation creation', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'invite-1',
+          status: 'PendingAcceptance',
+          inviteRedeemUrl: 'https://example.com/invite',
+          invitedUser: {
+            id: 'guest-1',
+            displayName: 'Guest Example',
+            userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'guest-1',
+          companyName: 'Guest Co',
+          jobTitle: 'Consultant',
+          department: 'Operations',
+          officeLocation: 'HQ-201',
+          mobilePhone: '+1 555-0100',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'guest-1',
+          displayName: 'Guest Example',
+          userPrincipalName: 'guest_example.com#EXT#@tenant.onmicrosoft.com',
+          mail: 'guest@example.com',
+          otherMails: ['guest@example.com'],
+          companyName: 'Guest Co',
+          externalUserState: 'PendingAcceptance',
+        }),
+      });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await inviteGraphGuest(
+      'token',
+      {
+        email: 'guest@example.com',
+        companyName: 'Guest Co',
+        jobTitle: 'Consultant',
+        department: 'Operations',
+        officeLocation: 'HQ-201',
+        mobilePhone: '+1 555-0100',
+      },
+      'https://example.com/complete',
+    );
+
+    const profileRequest = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    const rawBody = profileRequest[1].body;
+    if (typeof rawBody !== 'string') {
+      throw new Error('Expected Graph profile request body to be JSON.');
+    }
+
+    expect(JSON.parse(rawBody)).toEqual({
+      companyName: 'Guest Co',
+      jobTitle: 'Consultant',
+      department: 'Operations',
+      officeLocation: 'HQ-201',
+      mobilePhone: '+1 555-0100',
+    });
+    expect(result.outcome).toBe('invited');
+    if (result.outcome !== 'invited') {
+      throw new Error('Expected inviteGraphGuest to return an invited result.');
+    }
+    expect(result.companyUpdate.updated).toBe(true);
   });
 
   it('updates guest company and verifies the new value', async () => {

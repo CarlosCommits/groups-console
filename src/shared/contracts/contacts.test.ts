@@ -15,6 +15,8 @@ describe('contact contracts', () => {
   it('accepts strict contact create payloads', () => {
     expect(() =>
       contactsCreatePayloadSchema.parse({
+        displayName: 'Jane Example',
+        alias: 'jexample',
         firstName: 'Jane',
         lastName: 'Example',
         email: 'jane@example.com',
@@ -23,6 +25,13 @@ describe('contact contracts', () => {
     ).not.toThrow();
 
     expect(() => contactsCreatePayloadSchema.parse({ firstName: 'Jane' })).toThrow();
+    expect(() =>
+      contactsCreatePayloadSchema.parse({
+        displayName: 'Jane Example',
+        alias: 'jane example',
+        email: 'jane@example.com',
+      }),
+    ).toThrow();
   });
 
   it('accepts strict contact company update payloads', () => {

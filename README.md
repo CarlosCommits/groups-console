@@ -102,6 +102,14 @@ If sign-in succeeds but an operation is denied, the app treats that as an author
 
 ## Operator permissions
 
+For full operator access in the current app, the practical role set is:
+
+- **Exchange Recipient Administrator** for Exchange Online recipient work, including contacts, recipient lookup, distribution group membership, and mail-enabled security group membership changes.
+- **Microsoft Entra User Administrator** for Microsoft Graph guest work, including guest invitations and guest profile updates.
+- Tenant-admin consent for the delegated Microsoft Graph scopes requested by the app: `User.Read`, `User.Read.All`, `User.ReadWrite.All`, and `User.Invite.All`.
+
+This is the clean built-in-role answer for an operator who should be able to use every current app workflow. More restrictive setups may be possible with custom Exchange RBAC and tenant-specific Entra policy, but they need to be validated in the target tenant.
+
 ### Microsoft Graph side
 
 For the current guest workflows, the repo documents these practical delegated requirements:

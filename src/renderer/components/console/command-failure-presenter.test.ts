@@ -107,6 +107,28 @@ describe("presentCommandFailure", () => {
       expect(result.title).toBe("Unexpected Error");
     });
 
+    it("maps Graph validation, conflict, and throttling categories to specific titles", () => {
+      const cases = [
+        ["validationFailure", "Validation Failed"],
+        ["conflictFailure", "Conflict Detected"],
+        ["throttlingFailure", "Throttled"],
+      ] as const;
+
+      for (const [category, title] of cases) {
+        const err = makeCommandFailure({
+          classification: {
+            category,
+            remediation: "retryFromFreshState",
+            backend: "graph",
+            operation: "guests.invite",
+            guidance: "Review the Graph failure.",
+          },
+        });
+
+        expect(presentCommandFailure(err, "Fallback", "Fallback body").title).toBe(title);
+      }
+    });
+
     it("uses classification guidance when present", () => {
       const err = makeCommandFailure({
         classification: {
@@ -185,6 +207,9 @@ describe("presentCommandFailure", () => {
       const categories = [
         "connectionFailure",
         "authorizationFailure",
+        "validationFailure",
+        "conflictFailure",
+        "throttlingFailure",
         "unknownFailure",
       ] as const;
       for (const category of categories) {

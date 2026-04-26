@@ -3,6 +3,9 @@ import { z } from 'zod';
 export const runtimeFailureCategorySchema = z.enum([
   'connectionFailure',
   'authorizationFailure',
+  'validationFailure',
+  'conflictFailure',
+  'throttlingFailure',
   'tenantMismatch',
   'unknownFailure',
 ]);
@@ -10,6 +13,9 @@ export const runtimeFailureCategorySchema = z.enum([
 export const runtimeRemediationSchema = z.enum([
   'reconnect',
   'verifyPermissions',
+  'correctInput',
+  'resolveConflict',
+  'retryAfterDelay',
   'reconnectMatchedTenant',
   'retryFromFreshState',
   'contactAdministrator',

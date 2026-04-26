@@ -224,6 +224,8 @@ describe('registerIpcHandlers', () => {
         command: 'contacts.create',
         issuedAt: new Date().toISOString(),
         payload: {
+          displayName: 'Jane Example',
+          alias: 'jexample',
           firstName: 'Jane',
           lastName: 'Example',
           email: 'jane@example.com',
@@ -412,6 +414,8 @@ describe('registerIpcHandlers', () => {
         command: 'contacts.create',
         issuedAt: new Date().toISOString(),
         payload: {
+          displayName: 'Jane Example',
+          alias: 'jexample',
           firstName: 'Jane',
           lastName: 'Example',
           email: 'jane@example.com',
