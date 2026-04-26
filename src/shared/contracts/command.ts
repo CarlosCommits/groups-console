@@ -6,6 +6,7 @@ export const commandNameSchema = z.enum([
   'session.getStatus',
   'systemLogs.listEvents',
   'exchange.getCapabilities',
+  'exchange.installModule',
   'exchange.connect',
   'exchange.getConnectionStatus',
   'exchange.disconnect',

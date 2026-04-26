@@ -2,7 +2,11 @@ import { Plug, Unplug, AlertTriangle, ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/renderer/components/ui/button";
 import { Input } from "@/renderer/components/ui/input";
 import { StatusBadge } from "./status-badge";
-import { useApp } from "./app-context";
+import {
+  deriveExchangePrerequisiteBlocker,
+  useApp,
+  type ExchangePrerequisiteBlocker,
+} from "./app-context";
 import type { AuthSetupStep } from "./shell-readiness";
 
 interface ShellAuthPanelProps {
@@ -65,6 +69,23 @@ function StepDescription({ step }: { step: AuthSetupStep }) {
   }
 }
 
+function ExchangePrerequisiteNotice({ blocker }: { blocker: ExchangePrerequisiteBlocker }) {
+  return (
+    <div className="w-full rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-left">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-semibold text-amber-900">
+            {blocker.title}
+          </p>
+          <p className="text-xs text-amber-800">{blocker.detail}</p>
+          <p className="text-xs font-medium text-amber-900">{blocker.guidance}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
   const {
     shell,
@@ -74,11 +95,16 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
     setExchangeUpn,
     connectGraph,
     disconnectGraph,
+    installExchangeModule,
     connectExchange,
     disconnectExchange,
   } = useApp();
 
   const isBusy = pendingAction !== null || shell.isHydrating;
+  const isGraphConnecting = pendingAction === "graphConnect";
+  const isExchangeModuleInstalling = pendingAction === "exchangeInstallModule";
+  const isExchangeConnecting = pendingAction === "exchangeConnect";
+  const exchangePrerequisiteBlocker = deriveExchangePrerequisiteBlocker(shell);
 
   const panelClass = blocking
     ? "relative overflow-hidden rounded-lg border border-[var(--color-outline-variant)]/25 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbfb_100%)] p-7 shadow-[0_18px_45px_rgba(25,28,30,0.08)]"
@@ -110,17 +136,55 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
       </div>
 
       {setupStep === "graphNeeded" && (
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-5 flex flex-col items-center justify-center gap-3">
+          {exchangePrerequisiteBlocker && (
+            <ExchangePrerequisiteNotice blocker={exchangePrerequisiteBlocker} />
+          )}
           <Button
             size="lg"
-            className="bg-[var(--color-primary)] px-4 text-white shadow-sm hover:bg-[var(--color-primary-container)]"
+            className="gap-2 bg-[var(--color-primary)] px-4 text-white shadow-sm hover:bg-[var(--color-primary-container)]"
             disabled={isBusy}
             onClick={() => { void connectGraph(); }}
           >
-            Connect Graph
+            {isGraphConnecting || isExchangeConnecting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {isExchangeConnecting ? "Signing in to Exchange" : "Connecting Graph"}
+              </>
+            ) : (
+              "Connect Graph"
+            )}
           </Button>
+          {(isGraphConnecting || isExchangeConnecting) && (
+            <p className="text-center text-xs text-[var(--color-outline)]" aria-live="polite">
+              {isExchangeConnecting
+                ? "Graph connected. Signing in to PowerShell Exchange Online..."
+                : "Opening Microsoft Graph sign-in..."}
+            </p>
+          )}
+          {exchangePrerequisiteBlocker?.canInstallModule && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isBusy}
+              onClick={() => { void installExchangeModule(); }}
+            >
+              {isExchangeModuleInstalling ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Installing module...
+                </>
+              ) : (
+                "Install Exchange module"
+              )}
+            </Button>
+          )}
           {actionErrors.graph && (
             <p className="text-xs font-medium text-[var(--color-error)]">{actionErrors.graph}</p>
+          )}
+          {actionErrors.exchange && (
+            <p className="text-xs font-medium text-[var(--color-error)]">{actionErrors.exchange}</p>
           )}
         </div>
       )}
@@ -133,25 +197,28 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
               {shell.graphConnection?.accountUsername ?? ""}
             </span>
           </div>
+          {exchangePrerequisiteBlocker && (
+            <ExchangePrerequisiteNotice blocker={exchangePrerequisiteBlocker} />
+          )}
           <div className="flex items-center gap-2">
             <Input
               className="h-8 text-sm flex-1 max-w-xs"
               placeholder="user@domain.com"
               value={exchangeUpn}
               onChange={(e) => setExchangeUpn(e.target.value)}
-              disabled={isBusy}
+              disabled={isBusy || exchangePrerequisiteBlocker !== null}
             />
             <Button
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={isBusy || exchangeUpn.trim().length === 0}
+              disabled={isBusy || exchangeUpn.trim().length === 0 || exchangePrerequisiteBlocker !== null}
               onClick={() => { void connectExchange(); }}
             >
-              {pendingAction === "exchangeConnect" ? (
+              {isExchangeConnecting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Connecting…
+                  Signing in...
                 </>
               ) : (
                 <>
@@ -161,9 +228,27 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
               )}
             </Button>
           </div>
-          {pendingAction === "exchangeConnect" && (
+          {exchangePrerequisiteBlocker?.canInstallModule && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isBusy}
+              onClick={() => { void installExchangeModule(); }}
+            >
+              {isExchangeModuleInstalling ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Installing module...
+                </>
+              ) : (
+                "Install Exchange module"
+              )}
+            </Button>
+          )}
+          {isExchangeConnecting && (
             <p className="text-xs text-[var(--color-outline)]" aria-live="polite">
-              Connecting to Exchange Online…
+              Signing in to PowerShell Exchange Online...
             </p>
           )}
           {actionErrors.exchange && (
