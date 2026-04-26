@@ -2,7 +2,10 @@ import { execFile } from 'node:child_process';
 
 import { getRadAppWorkerScriptPath } from '@/main/app/paths';
 
-export type RadAppWorkerCommand = 'bootstrap.inspectEnvironment' | 'exchange.getCapabilities';
+export type RadAppWorkerCommand =
+  | 'bootstrap.inspectEnvironment'
+  | 'exchange.getCapabilities'
+  | 'exchange.installModule';
 
 export type WorkerExecutionResult =
   | {
@@ -37,6 +40,7 @@ const WINDOWS_CANDIDATES: Array<{
 
 export async function executeRadAppWorkerCommand(
   workerCommand: RadAppWorkerCommand,
+  options: { timeoutMs?: number } = {},
 ): Promise<WorkerExecutionResult> {
   if (process.platform !== 'win32') {
     return {
@@ -53,6 +57,7 @@ export async function executeRadAppWorkerCommand(
         candidate.command,
         workerScriptPath,
         workerCommand,
+        options,
       );
 
       return {
@@ -94,6 +99,7 @@ function execPowerShellWorker(
   command: 'powershell.exe' | 'pwsh.exe',
   workerScriptPath: string,
   workerCommand: RadAppWorkerCommand,
+  options: { timeoutMs?: number },
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     execFile(
@@ -111,7 +117,7 @@ function execPowerShellWorker(
       ],
       {
         windowsHide: true,
-        timeout: 10_000,
+        timeout: options.timeoutMs ?? 10_000,
         maxBuffer: 1024 * 1024,
       },
       (error, stdout, stderr) => {
