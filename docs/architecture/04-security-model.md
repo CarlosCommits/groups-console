@@ -33,13 +33,17 @@ Privileged orchestrator. It validates IPC sender, validates payloads again, sele
 
 Runs only allowlisted scripts/functions packaged with the app. It must not accept free-form PowerShell expressions from the UI or from arbitrary app state.
 
-## Authentication model for v1
+## Authentication and prerequisite model
 
 - delegated interactive auth only
 - no password storage
 - Graph sign-in uses system-browser-based auth flow
 - Exchange Online uses native modern-auth flow launched by the worker
 - app must validate tenant identity after both sessions connect
+- startup/bootstrap checks validate local prerequisites before the app presents a ready state
+- the auth panel may block Exchange sign-in and surface remediation when PowerShell is missing, ExchangeOnlineManagement is missing, or ExchangeOnlineManagement is installed but not importable
+- missing ExchangeOnlineManagement can be remediated through the narrow `exchange.installModule` IPC command; the renderer still cannot run arbitrary PowerShell or choose arbitrary modules
+- prerequisite remediation must not silently change persistent ExecutionPolicy
 
 ## Authorization requirements
 
