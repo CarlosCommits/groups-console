@@ -1,10 +1,10 @@
-function Invoke-RadAppExportReportData {
+function Invoke-GroupsConsoleExportReportData {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before generating report data.'
     }
 
@@ -19,7 +19,7 @@ function Invoke-RadAppExportReportData {
         throw "Unsupported report kind '$appliedKind'."
     }
 
-    Write-RadAppProgress -Phase 'preflight' -Message 'Collecting Exchange groups for report export.' -Percent 5
+    Write-GroupsConsoleProgress -Phase 'preflight' -Message 'Collecting Exchange groups for report export.' -Percent 5
 
     $groups = @(Get-DistributionGroup -ResultSize Unlimited | Sort-Object DisplayName, PrimarySmtpAddress)
     if ($appliedKind -eq 'distributionList') {
@@ -68,7 +68,7 @@ function Invoke-RadAppExportReportData {
         })
 
         $progressPercent = [Math]::Min(85, [int](5 + ((($index + 1) / $totalGroups) * 80)))
-        Write-RadAppProgress -Phase 'executing' -Message "Reading members for group '$($group.DisplayName)'." -Percent $progressPercent
+        Write-GroupsConsoleProgress -Phase 'executing' -Message "Reading members for group '$($group.DisplayName)'." -Percent $progressPercent
 
         $members = @(Get-DistributionGroupMember -Identity $group.Identity -ResultSize Unlimited)
         foreach ($member in $members) {
@@ -102,7 +102,7 @@ function Invoke-RadAppExportReportData {
                 [string]$member.WindowsEmailAddress
             }
             elseif ($member.PSObject.Properties.Name -contains 'ExternalEmailAddress' -and $member.ExternalEmailAddress) {
-                Get-RadAppNormalizedExternalEmailAddress -MailContact $member
+                Get-GroupsConsoleNormalizedExternalEmailAddress -MailContact $member
             }
             else {
                 $null
@@ -116,7 +116,7 @@ function Invoke-RadAppExportReportData {
             }
 
             if (-not $rowsByKey.ContainsKey($stableRecipientKey)) {
-                $companyName = Get-RadAppReportRecipientCompanyName -Recipient $member -RecipientType $recipientType
+                $companyName = Get-GroupsConsoleReportRecipientCompanyName -Recipient $member -RecipientType $recipientType
 
                 $rowsByKey[$stableRecipientKey] = @{
                     stableRecipientKey = $stableRecipientKey
@@ -139,7 +139,7 @@ function Invoke-RadAppExportReportData {
         }
     }
 
-    Write-RadAppProgress -Phase 'verifying' -Message 'Normalizing membership matrix rows.' -Percent 92
+    Write-GroupsConsoleProgress -Phase 'verifying' -Message 'Normalizing membership matrix rows.' -Percent 92
 
     $normalizedRows = @(
         $rowsByKey.Values |
@@ -173,7 +173,7 @@ function Invoke-RadAppExportReportData {
     }
 }
 
-function Get-RadAppReportRecipientCompanyName {
+function Get-GroupsConsoleReportRecipientCompanyName {
     param(
         [Parameter(Mandatory = $true)]
         $Recipient,

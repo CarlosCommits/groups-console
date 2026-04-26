@@ -135,7 +135,7 @@ describe("contact mutation options", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           contacts: {
             create: createContactMock,
             updateCompany: updateContactCompanyMock,

@@ -7,9 +7,9 @@ vi.mock('node:fs/promises', () => ({
 }));
 
 vi.mock('@/main/app/paths', () => ({
-  getRadAppLogDirectory: () => '/tmp/logs',
-  getRadAppTenantConfigPath: () => '/tmp/tenant.json',
-  getRadAppDevTenantConfigPath: () => '/repo/config/tenant.json',
+  getGroupsConsoleLogDirectory: () => '/tmp/logs',
+  getGroupsConsoleTenantConfigPath: () => '/tmp/tenant.json',
+  getGroupsConsoleDevTenantConfigPath: () => '/repo/config/tenant.json',
 }));
 
 vi.mock('@/main/app/runtime-mode', () => ({

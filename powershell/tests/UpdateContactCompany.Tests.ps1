@@ -5,9 +5,9 @@ function Get-MailContact { }
 function Set-Contact { }
 function Get-Contact { }
 
-Describe 'Invoke-RadAppUpdateContactCompany' {
+Describe 'Invoke-GroupsConsoleUpdateContactCompany' {
     BeforeEach {
-        $script:RadAppExchangeConnectionContext = @{ state = 'connected' }
+        $script:GroupsConsoleExchangeConnectionContext = @{ state = 'connected' }
 
         Mock Get-MailContact {
             return [pscustomobject]@{
@@ -30,7 +30,7 @@ Describe 'Invoke-RadAppUpdateContactCompany' {
     }
 
     It 'normalizes the returned external email address after updating company' {
-        $result = Invoke-RadAppUpdateContactCompany -Payload @{
+        $result = Invoke-GroupsConsoleUpdateContactCompany -Payload @{
             exchangeIdentity = 'Jane External'
             companyName = 'New Company'
         }
@@ -51,7 +51,7 @@ Describe 'Invoke-RadAppUpdateContactCompany' {
             }
         }
 
-        $result = Invoke-RadAppUpdateContactCompany -Payload @{
+        $result = Invoke-GroupsConsoleUpdateContactCompany -Payload @{
             exchangeIdentity = 'Jane External'
             companyName = ''
         }

@@ -105,8 +105,8 @@ import { classifyCommandError } from './classify-command-error';
 import { getSessionStatus } from './handlers/get-session-status';
 import { validateEventSender } from './validate-event-sender';
 
-const COMMAND_CHANNEL = 'radapp:command';
-const PROGRESS_CHANNEL = 'radapp:progress';
+const COMMAND_CHANNEL = 'groups-console:command';
+const PROGRESS_CHANNEL = 'groups-console:progress';
 const MUTATION_COMMANDS = new Set([
   'groups.addMembers',
   'groups.removeMembers',

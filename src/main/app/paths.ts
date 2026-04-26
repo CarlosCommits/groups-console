@@ -4,23 +4,23 @@ import { app } from 'electron';
 
 import { isPackagedRuntime } from './runtime-mode';
 
-export function getRadAppConfigDirectory(): string {
+export function getGroupsConsoleConfigDirectory(): string {
   return path.join(app.getPath('userData'), 'config');
 }
 
-export function getRadAppTenantConfigPath(): string {
-  return path.join(getRadAppConfigDirectory(), 'tenant.json');
+export function getGroupsConsoleTenantConfigPath(): string {
+  return path.join(getGroupsConsoleConfigDirectory(), 'tenant.json');
 }
 
-export function getRadAppDevTenantConfigPath(): string {
+export function getGroupsConsoleDevTenantConfigPath(): string {
   return path.join(app.getAppPath(), 'config', 'tenant.json');
 }
 
-export function getRadAppLogDirectory(): string {
+export function getGroupsConsoleLogDirectory(): string {
   return path.join(app.getPath('userData'), 'logs');
 }
 
-export function getRadAppPowerShellAssetRoot(): string {
+export function getGroupsConsolePowerShellAssetRoot(): string {
   if (isPackagedRuntime()) {
     return path.join(process.resourcesPath, 'powershell');
   }
@@ -28,6 +28,6 @@ export function getRadAppPowerShellAssetRoot(): string {
   return path.join(app.getAppPath(), 'powershell');
 }
 
-export function getRadAppWorkerScriptPath(): string {
-  return path.join(getRadAppPowerShellAssetRoot(), 'bootstrap', 'worker.ps1');
+export function getGroupsConsoleWorkerScriptPath(): string {
+  return path.join(getGroupsConsolePowerShellAssetRoot(), 'bootstrap', 'worker.ps1');
 }

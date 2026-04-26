@@ -1,10 +1,10 @@
-function Invoke-RadAppGetGroupMembers {
+function Invoke-GroupsConsoleGetGroupMembers {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
     )
 
-    if (-not $script:RadAppExchangeConnectionContext) {
+    if (-not $script:GroupsConsoleExchangeConnectionContext) {
         throw 'No active Exchange session. Connect to Exchange Online before reading group members.'
     }
 

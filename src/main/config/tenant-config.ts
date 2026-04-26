@@ -2,14 +2,14 @@ import { access, readFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 
 import {
-  getRadAppDevTenantConfigPath,
-  getRadAppTenantConfigPath,
+  getGroupsConsoleDevTenantConfigPath,
+  getGroupsConsoleTenantConfigPath,
 } from '@/main/app/paths';
 import { isPackagedRuntime } from '@/main/app/runtime-mode';
 import { tenantConfigSchema, type TenantConfig } from '@/shared/contracts/graph';
 
 async function resolveTenantConfigPath(): Promise<string> {
-  const primaryPath = getRadAppTenantConfigPath();
+  const primaryPath = getGroupsConsoleTenantConfigPath();
 
   try {
     await access(primaryPath, fsConstants.R_OK);
@@ -28,7 +28,7 @@ async function resolveTenantConfigPath(): Promise<string> {
       throw error;
     }
 
-    const devFallbackPath = getRadAppDevTenantConfigPath();
+    const devFallbackPath = getGroupsConsoleDevTenantConfigPath();
     await access(devFallbackPath, fsConstants.R_OK);
     return devFallbackPath;
   }

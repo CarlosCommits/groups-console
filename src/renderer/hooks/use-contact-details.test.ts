@@ -241,7 +241,7 @@ describe("getContactDetailsQueryOptions", () => {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
       value: {
-        radApp: {
+        groupsConsole: {
           contacts: {
             getDetails: getDetailsMock,
           },

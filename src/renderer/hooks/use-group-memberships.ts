@@ -58,7 +58,7 @@ export function getGroupMembershipsQueryOptions(
     ),
     enabled,
     queryFn: async (): Promise<GroupsGetMembershipsResult> =>
-      window.radApp.groups.getMemberships(member!),
+      window.groupsConsole.groups.getMemberships(member!),
   });
 }
 

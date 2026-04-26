@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { executeRadAppWorkerCommand } from '@/main/powershell/execute-radapp-worker-command';
+import { executePowerShellWorkerCommand } from '@/main/powershell/execute-powershell-worker-command';
 import {
   exchangeCapabilitiesSchema,
   type ExchangeCapabilities,
@@ -58,7 +58,7 @@ function createUnavailableCapabilities(status: 'warning' | 'missing', detail: st
 }
 
 export async function getExchangeCapabilities(): Promise<ExchangeCapabilities> {
-  const execution = await executeRadAppWorkerCommand('exchange.getCapabilities');
+  const execution = await executePowerShellWorkerCommand('exchange.getCapabilities');
 
   if (execution.kind === 'unsupported-host' || execution.kind === 'worker-error') {
     return createUnavailableCapabilities('warning', execution.detail);

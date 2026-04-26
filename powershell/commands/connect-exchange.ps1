@@ -1,4 +1,4 @@
-function Invoke-RadAppConnectExchange {
+function Invoke-GroupsConsoleConnectExchange {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Payload
@@ -10,12 +10,12 @@ function Invoke-RadAppConnectExchange {
         throw 'A userPrincipalName is required for exchange.connect.'
     }
 
-    if ($script:RadAppExchangeConnectionContext -and $script:RadAppExchangeConnectionContext.State -eq 'connected') {
-        if ($script:RadAppExchangeConnectionContext.UserPrincipalName -eq $userPrincipalName) {
-            return Get-RadAppExchangeConnectionStatus
+    if ($script:GroupsConsoleExchangeConnectionContext -and $script:GroupsConsoleExchangeConnectionContext.State -eq 'connected') {
+        if ($script:GroupsConsoleExchangeConnectionContext.UserPrincipalName -eq $userPrincipalName) {
+            return Get-GroupsConsoleExchangeConnectionStatus
         }
 
-        throw "Exchange Online is already connected as $($script:RadAppExchangeConnectionContext.UserPrincipalName). Disconnect first before connecting as a different user."
+        throw "Exchange Online is already connected as $($script:GroupsConsoleExchangeConnectionContext.UserPrincipalName). Disconnect first before connecting as a different user."
     }
 
     $connectExchangeCommand = Get-Command Connect-ExchangeOnline -ErrorAction Stop
@@ -37,7 +37,7 @@ function Invoke-RadAppConnectExchange {
         throw 'Connect-ExchangeOnline completed without an active connection.'
     }
 
-    $script:RadAppExchangeConnectionContext = @{
+    $script:GroupsConsoleExchangeConnectionContext = @{
         State = 'connected'
         UserPrincipalName = $connection.UserPrincipalName
         ConnectionId = [string]$connection.ConnectionId
@@ -48,5 +48,5 @@ function Invoke-RadAppConnectExchange {
         Detail = 'Connected to Exchange Online.'
     }
 
-    return Get-RadAppExchangeConnectionStatus
+    return Get-GroupsConsoleExchangeConnectionStatus
 }

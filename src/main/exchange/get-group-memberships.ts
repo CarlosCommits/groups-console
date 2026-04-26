@@ -147,7 +147,7 @@ function getWeakMembershipIdentifiers(input: {
 }
 
 function isMissingMembershipsCommandError(error: unknown): error is Error {
-  return error instanceof Error && /Invoke-RadAppGetGroupMemberships/i.test(error.message);
+  return error instanceof Error && /Invoke-GroupsConsoleGetGroupMemberships/i.test(error.message);
 }
 
 async function writeMembershipsFallbackSystemLog(input: {
@@ -176,8 +176,8 @@ async function writeMembershipsFallbackSystemLog(input: {
       targetObjectId: input.memberExchangeIdentity,
       summary:
         input.result === 'partial'
-          ? `Loaded ${input.membershipCount ?? 0} group membership(s) via fallback because Invoke-RadAppGetGroupMemberships was unavailable.`
-          : 'Fallback was triggered because Invoke-RadAppGetGroupMemberships was unavailable, but loading group memberships still failed.',
+          ? `Loaded ${input.membershipCount ?? 0} group membership(s) via fallback because Invoke-GroupsConsoleGetGroupMemberships was unavailable.`
+          : 'Fallback was triggered because Invoke-GroupsConsoleGetGroupMemberships was unavailable, but loading group memberships still failed.',
       result: input.result,
       authoritative: false,
     });

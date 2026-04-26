@@ -3,9 +3,9 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\commands\get-recipient-details.ps1')
 }
 
-Describe 'Invoke-RadAppGetRecipientDetails' {
+Describe 'Invoke-GroupsConsoleGetRecipientDetails' {
     BeforeEach {
-        $script:RadAppExchangeConnectionContext = @{ state = 'connected' }
+        $script:GroupsConsoleExchangeConnectionContext = @{ state = 'connected' }
 
         Mock Get-Recipient {
             return [pscustomobject]@{
@@ -40,7 +40,7 @@ Describe 'Invoke-RadAppGetRecipientDetails' {
     }
 
     It 'keeps primary email and normalizes the external target for mail users' {
-        $result = Invoke-RadAppGetRecipientDetails -Payload @{
+        $result = Invoke-GroupsConsoleGetRecipientDetails -Payload @{
             exchangeIdentity = 'jane.external@example.com'
         }
 

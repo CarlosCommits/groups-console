@@ -78,8 +78,8 @@ src/
 powershell/
   bootstrap/
   modules/
-    RadApp.Exchange.psm1
-    RadApp.Validation.psm1
+    GroupsConsole.Exchange.psm1
+    GroupsConsole.Validation.psm1
   commands/
     connect-exchange.ps1
     get-groups.ps1
