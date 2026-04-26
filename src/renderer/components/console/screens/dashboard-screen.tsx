@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Users,
   RefreshCw,
-  ChevronRight,
   CheckCircle,
   AlertCircle,
   XCircle,
@@ -10,9 +9,6 @@ import {
   Info,
   Loader2,
   WifiOff,
-  LayoutDashboard,
-  FolderSearch,
-  Settings,
 } from "lucide-react";
 import {
   Table,
@@ -37,7 +33,6 @@ import {
 import {
   CONSOLE_SURFACE_CARD,
   CONSOLE_SURFACE_HEADER,
-  CONSOLE_SURFACE_HEADER_COMPACT,
 } from "@/renderer/components/console/surface-styles";
 import { cn } from "@/renderer/lib/utils";
 import { useApp } from "@/renderer/components/console/app-context";
@@ -80,21 +75,8 @@ const SEVERITY_TEXT_MAP: Record<AttentionItem["severity"], string> = {
   info: "text-blue-600",
 };
 
-interface ShortcutItem {
-  id: string;
-  icon: typeof Users;
-  label: string;
-  screen: "groups" | "directory" | "settings";
-}
-
-const shortcuts: ShortcutItem[] = [
-  { id: "open-groups", icon: Users, label: "Open Groups", screen: "groups" },
-  { id: "open-directory", icon: FolderSearch, label: "Open Directory", screen: "directory" },
-  { id: "open-settings", icon: Settings, label: "Open Settings", screen: "settings" },
-];
-
 export function DashboardScreen() {
-  const { shell, lastExchangeConnectFailure, refreshShellState, setCurrentScreen } = useApp();
+  const { shell, lastExchangeConnectFailure, refreshShellState } = useApp();
   const readiness = deriveShellReadiness(shell);
   const attentionItems = deriveAttentionItems(shell, lastExchangeConnectFailure);
   const { ready: readyChecks, total: totalChecks } = countReadyChecks(shell);
@@ -148,7 +130,7 @@ export function DashboardScreen() {
       (a, b) =>
         new Date(b.whenChangedUtc!).getTime() - new Date(a.whenChangedUtc!).getTime(),
     );
-    return withDates.slice(0, 5);
+    return withDates.slice(0, 10);
   }, [groups]);
 
   const distributionCount = groups.filter((g) => g.groupKind === "distributionList").length;
@@ -256,26 +238,6 @@ export function DashboardScreen() {
           </section>
 
           <Card className={cn(CONSOLE_SURFACE_CARD, "overflow-hidden")}>
-            <CardHeader
-              className={cn(
-                CONSOLE_SURFACE_HEADER,
-                "bg-[var(--color-surface-container-low)] py-2.5",
-              )}
-            >
-              <CardTitle className="text-xs font-extrabold font-headline flex items-center gap-2 uppercase tracking-wide text-[var(--color-foreground)]">
-                <AlertCircle className="size-4 text-[var(--color-tertiary)]" />
-                Attention Required
-              </CardTitle>
-              {attentionItems.length > 0 ? (
-                <StatusBadge variant="warning" size="sm">
-                  {attentionItems.length} Issue{attentionItems.length !== 1 ? "s" : ""}
-                </StatusBadge>
-              ) : (
-                <StatusBadge variant="success" size="sm">
-                  Clear
-                </StatusBadge>
-              )}
-            </CardHeader>
             <CardContent className="p-0">
               {attentionItems.length === 0 ? (
                 <div className="p-6 flex flex-col items-center justify-center text-center">
@@ -326,16 +288,6 @@ export function DashboardScreen() {
               <CardTitle className="text-sm font-extrabold font-headline">
                 Recently Modified Groups
               </CardTitle>
-              {exchangeConnected && groups.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-[11px] font-bold text-[var(--color-primary)]"
-                  onClick={() => setCurrentScreen("groups")}
-                >
-                  View All
-                </Button>
-              )}
             </CardHeader>
             <CardContent className="p-0">
               {showStaleGroupsError && (
@@ -429,60 +381,6 @@ export function DashboardScreen() {
         </div>
 
         <div className="col-span-12 lg:col-span-4 space-y-5">
-          <Card
-            className={cn(
-              CONSOLE_SURFACE_CARD,
-              "bg-[var(--color-primary)]/5 border-[var(--color-primary)]/10",
-            )}
-          >
-            <CardHeader className={CONSOLE_SURFACE_HEADER_COMPACT}>
-              <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-[var(--color-primary)] flex items-center gap-2">
-                <LayoutDashboard className="size-4" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-4">
-              <div className="space-y-2">
-                {shortcuts.map((shortcut) => (
-                  <Button
-                    key={shortcut.id}
-                    variant="outline"
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border-[var(--color-outline-variant)]/30 hover:border-[var(--color-primary)]/40 hover:shadow-sm transition-all"
-                    onClick={() => setCurrentScreen(shortcut.screen)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[var(--color-primary)]">
-                        <shortcut.icon className="size-5" />
-                      </div>
-                      <span className="text-xs font-bold text-[var(--color-foreground)]">
-                        {shortcut.label}
-                      </span>
-                    </div>
-                    <ChevronRight className="size-4 text-[var(--color-outline)]" />
-                  </Button>
-                ))}
-                <Button
-                  variant="outline"
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border-[var(--color-outline-variant)]/30 hover:border-[var(--color-primary)]/40 hover:shadow-sm transition-all"
-                  disabled={isRefreshing}
-                  onClick={() => {
-                    void handleRefresh();
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[var(--color-primary)]">
-                      <RefreshCw className={cn("size-5", isRefreshing && "animate-spin")} />
-                    </div>
-                    <span className="text-xs font-bold text-[var(--color-foreground)]">
-                      Refresh State
-                    </span>
-                  </div>
-                  <ChevronRight className="size-4 text-[var(--color-outline)]" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className={cn(CONSOLE_SURFACE_CARD, "overflow-hidden")}>
             <CardHeader
               className={cn(

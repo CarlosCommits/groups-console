@@ -12,7 +12,7 @@ export async function buildMembershipMatrixWorkbookBuffer(
   workbook.created = new Date(data.generatedAt);
 
   const worksheet = workbook.addWorksheet(WORKSHEET_NAME, {
-    views: [{ state: 'frozen', xSplit: 4, ySplit: 1 }],
+    views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }],
   });
 
   const groupColumns = data.groups.map((group) => ({
