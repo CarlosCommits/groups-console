@@ -118,6 +118,53 @@ switch ($CommandName) {
         exit 0
     }
 
+    'exchange.installModule' {
+        $existingModule = Get-Module -ListAvailable -Name ExchangeOnlineManagement |
+            Sort-Object Version -Descending |
+            Select-Object -First 1 Name, Version, ModuleBase
+
+        if ($null -eq $existingModule) {
+            $provider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+            if ($null -eq $provider) {
+                Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ErrorAction Stop | Out-Null
+            }
+
+            Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop | Out-Null
+        }
+
+        $probe = Get-RadAppEnvironmentProbe
+        $exchangeModule = $probe.exchangeOnlineManagement
+
+        if ($null -eq $exchangeModule) {
+            throw 'ExchangeOnlineManagement installation completed, but the module was not found afterward.'
+        }
+
+        $hasRequiredCommands = $exchangeModule.commandChecks.connectExchangeOnline -and $exchangeModule.commandChecks.disconnectExchangeOnline -and $exchangeModule.commandChecks.getConnectionInformation
+        $status = 'ready'
+        $detail = "ExchangeOnlineManagement $($exchangeModule.version) is installed and importable."
+        if ($exchangeModule.import.importable -ne $true -or -not $hasRequiredCommands) {
+            $status = 'warning'
+            $detail = if ($exchangeModule.import.importable -ne $true) {
+                "ExchangeOnlineManagement $($exchangeModule.version) is installed but not importable: $($exchangeModule.import.error)"
+            }
+            else {
+                "ExchangeOnlineManagement $($exchangeModule.version) imports successfully, but the expected pre-auth cmdlet subset is incomplete."
+            }
+        }
+
+        $result = [pscustomobject]@{
+            status                   = $status
+            detail                   = $detail
+            psVersion                = $probe.psVersion
+            psEdition                = $probe.psEdition
+            executionPolicy          = $probe.executionPolicy
+            exchangeOnlineManagement = $exchangeModule
+        }
+
+        $result | ConvertTo-Json -Compress -Depth 6
+        exit 0
+    }
+
     default {
         Write-Error "Unknown Groups Console worker command: $CommandName"
         exit 1

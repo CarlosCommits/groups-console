@@ -50,6 +50,8 @@ If the change is fundamentally Exchange-recipient state, use Exchange Online Pow
 
 ## Auth/session model
 
+The shell runs startup/bootstrap checks before presenting the app as ready. These checks include local PowerShell availability, ExchangeOnlineManagement module presence/importability, log-directory access, and tenant configuration. The auth panel may surface Exchange prerequisites before the operator starts Exchange sign-in so missing local dependencies are not discovered only after an authentication attempt.
+
 ### Graph
 
 - delegated interactive sign-in
@@ -62,6 +64,7 @@ If the change is fundamentally Exchange-recipient state, use Exchange Online Pow
 - no credential collection by the app
 - tenant/account details retrieved after connection for verification
 - use process-scoped execution policy handling for app-launched PowerShell sessions where required
+- if ExchangeOnlineManagement is missing, the app can offer a main-process IPC command that runs the packaged PowerShell worker install path for the current user
 
 ## Execution policy stance
 

@@ -42,7 +42,7 @@ Exchange remains the write path for distribution lists, mail-enabled security gr
 
 - `ExchangeOnlineManagement` must be installed and importable for the detected PowerShell runtime
 
-The app checks for the module at startup/readiness time; it does not silently install it for you.
+The app checks for the module at startup/readiness time. If it is missing, the auth panel can offer an `Install Exchange module` action that installs `ExchangeOnlineManagement` for the current Windows user through the app-owned main-process/PowerShell worker path. If the module is installed but not importable, the app blocks Exchange sign-in and shows the import error with IT remediation guidance.
 
 The current v2 app no longer depends on `ImportExcel` at runtime. Report export is generated on the JavaScript/Electron side.
 
@@ -169,6 +169,8 @@ The app’s local readiness model depends on four checks:
 
 If any of these are missing or degraded, the app should show that state instead of pretending it is fully ready.
 
+The auth panel uses these checks before Exchange sign-in. It can block Exchange setup when PowerShell is missing, offer the current-user `ExchangeOnlineManagement` install action when the module is missing, and surface installed-but-not-importable module failures without trying to connect Exchange.
+
 Tenant mismatch also matters: the app is designed to block writes when Graph and Exchange are connected to different tenants.
 
 ## Security and runtime model
@@ -189,6 +191,7 @@ Execution policy stance:
 - the app launches its PowerShell workers with **process-scoped** execution policy handling
 - the app does **not** require machine-wide or user-wide execution policy changes as a normal setup step
 - if `MachinePolicy` or `UserPolicy` blocks execution, the app should surface a prerequisite error instead of mutating policy silently
+- the module install remediation path must not call persistent `Set-ExecutionPolicy`
 
 ## Development setup
 
