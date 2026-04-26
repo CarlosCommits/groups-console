@@ -1481,6 +1481,8 @@ export function GroupsScreen() {
                                       aria-label={`Remove ${member.displayName} from ${selectedGroup.displayName}`}
                                       onClick={(event) => {
                                         event.stopPropagation();
+                                        setRemoveMembershipGroupTarget(null);
+                                        setRemoveError(null);
                                         setRemoveConfirmTarget(member);
                                       }}
                                     >
@@ -1762,6 +1764,7 @@ export function GroupsScreen() {
         }}
         addGroupError={addGroupError}
         onRequestRemoveGroup={(group) => {
+          setRemoveConfirmTarget(null);
           setRemoveError(null);
           setRemoveMembershipGroupTarget(group);
         }}
