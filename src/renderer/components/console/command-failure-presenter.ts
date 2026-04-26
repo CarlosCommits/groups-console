@@ -24,6 +24,9 @@ export interface ClassifiedFailurePresentation {
 const CATEGORY_TITLES: Record<string, string> = {
   connectionFailure: "Connection Failed",
   authorizationFailure: "Authorization Failed",
+  validationFailure: "Validation Failed",
+  conflictFailure: "Conflict Detected",
+  throttlingFailure: "Throttled",
   tenantMismatch: "Tenant Mismatch",
   unknownFailure: "Unexpected Error",
 };
@@ -32,6 +35,9 @@ const REMEDIATION_GUIDANCE: Record<string, string> = {
   reconnect: "Try reconnecting to the service.",
   verifyPermissions:
     "Verify that your account has the required permissions and try again.",
+  correctInput: "Review the submitted values and try again.",
+  resolveConflict: "Resolve the conflicting directory state and try again.",
+  retryAfterDelay: "Wait briefly, then try again.",
   reconnectMatchedTenant:
     "Reconnect with a tenant that matches your current session.",
   retryFromFreshState:

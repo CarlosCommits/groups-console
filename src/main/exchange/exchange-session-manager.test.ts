@@ -143,6 +143,8 @@ describe('ExchangeSessionManager', () => {
 
     await manager.connect({ userPrincipalName: 'admin@example.com' });
     const result = await manager.createContact({
+      displayName: 'Jane Example',
+      alias: 'jexample',
       firstName: 'Jane',
       lastName: 'Example',
       email: 'jane@example.com',

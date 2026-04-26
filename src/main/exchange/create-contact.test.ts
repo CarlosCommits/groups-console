@@ -39,6 +39,8 @@ describe('createContact', () => {
     });
 
     const result = await createContact({
+      displayName: 'Jane Example',
+      alias: 'jexample',
       firstName: 'Jane',
       lastName: 'Example',
       email: 'jane@example.com',
@@ -65,6 +67,8 @@ describe('createContact', () => {
     });
 
     const result = await createContact({
+      displayName: 'Jane Example',
+      alias: 'jexample',
       firstName: 'Jane',
       lastName: 'Example',
       email: 'jane@example.com',

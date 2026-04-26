@@ -47,7 +47,13 @@ describe('guest contracts', () => {
         email: 'guest@example.com',
         displayName: 'Guest Example',
         companyName: 'Guest Co',
+        jobTitle: 'Consultant',
+        department: 'Operations',
+        officeLocation: 'HQ-201',
+        mobilePhone: '+1 555-0100',
         sendInvitationMessage: false,
+        invitationMessage: 'Welcome to the project.',
+        invitationCcEmail: 'manager@example.com',
       }),
     ).not.toThrow();
 
