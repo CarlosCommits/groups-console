@@ -58,7 +58,13 @@ export const guestsInvitePayloadSchema = z
     email: z.string().email(),
     displayName: z.string().trim().min(1).max(256).optional(),
     companyName: z.string().trim().min(1).max(64).optional(),
+    jobTitle: z.string().trim().min(1).max(128).optional(),
+    department: z.string().trim().min(1).max(128).optional(),
+    officeLocation: z.string().trim().min(1).max(128).optional(),
+    mobilePhone: z.string().trim().min(1).max(64).optional(),
     sendInvitationMessage: z.boolean().optional(),
+    invitationMessage: z.string().trim().min(1).max(1000).optional(),
+    invitationCcEmail: z.string().email().optional(),
   })
   .strict();
 

@@ -22,6 +22,9 @@ const SOURCE_LABELS: Record<string, string> = {
 const CATEGORY_LABELS: Record<string, string> = {
   connectionFailure: "connection failed",
   authorizationFailure: "authorization failed",
+  validationFailure: "validation failed",
+  conflictFailure: "conflict detected",
+  throttlingFailure: "throttled",
   tenantMismatch: "tenant mismatch",
   unknownFailure: "unavailable",
 };
@@ -30,6 +33,9 @@ const REMEDIATION_GUIDANCE: Record<string, string> = {
   reconnect: "Try reconnecting to the service.",
   verifyPermissions:
     "Verify that your account has the required permissions and try again.",
+  correctInput: "Review the submitted values and try again.",
+  resolveConflict: "Resolve the conflicting directory state and try again.",
+  retryAfterDelay: "Wait briefly, then try again.",
   reconnectMatchedTenant:
     "Reconnect with a tenant that matches your current session.",
   retryFromFreshState:
