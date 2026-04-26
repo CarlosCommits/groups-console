@@ -271,6 +271,13 @@ export type ExchangePrerequisiteBlocker =
       canInstallModule: true;
     }
   | {
+      kind: "exchangeModuleCheckFailed";
+      title: string;
+      detail: string;
+      guidance: string;
+      canInstallModule: false;
+    }
+  | {
       kind: "exchangeModuleNotImportable";
       title: string;
       detail: string;
@@ -307,6 +314,19 @@ export function deriveExchangePrerequisiteBlocker(
       detail: exchangeModule.detail,
       guidance: "Use the install button to add ExchangeOnlineManagement for the current Windows user, or have IT deploy the module to this workstation.",
       canInstallModule: true,
+    };
+  }
+
+  if (
+    exchangeModule?.status === "warning" &&
+    shell.exchangeCapabilities?.exchangeModule.installed === false
+  ) {
+    return {
+      kind: "exchangeModuleCheckFailed",
+      title: "Exchange prerequisite check failed",
+      detail: exchangeModule.detail,
+      guidance: "Restart Groups Console and try again. If this warning persists, ask IT to review the PowerShell bootstrap error before connecting to Exchange Online.",
+      canInstallModule: false,
     };
   }
 
