@@ -31,6 +31,7 @@ const exchangeInstallResultSchema = z.object({
   detail: z.string().min(1),
   psVersion: z.string().min(1),
   psEdition: z.string().min(1),
+  executionPolicy: z.string().min(1),
   exchangeOnlineManagement: exchangeWorkerModuleSchema,
 });
 

@@ -345,6 +345,52 @@ describe("deriveExchangePrerequisiteBlocker", () => {
       canInstallModule: false,
     });
   });
+
+  it("blocks Exchange auth when the Exchange module probe fails before capabilities are available", () => {
+    const result = deriveExchangePrerequisiteBlocker(makeShell({
+      session: makeSession({
+        checks: [
+          {
+            id: "powershell",
+            label: "PowerShell runtime",
+            status: "ready",
+            detail: "Detected Windows PowerShell.",
+          },
+          {
+            id: "exchangeModule",
+            label: "Exchange module",
+            status: "warning",
+            detail: "Exchange module check failed: worker crashed.",
+          },
+        ],
+      }),
+      exchangeCapabilities: {
+        status: "warning",
+        detail: "Exchange capability check failed.",
+        runtime: null,
+        exchangeModule: {
+          installed: false,
+          importable: false,
+          version: null,
+          moduleBase: null,
+          importError: null,
+          commandChecks: {
+            connectExchangeOnline: false,
+            disconnectExchangeOnline: false,
+            getConnectionInformation: false,
+          },
+        },
+      },
+    }));
+
+    expect(result).toEqual({
+      kind: "exchangeModuleCheckFailed",
+      title: "Exchange prerequisite check failed",
+      detail: "Exchange module check failed: worker crashed.",
+      guidance: "Restart Groups Console and try again. If this warning persists, ask IT to review the PowerShell bootstrap error before connecting to Exchange Online.",
+      canInstallModule: false,
+    });
+  });
 });
 
 describe("resolveAutoExchangeUpnAfterGraphConnect", () => {

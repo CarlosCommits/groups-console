@@ -14,6 +14,7 @@ function makeInstallStdout(overrides: Record<string, unknown> = {}) {
     detail: 'ExchangeOnlineManagement 3.9.0 is installed and importable.',
     psVersion: '5.1.22621.4391',
     psEdition: 'Desktop',
+    executionPolicy: 'RemoteSigned',
     exchangeOnlineManagement: {
       name: 'ExchangeOnlineManagement',
       version: '3.9.0',
