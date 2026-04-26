@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Ban,
@@ -184,7 +184,7 @@ export function SettingsScreen() {
   } = useApp();
 
   const { session, graphConnection, exchangeConnection, isHydrating, loadError } = shell;
-  const capabilityRows = deriveCapabilityRows(shell);
+  const capabilityRows = useMemo(() => deriveCapabilityRows(shell), [shell]);
   const powershellCheck = session?.checks.find((c) => c.id === "powershell");
   const logDirectoryCheck = session?.checks.find((c) => c.id === "logDirectory");
 
