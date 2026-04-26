@@ -75,7 +75,7 @@ export const contactsCreateResultSchema = z.discriminatedUnion('outcome', [
 export const contactsUpdateCompanyPayloadSchema = z
   .object({
     exchangeIdentity: z.string().min(1),
-    companyName: z.string().trim().min(1).max(256),
+    companyName: z.string().trim().max(256),
   })
   .strict();
 
