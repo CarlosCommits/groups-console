@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { bootstrapCheckStatusSchema } from './session';
 
 export const exchangeGetCapabilitiesPayloadSchema = z.object({}).strict();
+export const exchangeInstallModulePayloadSchema = z.object({}).strict();
 export const exchangeConnectPayloadSchema = z
   .object({
     userPrincipalName: z.string().min(3),
@@ -321,6 +322,7 @@ export const groupsRemoveMembersResultSchema = z.object({
 });
 
 export type ExchangeGetCapabilitiesPayload = z.infer<typeof exchangeGetCapabilitiesPayloadSchema>;
+export type ExchangeInstallModulePayload = z.infer<typeof exchangeInstallModulePayloadSchema>;
 export type ExchangeCapabilities = z.infer<typeof exchangeCapabilitiesSchema>;
 export type ExchangeConnectPayload = z.infer<typeof exchangeConnectPayloadSchema>;
 export type ExchangeConnectionState = z.infer<typeof exchangeConnectionStateSchema>;
