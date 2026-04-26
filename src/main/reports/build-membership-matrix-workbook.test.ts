@@ -62,6 +62,7 @@ describe('buildMembershipMatrixWorkbookBuffer', () => {
 
     const worksheet = workbook.getWorksheet(WORKSHEET_NAME);
     expect(worksheet).toBeDefined();
+    expect(worksheet?.views[0]).toMatchObject({ state: 'frozen', xSplit: 2, ySplit: 1 });
     const headerValues = worksheet?.getRow(1).values as Array<unknown>;
     expect(headerValues.slice(1)).toEqual([
       'Display Name',
