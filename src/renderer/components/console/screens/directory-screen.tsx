@@ -8,6 +8,8 @@ import {
   Info,
   CheckCircle2,
   ShieldAlert,
+  Copy,
+  ChevronDown,
 } from "lucide-react";
 import {
   Table,
@@ -21,7 +23,13 @@ import { Button } from "@/renderer/components/ui/button";
 import { Badge } from "@/renderer/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/renderer/components/ui/avatar";
 import { Input } from "@/renderer/components/ui/input";
+import { Textarea } from "@/renderer/components/ui/textarea";
 import { Checkbox } from "@/renderer/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/renderer/components/ui/collapsible";
 import { Alert, AlertTitle, AlertDescription } from "@/renderer/components/ui/alert";
 import { Separator } from "@/renderer/components/ui/separator";
 import {
@@ -32,6 +40,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/renderer/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/renderer/components/ui/sheet";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/renderer/components/ui/tabs";
 import {
   AppShell,
   TableToolbar,
@@ -145,6 +167,29 @@ const TAB_TYPES: Record<string, RecipientSearchType[]> = {
   guests: ["guestUser"],
   groups: ["distributionList", "mailEnabledSecurityGroup"],
 };
+
+const CONTACT_ALIAS_PATTERN = /^[A-Za-z0-9!#%*+\-/=?^_~]+(?:\.[A-Za-z0-9!#%*+\-/=?^_~]+)*$/;
+const BASIC_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CREATE_IDENTITY_INPUT_CLASS =
+  "h-9 w-full min-w-0 rounded-md border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-none placeholder:text-slate-400 focus-visible:border-teal-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600/25";
+const CREATE_IDENTITY_TEXTAREA_CLASS =
+  "min-h-20 w-full min-w-0 resize-none rounded-md border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-none placeholder:text-slate-400 focus-visible:border-teal-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600/25";
+const CREATE_IDENTITY_LABEL_CLASS =
+  "mb-1 block text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500";
+
+function optionalTrimmed(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function formatRedeemUrlDisplay(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return url;
+  }
+}
 
 const TYPE_LABELS: Record<RecipientSearchType, string> = {
   mailbox: "MAILBOX",
@@ -376,14 +421,29 @@ export function DirectoryScreen() {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("contact");
+  const [createDisplayName, setCreateDisplayName] = useState("");
+  const [createAlias, setCreateAlias] = useState("");
   const [createFirstName, setCreateFirstName] = useState("");
   const [createLastName, setCreateLastName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createCompanyName, setCreateCompanyName] = useState("");
+  const [createTitle, setCreateTitle] = useState("");
+  const [createDepartment, setCreateDepartment] = useState("");
+  const [createPhone, setCreatePhone] = useState("");
+  const [createOffice, setCreateOffice] = useState("");
+  const [createStreetAddress, setCreateStreetAddress] = useState("");
+  const [createCity, setCreateCity] = useState("");
+  const [createStateOrProvince, setCreateStateOrProvince] = useState("");
+  const [createPostalCode, setCreatePostalCode] = useState("");
+  const [createCountryOrRegion, setCreateCountryOrRegion] = useState("");
   const [createSendInvitation, setCreateSendInvitation] = useState(true);
+  const [createInvitationCcEmail, setCreateInvitationCcEmail] = useState("");
+  const [createInvitationMessage, setCreateInvitationMessage] = useState("");
+  const [createGuestProfileOpen, setCreateGuestProfileOpen] = useState(false);
   const [createPending, setCreatePending] = useState(false);
   const [createResult, setCreateResult] = useState<CreateResult | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createRedeemUrlCopied, setCreateRedeemUrlCopied] = useState(false);
 
   const [updateCompanyName, setUpdateCompanyName] = useState("");
   const [updatePending, setUpdatePending] = useState(false);
@@ -611,14 +671,29 @@ export function DirectoryScreen() {
       mode = "guest";
     }
     setCreateMode(mode);
+    setCreateDisplayName("");
+    setCreateAlias("");
     setCreateFirstName("");
     setCreateLastName("");
     setCreateEmail("");
     setCreateCompanyName("");
+    setCreateTitle("");
+    setCreateDepartment("");
+    setCreatePhone("");
+    setCreateOffice("");
+    setCreateStreetAddress("");
+    setCreateCity("");
+    setCreateStateOrProvince("");
+    setCreatePostalCode("");
+    setCreateCountryOrRegion("");
     setCreateSendInvitation(true);
+    setCreateInvitationCcEmail("");
+    setCreateInvitationMessage("");
+    setCreateGuestProfileOpen(false);
     setCreatePending(false);
     setCreateResult(null);
     setCreateError(null);
+    setCreateRedeemUrlCopied(false);
     setCreateDialogOpen(true);
   }, [activeTab, canCreateContact, canCreateGuest]);
 
@@ -628,10 +703,21 @@ export function DirectoryScreen() {
     try {
       if (createMode === "contact") {
         const result = await createContactMutation.mutateAsync({
-          firstName: createFirstName.trim(),
-          lastName: createLastName.trim(),
+          displayName: createDisplayName.trim(),
+          alias: createAlias.trim(),
+          firstName: optionalTrimmed(createFirstName),
+          lastName: optionalTrimmed(createLastName),
           email: createEmail.trim(),
-          companyName: createCompanyName.trim(),
+          companyName: optionalTrimmed(createCompanyName),
+          title: optionalTrimmed(createTitle),
+          department: optionalTrimmed(createDepartment),
+          phone: optionalTrimmed(createPhone),
+          office: optionalTrimmed(createOffice),
+          streetAddress: optionalTrimmed(createStreetAddress),
+          city: optionalTrimmed(createCity),
+          stateOrProvince: optionalTrimmed(createStateOrProvince),
+          postalCode: optionalTrimmed(createPostalCode),
+          countryOrRegion: optionalTrimmed(createCountryOrRegion),
         });
         setCreateResult({ mode: "contact", data: result });
       } else {
@@ -639,7 +725,13 @@ export function DirectoryScreen() {
           email: string;
           displayName?: string;
           companyName?: string;
+          jobTitle?: string;
+          department?: string;
+          officeLocation?: string;
+          mobilePhone?: string;
           sendInvitationMessage?: boolean;
+          invitationMessage?: string;
+          invitationCcEmail?: string;
         } = { email: createEmail.trim() };
         const displayNameTrimmed = createFirstName.trim();
         if (displayNameTrimmed) {
@@ -649,7 +741,33 @@ export function DirectoryScreen() {
         if (companyNameTrimmed) {
           payload.companyName = companyNameTrimmed;
         }
+        const titleTrimmed = createTitle.trim();
+        if (titleTrimmed) {
+          payload.jobTitle = titleTrimmed;
+        }
+        const departmentTrimmed = createDepartment.trim();
+        if (departmentTrimmed) {
+          payload.department = departmentTrimmed;
+        }
+        const officeTrimmed = createOffice.trim();
+        if (officeTrimmed) {
+          payload.officeLocation = officeTrimmed;
+        }
+        const phoneTrimmed = createPhone.trim();
+        if (phoneTrimmed) {
+          payload.mobilePhone = phoneTrimmed;
+        }
         payload.sendInvitationMessage = createSendInvitation;
+        if (createSendInvitation) {
+          const messageTrimmed = createInvitationMessage.trim();
+          if (messageTrimmed) {
+            payload.invitationMessage = messageTrimmed;
+          }
+          const ccEmailTrimmed = createInvitationCcEmail.trim();
+          if (ccEmailTrimmed) {
+            payload.invitationCcEmail = ccEmailTrimmed;
+          }
+        }
         const result = await inviteGuestMutation.mutateAsync(payload);
         setCreateResult({ mode: "guest", data: result });
       }
@@ -661,6 +779,16 @@ export function DirectoryScreen() {
       );
     } finally {
       setCreatePending(false);
+    }
+  };
+
+  const handleCopyRedeemUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCreateRedeemUrlCopied(true);
+      toast.success("Invitation URL copied.");
+    } catch {
+      setCreateError("Invitation URL could not be copied automatically.");
     }
   };
 
@@ -685,6 +813,7 @@ export function DirectoryScreen() {
     setCreateDialogOpen(false);
     setCreateResult(null);
     setCreateError(null);
+    setCreateRedeemUrlCopied(false);
   };
 
   const handleUpdateSubmit = async () => {
@@ -918,11 +1047,54 @@ export function DirectoryScreen() {
 
   const createFormValid =
     createMode === "contact"
-      ? createFirstName.trim().length > 0 &&
-        createLastName.trim().length > 0 &&
-        createEmail.trim().length > 0 &&
-        createCompanyName.trim().length > 0
-      : createEmail.trim().length > 0;
+      ? createDisplayName.trim().length > 0 &&
+        createDisplayName.trim().length <= 256 &&
+        createAlias.trim().length > 0 &&
+        createAlias.trim().length <= 64 &&
+        CONTACT_ALIAS_PATTERN.test(createAlias.trim()) &&
+        BASIC_EMAIL_PATTERN.test(createEmail.trim()) &&
+        createFirstName.trim().length <= 128 &&
+        createLastName.trim().length <= 128 &&
+        createCompanyName.trim().length <= 256 &&
+        createTitle.trim().length <= 256 &&
+        createDepartment.trim().length <= 256 &&
+        createPhone.trim().length <= 64 &&
+        createOffice.trim().length <= 256 &&
+        createStreetAddress.trim().length <= 256 &&
+        createCity.trim().length <= 128 &&
+        createStateOrProvince.trim().length <= 128 &&
+        createPostalCode.trim().length <= 40 &&
+        createCountryOrRegion.trim().length <= 128
+      : BASIC_EMAIL_PATTERN.test(createEmail.trim()) &&
+        createFirstName.trim().length <= 256 &&
+        createCompanyName.trim().length <= 64 &&
+        createTitle.trim().length <= 128 &&
+        createDepartment.trim().length <= 128 &&
+        createOffice.trim().length <= 128 &&
+        createPhone.trim().length <= 64 &&
+        (!createSendInvitation ||
+          ((createInvitationMessage.trim().length === 0 ||
+            createInvitationMessage.trim().length <= 1000) &&
+            (createInvitationCcEmail.trim().length === 0 ||
+              BASIC_EMAIL_PATTERN.test(createInvitationCcEmail.trim()))));
+
+  const createEmailError =
+    createEmail.trim().length > 0 && !BASIC_EMAIL_PATTERN.test(createEmail.trim())
+      ? "Enter a valid email address."
+      : null;
+
+  const contactAliasError =
+    createMode === "contact" && createAlias.trim().length > 0 && !CONTACT_ALIAS_PATTERN.test(createAlias.trim())
+      ? "Alias cannot contain spaces. Use letters, numbers, ! # % * + - / = ? ^ _ ~, and periods between characters."
+      : null;
+
+  const guestCcEmailError =
+    createMode === "guest" &&
+    createSendInvitation &&
+    createInvitationCcEmail.trim().length > 0 &&
+    !BASIC_EMAIL_PATTERN.test(createInvitationCcEmail.trim())
+      ? "Enter a valid CC email address."
+      : null;
 
   const detailCanUpdateCompany = detailTarget
     ? canUpdateCompany(
@@ -1145,33 +1317,33 @@ export function DirectoryScreen() {
         </div>
       </div>
 
-      <Dialog
+      <Sheet
         open={createDialogOpen}
         onOpenChange={(open) => {
           handleMutationDialogOpenChange(open, createPending, handleCreateClose);
         }}
       >
-        <DialogContent
-          className="sm:max-w-lg max-h-[85vh] flex flex-col"
+        <SheetContent
+          className="w-full max-w-full gap-0 overflow-hidden bg-white p-0 data-[side=right]:w-full data-[side=right]:sm:w-[500px] data-[side=right]:sm:max-w-[500px] data-[state=closed]:duration-200 data-[state=open]:duration-300"
           showCloseButton={canDismissMutationDialog(createPending)}
         >
-          <DialogHeader>
-            <DialogTitle>
+          <SheetHeader className="shrink-0 border-b border-slate-200 px-5 py-4 pr-14">
+            <SheetTitle className="text-lg font-semibold tracking-normal text-slate-900">
               {createResult && createResult.data.outcome === "blockedConflict"
                 ? "Creation Blocked"
                 : "Create Identity"}
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription className="max-w-lg text-sm leading-5 text-slate-600">
               {createResult
                 ? createResult.data.outcome === "blockedConflict"
                   ? "This identity could not be created due to a blocking conflict."
                   : "Identity created successfully."
                 : "Create a new contact or invite a guest user to the directory."}
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           {createResult ? (
-            <div className="flex-1 overflow-y-auto space-y-2 py-2">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-4">
               {createResult.data.outcome === "blockedConflict" ? (
                 <>
                   <Alert variant="destructive">
@@ -1243,8 +1415,19 @@ export function DirectoryScreen() {
                 </>
               ) : createResult.mode === "contact" ? (
                 <>
-                  <div className="flex items-start gap-2 rounded-md px-3 py-2 text-xs bg-emerald-50 text-emerald-800">
-                    <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
+                  <div
+                    className={cn(
+                      "flex items-start gap-2 rounded-md px-3 py-2 text-xs",
+                      createResult.data.verification.companyApplied
+                        ? "bg-emerald-50 text-emerald-800"
+                        : "bg-amber-50 text-amber-800",
+                    )}
+                  >
+                    {createResult.data.verification.companyApplied ? (
+                      <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-600" />
+                    )}
                     <div className="min-w-0">
                       <p className="font-semibold">{createResult.data.contact.displayName}</p>
                       <p className="text-[11px] opacity-80">
@@ -1259,7 +1442,8 @@ export function DirectoryScreen() {
                   </div>
                   {createResult.data.verification && (
                     <div className="text-[11px] text-slate-500 pt-1">
-                      Verification: {createResult.data.verification.detail}
+                      {createResult.data.verification.companyApplied ? "Verification" : "Needs attention"}:{" "}
+                      {createResult.data.verification.detail}
                     </div>
                   )}
                 </>
@@ -1279,9 +1463,40 @@ export function DirectoryScreen() {
                       </p>
                     </div>
                   </div>
-                  {createResult.data.companyUpdate && (
+                  {createResult.data.companyUpdate.attempted && (
                     <div className="text-[11px] text-slate-500">
-                      Company update: {createResult.data.companyUpdate.detail}
+                      Profile update: {createResult.data.companyUpdate.detail}
+                    </div>
+                  )}
+                  {createResult.data.inviteRedeemUrl && (
+                    <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50 p-3">
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Invitation URL
+                      </label>
+                      <div className="flex gap-2">
+                        <div
+                          className="flex h-8 min-w-0 flex-1 items-center truncate rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700"
+                          title={createResult.data.inviteRedeemUrl}
+                        >
+                          {formatRedeemUrlDisplay(createResult.data.inviteRedeemUrl)}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 shrink-0"
+                          onClick={() => {
+                            if (createResult.data.outcome === "invited" && createResult.data.inviteRedeemUrl) {
+                              void handleCopyRedeemUrl(createResult.data.inviteRedeemUrl);
+                            }
+                          }}
+                        >
+                          <Copy className="size-3.5" />
+                          {createRedeemUrlCopied ? "Copied" : "Copy"}
+                        </Button>
+                      </div>
+                      <p className="text-[11px] leading-4 text-slate-500">
+                        Microsoft encodes this link; copy uses the exact redemption URL.
+                      </p>
                     </div>
                   )}
                   {createResult.data.verification && (
@@ -1293,127 +1508,305 @@ export function DirectoryScreen() {
               )}
             </div>
           ) : (
-            <>
-              <div className="flex gap-2">
-                <Button
-                  variant={createMode === "contact" ? "default" : "outline"}
-                  size="sm"
-                  className="text-xs flex-1"
-                  disabled={!canCreateContact}
-                  onClick={() => {
-                    setCreateMode("contact");
-                    setCreateResult(null);
-                    setCreateError(null);
-                  }}
-                >
-                  Contact
-                </Button>
-                <Button
-                  variant={createMode === "guest" ? "default" : "outline"}
-                  size="sm"
-                  className="text-xs flex-1"
-                  disabled={!canCreateGuest}
-                  onClick={() => {
-                    setCreateMode("guest");
-                    setCreateResult(null);
-                    setCreateError(null);
-                  }}
-                >
-                  Guest
-                </Button>
-              </div>
+            <Tabs
+              value={createMode}
+              onValueChange={(value) => {
+                if (value === "contact" && canCreateContact) {
+                  setCreateMode("contact");
+                  setCreateResult(null);
+                  setCreateError(null);
+                } else if (value === "guest" && canCreateGuest) {
+                  setCreateMode("guest");
+                  setCreateResult(null);
+                  setCreateError(null);
+                }
+              }}
+              className="min-h-0 flex-1 gap-0 overflow-hidden"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-4">
+                <div className="mx-auto flex w-full max-w-[540px] flex-col gap-4">
+                  <TabsList className="grid h-8 w-full grid-cols-2 rounded-md border border-slate-200 bg-slate-100 p-0.5">
+                    <TabsTrigger
+                      value="contact"
+                      className="cursor-pointer rounded-[5px] border border-transparent text-xs font-semibold text-slate-600 hover:bg-white/70 hover:text-slate-900 data-[state=active]:border-teal-700 data-[state=active]:bg-teal-700 data-[state=active]:text-white data-[state=active]:shadow-sm disabled:cursor-not-allowed"
+                      disabled={!canCreateContact}
+                    >
+                      Contact
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="guest"
+                      className="cursor-pointer rounded-[5px] border border-transparent text-xs font-semibold text-slate-600 hover:bg-white/70 hover:text-slate-900 data-[state=active]:border-teal-700 data-[state=active]:bg-teal-700 data-[state=active]:text-white data-[state=active]:shadow-sm disabled:cursor-not-allowed"
+                      disabled={!canCreateGuest}
+                    >
+                      Guest
+                    </TabsTrigger>
+                  </TabsList>
 
-              {createMode === "contact" ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="min-w-0 max-w-full overflow-x-hidden">
+                    <TabsContent value="contact" className="m-0 space-y-3">
+                  <div>
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                      Display Name <span className="text-[var(--color-error)]">*</span>
+                    </label>
+                    <Input
+                      className={CREATE_IDENTITY_INPUT_CLASS}
+                      placeholder="Jane Example"
+                      value={createDisplayName}
+                      onChange={(e) => setCreateDisplayName(e.target.value)}
+                      disabled={createPending}
+                      maxLength={256}
+                    />
+                  </div>
+                  <div>
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                      Alias <span className="text-[var(--color-error)]">*</span>
+                    </label>
+                    <Input
+                      className={cn(
+                        CREATE_IDENTITY_INPUT_CLASS,
+                        contactAliasError && "border-[var(--color-error)] focus-visible:ring-red-200",
+                      )}
+                      placeholder="jane.example"
+                      value={createAlias}
+                      onChange={(e) => setCreateAlias(e.target.value)}
+                      disabled={createPending}
+                      maxLength={64}
+                    />
+                    {contactAliasError && (
+                      <p className="mt-1 text-[11px] text-[var(--color-error)]">
+                        {contactAliasError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
-                        First Name <span className="text-[var(--color-error)]">*</span>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        First Name
                       </label>
                       <Input
-                        className="bg-slate-50 border-slate-200 text-xs"
+                        className={CREATE_IDENTITY_INPUT_CLASS}
                         placeholder="First name"
                         value={createFirstName}
                         onChange={(e) => setCreateFirstName(e.target.value)}
                         disabled={createPending}
+                        maxLength={128}
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
-                        Last Name <span className="text-[var(--color-error)]">*</span>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Last Name
                       </label>
                       <Input
-                        className="bg-slate-50 border-slate-200 text-xs"
+                        className={CREATE_IDENTITY_INPUT_CLASS}
                         placeholder="Last name"
                         value={createLastName}
                         onChange={(e) => setCreateLastName(e.target.value)}
                         disabled={createPending}
+                        maxLength={128}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
                       Email <span className="text-[var(--color-error)]">*</span>
                     </label>
                     <Input
-                      className="bg-slate-50 border-slate-200 text-xs"
+                      className={cn(
+                        CREATE_IDENTITY_INPUT_CLASS,
+                        createEmailError && "border-[var(--color-error)] focus-visible:ring-red-200",
+                      )}
                       placeholder="email@example.com"
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      pattern={BASIC_EMAIL_PATTERN.source}
+                      aria-invalid={createEmailError ? true : undefined}
                       value={createEmail}
                       onChange={(e) => setCreateEmail(e.target.value)}
                       disabled={createPending}
                     />
+                    {createEmailError && (
+                      <p className="mt-1 text-[11px] text-[var(--color-error)]">
+                        {createEmailError}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
-                      Company Name <span className="text-[var(--color-error)]">*</span>
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                      Company Name
                     </label>
                     <Input
-                      className="bg-slate-50 border-slate-200 text-xs"
+                      className={CREATE_IDENTITY_INPUT_CLASS}
                       placeholder="Company name"
                       value={createCompanyName}
                       onChange={(e) => setCreateCompanyName(e.target.value)}
                       disabled={createPending}
+                      maxLength={256}
                     />
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Title
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="Director"
+                        value={createTitle}
+                        onChange={(e) => setCreateTitle(e.target.value)}
+                        disabled={createPending}
+                        maxLength={256}
+                      />
+                    </div>
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Department
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="Operations"
+                        value={createDepartment}
+                        onChange={(e) => setCreateDepartment(e.target.value)}
+                        disabled={createPending}
+                        maxLength={256}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Phone
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="+1 555-0100"
+                        value={createPhone}
+                        onChange={(e) => setCreatePhone(e.target.value)}
+                        disabled={createPending}
+                        maxLength={64}
+                      />
+                    </div>
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Office
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="HQ-201"
+                        value={createOffice}
+                        onChange={(e) => setCreateOffice(e.target.value)}
+                        disabled={createPending}
+                        maxLength={256}
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                      Street Address
+                    </label>
+                    <Input
+                      className={CREATE_IDENTITY_INPUT_CLASS}
+                      placeholder="1 Example Way"
+                      value={createStreetAddress}
+                      onChange={(e) => setCreateStreetAddress(e.target.value)}
+                      disabled={createPending}
+                      maxLength={256}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        City
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="New York"
+                        value={createCity}
+                        onChange={(e) => setCreateCity(e.target.value)}
+                        disabled={createPending}
+                        maxLength={128}
+                      />
+                    </div>
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        State / Province
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="NY"
+                        value={createStateOrProvince}
+                        onChange={(e) => setCreateStateOrProvince(e.target.value)}
+                        disabled={createPending}
+                        maxLength={128}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Postal Code
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="10001"
+                        value={createPostalCode}
+                        onChange={(e) => setCreatePostalCode(e.target.value)}
+                        disabled={createPending}
+                        maxLength={40}
+                      />
+                    </div>
+                    <div>
+                      <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                        Country / Region
+                      </label>
+                      <Input
+                        className={CREATE_IDENTITY_INPUT_CLASS}
+                        placeholder="US"
+                        value={createCountryOrRegion}
+                        onChange={(e) => setCreateCountryOrRegion(e.target.value)}
+                        disabled={createPending}
+                        maxLength={128}
+                      />
+                    </div>
+                  </div>
+                    </TabsContent>
+                    <TabsContent value="guest" className="m-0 space-y-3">
+                  <div>
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
                       Email <span className="text-[var(--color-error)]">*</span>
                     </label>
                     <Input
-                      className="bg-slate-50 border-slate-200 text-xs"
+                      className={cn(
+                        CREATE_IDENTITY_INPUT_CLASS,
+                        createEmailError && "border-[var(--color-error)] focus-visible:ring-red-200",
+                      )}
                       placeholder="guest@example.com"
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      pattern={BASIC_EMAIL_PATTERN.source}
+                      aria-invalid={createEmailError ? true : undefined}
                       value={createEmail}
                       onChange={(e) => setCreateEmail(e.target.value)}
                       disabled={createPending}
                     />
+                    {createEmailError && (
+                      <p className="mt-1 text-[11px] text-[var(--color-error)]">
+                        {createEmailError}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
+                    <label className={CREATE_IDENTITY_LABEL_CLASS}>
                       Display Name
                     </label>
                     <Input
-                      className="bg-slate-50 border-slate-200 text-xs"
+                      className={CREATE_IDENTITY_INPUT_CLASS}
                       placeholder="Optional display name"
                       value={createFirstName}
                       onChange={(e) => setCreateFirstName(e.target.value)}
                       disabled={createPending}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 block">
-                      Company Name
-                    </label>
-                    <Input
-                      className="bg-slate-50 border-slate-200 text-xs"
-                      placeholder="Optional company name"
-                      value={createCompanyName}
-                      onChange={(e) => setCreateCompanyName(e.target.value)}
-                      disabled={createPending}
+                      maxLength={256}
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -1427,30 +1820,185 @@ export function DirectoryScreen() {
                       Send invitation message
                     </label>
                   </div>
+                  {createSendInvitation && (
+                    <>
+                      <div>
+                        <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                          CC Email
+                        </label>
+                        <Input
+                          className={cn(
+                            CREATE_IDENTITY_INPUT_CLASS,
+                            guestCcEmailError && "border-[var(--color-error)] focus-visible:ring-red-200",
+                          )}
+                          placeholder="manager@example.com"
+                          type="email"
+                          inputMode="email"
+                          autoComplete="email"
+                          pattern={BASIC_EMAIL_PATTERN.source}
+                          aria-invalid={guestCcEmailError ? true : undefined}
+                          value={createInvitationCcEmail}
+                          onChange={(e) => setCreateInvitationCcEmail(e.target.value)}
+                          disabled={createPending}
+                        />
+                        {guestCcEmailError && (
+                          <p className="mt-1 text-[11px] text-[var(--color-error)]">
+                            {guestCcEmailError}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                          Custom Message
+                        </label>
+                        <Textarea
+                          className={CREATE_IDENTITY_TEXTAREA_CLASS}
+                          placeholder="Optional plain-text invitation message"
+                          value={createInvitationMessage}
+                          onChange={(e) => setCreateInvitationMessage(e.target.value)}
+                          disabled={createPending}
+                          maxLength={1000}
+                        />
+                      </div>
+                    </>
+                  )}
+                  <Collapsible
+                    open={createGuestProfileOpen}
+                    onOpenChange={setCreateGuestProfileOpen}
+                    className="rounded-md border border-slate-200 bg-slate-50/70"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-auto w-full justify-between rounded-md px-3 py-2 text-left hover:bg-slate-100"
+                        disabled={createPending}
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-xs font-semibold text-slate-800">
+                            Profile details
+                          </span>
+                          <span className="block text-[11px] font-normal leading-4 text-slate-500">
+                            Optional. Applied after the invitation is created.
+                          </span>
+                        </span>
+                        <ChevronDown
+                          className={cn(
+                            "size-4 shrink-0 text-slate-500 transition-transform",
+                            createGuestProfileOpen && "rotate-180",
+                          )}
+                        />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-3 border-t border-slate-200 px-3 py-3">
+                        <p className="text-[11px] leading-4 text-slate-500">
+                          Requires Microsoft Graph user profile update permissions. If your account cannot update
+                          guest profiles, the invite will still be created and the profile failure will be shown.
+                        </p>
+                        <div>
+                          <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                            Company Name
+                          </label>
+                          <Input
+                            className={CREATE_IDENTITY_INPUT_CLASS}
+                            placeholder="Company name"
+                            value={createCompanyName}
+                            onChange={(e) => setCreateCompanyName(e.target.value)}
+                            disabled={createPending}
+                            maxLength={64}
+                          />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                              Job Title
+                            </label>
+                            <Input
+                              className={CREATE_IDENTITY_INPUT_CLASS}
+                              placeholder="Consultant"
+                              value={createTitle}
+                              onChange={(e) => setCreateTitle(e.target.value)}
+                              disabled={createPending}
+                              maxLength={128}
+                            />
+                          </div>
+                          <div>
+                            <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                              Department
+                            </label>
+                            <Input
+                              className={CREATE_IDENTITY_INPUT_CLASS}
+                              placeholder="Operations"
+                              value={createDepartment}
+                              onChange={(e) => setCreateDepartment(e.target.value)}
+                              disabled={createPending}
+                              maxLength={128}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                              Office
+                            </label>
+                            <Input
+                              className={CREATE_IDENTITY_INPUT_CLASS}
+                              placeholder="HQ-201"
+                              value={createOffice}
+                              onChange={(e) => setCreateOffice(e.target.value)}
+                              disabled={createPending}
+                              maxLength={128}
+                            />
+                          </div>
+                          <div>
+                            <label className={CREATE_IDENTITY_LABEL_CLASS}>
+                              Phone
+                            </label>
+                            <Input
+                              className={CREATE_IDENTITY_INPUT_CLASS}
+                              placeholder="+1 555-0100"
+                              value={createPhone}
+                              onChange={(e) => setCreatePhone(e.target.value)}
+                              disabled={createPending}
+                              maxLength={64}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                    </TabsContent>
+                  </div>
                 </div>
-              )}
-            </>
+              </div>
+            </Tabs>
           )}
 
           {createError && (
-            <div className="flex items-center gap-2 text-xs text-[var(--color-error)] bg-red-50 rounded-md px-3 py-2">
+            <div className="mx-4 mb-3 flex shrink-0 items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-xs text-[var(--color-error)]">
               <AlertCircle className="size-4 shrink-0" />
               <span>{createError}</span>
             </div>
           )}
 
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 sm:flex-row-reverse sm:justify-start">
             {createResult ? (
-              <Button size="sm" onClick={handleCreateClose}>
+              <Button className="h-9 w-full rounded-md sm:w-auto sm:min-w-28" onClick={handleCreateClose}>
                 Close
               </Button>
             ) : (
               <>
-                <Button variant="outline" size="sm" onClick={handleCreateClose} disabled={createPending}>
+                <Button
+                  variant="outline"
+                  className="h-9 w-full rounded-md sm:w-auto sm:min-w-28"
+                  onClick={handleCreateClose}
+                  disabled={createPending}
+                >
                   Cancel
                 </Button>
                 <Button
-                  size="sm"
+                  className="h-9 w-full rounded-md bg-teal-700 text-sm font-semibold text-white hover:bg-teal-800 sm:w-auto sm:min-w-32"
                   disabled={!createFormValid || createPending}
                   onClick={() => { void handleCreateSubmit(); }}
                 >
@@ -1459,9 +2007,9 @@ export function DirectoryScreen() {
                 </Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <RecipientDetailDialog
         open={detailDialogOpen}
@@ -1585,3 +2133,5 @@ export function DirectoryScreen() {
     </AppShell>
   );
 }
+
+
