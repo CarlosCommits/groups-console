@@ -633,7 +633,11 @@ export function RecipientDetailDialog({
                     </Alert>
                   )}
 
-                  {!memberSelectionRef ? (
+                  {membershipsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
+                    </div>
+                  ) : !memberSelectionRef ? (
                     <Alert>
                       <AlertTriangle className="size-4" />
                       <AlertTitle>Membership unavailable</AlertTitle>
@@ -641,10 +645,6 @@ export function RecipientDetailDialog({
                         This directory entry cannot be resolved into a membership target.
                       </AlertDescription>
                     </Alert>
-                  ) : membershipsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="size-8 animate-spin text-[var(--color-primary)]" />
-                    </div>
                   ) : (
                     <>
                       {currentMemberships.length === 0 ? (

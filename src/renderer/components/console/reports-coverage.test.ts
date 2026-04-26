@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  deriveCapabilityRows,
-  deriveCoverageSummary,
-} from "./reports-coverage";
-import type { CapabilityStatus } from "./reports-coverage";
+import { deriveCapabilityRows } from "./reports-coverage";
 import type { ShellState } from "./app-context";
 import type { SessionStatusSchema } from "@/shared/contracts/session";
 import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/contracts/exchange";
@@ -188,27 +184,5 @@ describe("deriveCapabilityRows", () => {
     expect(rows.find((r) => r.id === "exchange-connection")?.detail).toBe(
       "Auth token expired",
     );
-  });
-});
-
-describe("deriveCoverageSummary", () => {
-  it("counts available, deferred, and total correctly", () => {
-    const rows = [
-      { id: "a", surface: "A", status: "available" as CapabilityStatus, detail: "" },
-      { id: "b", surface: "B", status: "partial" as CapabilityStatus, detail: "" },
-      { id: "c", surface: "C", status: "deferred" as CapabilityStatus, detail: "" },
-      { id: "d", surface: "D", status: "unavailable" as CapabilityStatus, detail: "" },
-    ];
-    const summary = deriveCoverageSummary(rows);
-    expect(summary.available).toBe(1);
-    expect(summary.deferred).toBe(1);
-    expect(summary.total).toBe(4);
-  });
-
-  it("returns zeros for empty rows", () => {
-    const summary = deriveCoverageSummary([]);
-    expect(summary.available).toBe(0);
-    expect(summary.deferred).toBe(0);
-    expect(summary.total).toBe(0);
   });
 });

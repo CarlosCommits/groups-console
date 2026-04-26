@@ -9,12 +9,6 @@ export interface CapabilityRow {
   detail: string;
 }
 
-export interface CoverageSummary {
-  available: number;
-  deferred: number;
-  total: number;
-}
-
 export function deriveCapabilityRows(shell: ShellState): CapabilityRow[] {
   const rows: CapabilityRow[] = [];
 
@@ -109,14 +103,4 @@ export function deriveCapabilityRows(shell: ShellState): CapabilityRow[] {
   });
 
   return rows;
-}
-
-export function deriveCoverageSummary(rows: CapabilityRow[]): CoverageSummary {
-  const available = rows.filter((r) => r.status === "available").length;
-  const deferred = rows.filter((r) => r.status === "deferred").length;
-  return {
-    available,
-    deferred,
-    total: rows.length,
-  };
 }
