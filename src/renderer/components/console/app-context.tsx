@@ -10,6 +10,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { SessionStatusSchema } from "@/shared/contracts/session";
+import type { BootstrapCheck } from "@/shared/dto/session-status";
 import type { ExchangeCapabilities, ExchangeConnectionStatus } from "@/shared/contracts/exchange";
 import type { GraphConnectionStatus } from "@/shared/contracts/graph";
 import type {
@@ -25,6 +26,7 @@ export type Screen = "dashboard" | "groups" | "directory" | "reports" | "setting
 export type PendingAction =
   | "graphConnect"
   | "graphDisconnect"
+  | "exchangeInstallModule"
   | "exchangeConnect"
   | "exchangeDisconnect"
   | null;
@@ -148,6 +150,7 @@ interface AppContextValue {
   setExchangeUpn: (upn: string) => void;
   connectGraph: () => Promise<void>;
   disconnectGraph: () => Promise<void>;
+  installExchangeModule: () => Promise<void>;
   connectExchange: () => Promise<void>;
   disconnectExchange: () => Promise<void>;
   generateMembershipMatrix: (kind: ReportGroupKind) => Promise<void>;
@@ -250,6 +253,79 @@ export function resolveAutoExchangeUpnAfterGraphConnect({
   }
 
   return trimmedExchangeUpn.length > 0 ? trimmedExchangeUpn : null;
+}
+
+export type ExchangePrerequisiteBlocker =
+  | {
+      kind: "missingPowerShell";
+      title: string;
+      detail: string;
+      guidance: string;
+      canInstallModule: false;
+    }
+  | {
+      kind: "missingExchangeModule";
+      title: string;
+      detail: string;
+      guidance: string;
+      canInstallModule: true;
+    }
+  | {
+      kind: "exchangeModuleNotImportable";
+      title: string;
+      detail: string;
+      guidance: string;
+      canInstallModule: false;
+    };
+
+function findBootstrapCheck(
+  shell: Pick<ShellState, "session">,
+  id: BootstrapCheck["id"],
+) {
+  return shell.session?.checks.find((check) => check.id === id) ?? null;
+}
+
+export function deriveExchangePrerequisiteBlocker(
+  shell: Pick<ShellState, "session" | "exchangeCapabilities">,
+): ExchangePrerequisiteBlocker | null {
+  const powerShell = findBootstrapCheck(shell, "powershell");
+  if (powerShell?.status === "missing") {
+    return {
+      kind: "missingPowerShell",
+      title: "PowerShell is required for Exchange Online",
+      detail: powerShell.detail,
+      guidance: "Install Windows PowerShell 5.1 or PowerShell 7, then restart Groups Console so the prerequisite check can run again.",
+      canInstallModule: false,
+    };
+  }
+
+  const exchangeModule = findBootstrapCheck(shell, "exchangeModule");
+  if (exchangeModule?.status === "missing") {
+    return {
+      kind: "missingExchangeModule",
+      title: "ExchangeOnlineManagement is required",
+      detail: exchangeModule.detail,
+      guidance: "Use the install button to add ExchangeOnlineManagement for the current Windows user, or have IT deploy the module to this workstation.",
+      canInstallModule: true,
+    };
+  }
+
+  if (
+    shell.exchangeCapabilities?.exchangeModule.installed === true &&
+    shell.exchangeCapabilities.exchangeModule.importable === false
+  ) {
+    return {
+      kind: "exchangeModuleNotImportable",
+      title: "ExchangeOnlineManagement could not be loaded",
+      detail:
+        shell.exchangeCapabilities.exchangeModule.importError ??
+        shell.exchangeCapabilities.detail,
+      guidance: "Ask IT to review the module import failure. This is usually caused by a corrupted module install, missing dependency, or workstation security policy such as Constrained Language Mode, AppLocker, WDAC, or script-signing enforcement.",
+      canInstallModule: false,
+    };
+  }
+
+  return null;
 }
 
 export function getShellConnectionBoundary(shell: Pick<ShellState, "graphConnection" | "exchangeConnection">) {
@@ -420,7 +496,11 @@ export function AppProvider({ children }: AppProviderProps) {
     void refreshShellState();
   }, [refreshShellState]);
 
-  const attemptExchangeConnect = useCallback(async (userPrincipalName: string): Promise<boolean> => {
+  const attemptExchangeConnect = useCallback(async (
+    userPrincipalName: string,
+    options: { clearPendingOnComplete?: boolean } = {},
+  ): Promise<boolean> => {
+    const clearPendingOnComplete = options.clearPendingOnComplete ?? true;
     const trimmedUserPrincipalName = userPrincipalName.trim();
 
     if (trimmedUserPrincipalName.length === 0 || exchangeConnectInFlight.current) {
@@ -455,7 +535,9 @@ export function AppProvider({ children }: AppProviderProps) {
       setLastExchangeConnectFailure(message);
     } finally {
       exchangeConnectInFlight.current = false;
-      setPendingAction(null);
+      if (clearPendingOnComplete) {
+        setPendingAction(null);
+      }
     }
 
     return true;
@@ -484,18 +566,49 @@ export function AppProvider({ children }: AppProviderProps) {
         exchangeUpn,
         userEditedUpn: userEditedUpn.current,
       });
+      const exchangePrerequisiteBlocker = deriveExchangePrerequisiteBlocker(shell);
 
-      if (autoExchangeUpn) {
-        await attemptExchangeConnect(autoExchangeUpn);
+      if (autoExchangeUpn && !exchangePrerequisiteBlocker) {
+        await attemptExchangeConnect(autoExchangeUpn, { clearPendingOnComplete: false });
       }
     } catch (err) {
       const presented = presentCommandFailure(err, "Graph Connect Error", "Graph connect failed.");
       setActionErrors((prev) => ({ ...prev, graph: formatPresentedCommandFailure(presented) }));
     } finally {
-      setPendingAction(null);
       await refreshShellState();
+      setPendingAction(null);
     }
-  }, [attemptExchangeConnect, clearError, exchangeUpn, refreshShellState, shell.exchangeConnection]);
+  }, [attemptExchangeConnect, clearError, exchangeUpn, refreshShellState, shell]);
+
+  const installExchangeModule = useCallback(async () => {
+    if (!requireBridge("exchange")) {
+      setActionErrors((prev) => ({
+        ...prev,
+        exchange: "Application bridge is not available. Please restart the application.",
+      }));
+      return;
+    }
+
+    setPendingAction("exchangeInstallModule");
+    clearError("exchange");
+
+    try {
+      const capabilities = await window.radApp.exchange.installModule();
+      if (capabilities.status !== "ready") {
+        setActionErrors((prev) => ({ ...prev, exchange: capabilities.detail }));
+      }
+    } catch (err) {
+      const presented = presentCommandFailure(
+        err,
+        "Exchange Module Install Error",
+        "ExchangeOnlineManagement install failed.",
+      );
+      setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
+    } finally {
+      await refreshShellState();
+      setPendingAction(null);
+    }
+  }, [clearError, refreshShellState]);
 
   const disconnectGraph = useCallback(async () => {
     if (!requireBridge("graph")) {
@@ -522,11 +635,12 @@ export function AppProvider({ children }: AppProviderProps) {
   }, [clearError, refreshShellState]);
 
   const connectExchange = useCallback(async () => {
-    const attempted = await attemptExchangeConnect(exchangeUpn);
+    const attempted = await attemptExchangeConnect(exchangeUpn, { clearPendingOnComplete: false });
 
     if (attempted) {
       await refreshShellState();
     }
+    setPendingAction(null);
   }, [attemptExchangeConnect, exchangeUpn, refreshShellState]);
 
   const disconnectExchange = useCallback(async () => {
@@ -608,6 +722,7 @@ export function AppProvider({ children }: AppProviderProps) {
         setExchangeUpn: handleSetExchangeUpn,
         connectGraph,
         disconnectGraph,
+        installExchangeModule,
         connectExchange,
         disconnectExchange,
         generateMembershipMatrix,

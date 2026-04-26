@@ -50,6 +50,7 @@ import {
   exchangeDisconnectPayloadSchema,
   exchangeGetCapabilitiesPayloadSchema,
   exchangeGetConnectionStatusPayloadSchema,
+  exchangeInstallModulePayloadSchema,
   exchangeRecipientGetDetailsPayloadSchema,
   exchangeRecipientGetDetailsResultSchema,
   exchangeListGroupsPayloadSchema,
@@ -84,6 +85,7 @@ import { searchGuestUsers } from '@/main/graph/search-guest-users';
 import { updateGuestCompany } from '@/main/graph/update-guest-company';
 import { sessionGetStatusPayloadSchema, sessionStatusSchema } from '@/shared/contracts/session';
 import { getExchangeCapabilities } from '@/main/exchange/get-exchange-capabilities';
+import { installExchangeModule } from '@/main/exchange/install-exchange-module';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
 import { getGroupMemberships } from '@/main/exchange/get-group-memberships';
 import { getGroupMembers } from '@/main/exchange/get-group-members';
@@ -455,6 +457,17 @@ async function executeCommand(
     case 'exchange.getCapabilities': {
       exchangeGetCapabilitiesPayloadSchema.parse(request.payload);
       const capabilities = exchangeCapabilitiesSchema.parse(await getExchangeCapabilities());
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: capabilities,
+      }) as CommandResponse;
+    }
+    case 'exchange.installModule': {
+      exchangeInstallModulePayloadSchema.parse(request.payload);
+      const capabilities = exchangeCapabilitiesSchema.parse(await installExchangeModule());
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
