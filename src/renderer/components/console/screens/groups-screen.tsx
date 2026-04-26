@@ -594,6 +594,7 @@ export function GroupsScreen() {
     detailMemberSelectionRef,
     detailResolved && !!detailMemberSelectionRef,
   );
+  const detailMembershipsLoading = detailResolvePendingKey !== null || membershipsQuery.isLoading;
   const membershipMember = membershipsQuery.member;
   const refetchMemberships = membershipsQuery.refetch;
 
@@ -1744,7 +1745,7 @@ export function GroupsScreen() {
         onUpdateSubmit={() => {}}
         updateResult={null}
         memberSelectionRef={detailMemberSelectionRef}
-        membershipsLoading={membershipsQuery.isLoading}
+        membershipsLoading={detailMembershipsLoading}
         membershipsError={membershipsQuery.error}
         currentMemberships={currentMemberships}
         onRefetchMemberships={() => {
