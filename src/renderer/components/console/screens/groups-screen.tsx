@@ -1444,7 +1444,9 @@ export function GroupsScreen() {
                                   tabIndex={isMemberInspectable(member) ? 0 : undefined}
                                   role={isMemberInspectable(member) ? "button" : undefined}
                                   onClick={() => {
-                                    void openMemberDetailDialog(member);
+                                    if (isMemberInspectable(member)) {
+                                      void openMemberDetailDialog(member);
+                                    }
                                   }}
                                   onKeyDown={(event) => {
                                     if (!isMemberInspectable(member)) return;
