@@ -80,10 +80,18 @@ export async function installExchangeModule(): Promise<ExchangeCapabilities> {
   }
 
   const parsed = exchangeInstallResultSchema.parse(JSON.parse(execution.stdout));
+  const normalizedStatus =
+    parsed.status === 'ready' && execution.runtime.command !== 'powershell.exe'
+      ? 'warning'
+      : parsed.status;
+  const normalizedDetail =
+    parsed.status === 'ready' && execution.runtime.command !== 'powershell.exe'
+      ? `${parsed.detail} PowerShell 7 is usable, but Groups Console currently treats Windows PowerShell 5.1 as the preferred Exchange runtime.`
+      : parsed.detail;
 
   return exchangeCapabilitiesSchema.parse({
-    status: parsed.status,
-    detail: parsed.detail,
+    status: normalizedStatus,
+    detail: normalizedDetail,
     runtime: {
       command: execution.runtime.command,
       label: execution.runtime.label,
