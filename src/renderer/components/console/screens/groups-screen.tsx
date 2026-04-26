@@ -316,12 +316,13 @@ function memberToFallbackRecipient(member: GroupMemberListItem): RecipientSearch
   const stableKey = member.objectId
     ? `exchange:objectId:${member.objectId}`
     : `exchange:identity:${member.exchangeIdentity}`;
+  const isGuestMailUser = member.recipientType === "guestMailUser";
 
   return {
     source: "exchange",
     stableKey,
-    recipientType: member.recipientType === "guestMailUser" ? "mailUser" : member.recipientType,
-    membershipSupport: "exchangeDirect",
+    recipientType: isGuestMailUser ? "guestUser" : member.recipientType,
+    membershipSupport: isGuestMailUser ? "graphDeferred" : "exchangeDirect",
     objectId: member.objectId,
     exchangeIdentity: member.exchangeIdentity,
     primaryEmail: member.primaryEmail,
@@ -523,6 +524,7 @@ export function GroupsScreen() {
   const [addGroupPending, setAddGroupPending] = useState(false);
   const [addGroupError, setAddGroupError] = useState<string | null>(null);
   const [removeMembershipGroupTarget, setRemoveMembershipGroupTarget] = useState<ExchangeGroupListItem | null>(null);
+  const detailResolveTokenRef = useRef(0);
 
   const hasGroupsData = appliedKind !== null;
   const showStaleGroupsError = groupsError !== null && hasGroupsData;
@@ -562,23 +564,24 @@ export function GroupsScreen() {
   const addGroupMembersMutation = useAddGroupMembersMutation(exchangeConnection);
   const removeGroupMembersMutation = useRemoveGroupMembersMutation(exchangeConnection);
   const normalizedActiveTab = activeTab === "settings" ? "details" : activeTab;
+  const detailResolved = detailDialogOpen && detailResolvePendingKey === null && detailResolveError === null;
 
   const contactDetailsQuery = useContactDetailsQuery(
     exchangeConnection,
     detailTarget?.recipientType === "mailContact" ? detailTarget.stableKey : undefined,
-    detailDialogOpen && detailTarget?.recipientType === "mailContact",
+    detailResolved && detailTarget?.recipientType === "mailContact",
   );
   const guestDetailsQuery = useGuestDetailsQuery(
     shell.graphConnection,
     detailTarget?.recipientType === "guestUser" ? detailTarget.stableKey : undefined,
-    detailDialogOpen && detailTarget?.recipientType === "guestUser",
+    detailResolved && detailTarget?.recipientType === "guestUser",
   );
   const exchangeRecipientDetailsQuery = useExchangeRecipientDetailsQuery(
     exchangeConnection,
     detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"
       ? detailTarget.stableKey
       : undefined,
-    detailDialogOpen &&
+    detailResolved &&
       (detailTarget?.recipientType === "mailbox" || detailTarget?.recipientType === "mailUser"),
   );
 
@@ -589,8 +592,10 @@ export function GroupsScreen() {
   const membershipsQuery = useGroupMembershipsQuery(
     exchangeConnection,
     detailMemberSelectionRef,
-    detailDialogOpen && !!detailMemberSelectionRef,
+    detailResolved && !!detailMemberSelectionRef,
   );
+  const membershipMember = membershipsQuery.member;
+  const refetchMemberships = membershipsQuery.refetch;
 
   const currentMemberships = membershipsQuery.groups;
   const currentMembershipKeys = useMemo(
@@ -883,6 +888,8 @@ export function GroupsScreen() {
   const openMemberDetailDialog = useCallback(async (member: GroupMemberListItem) => {
     if (!isMemberInspectable(member)) return;
 
+    const resolveToken = detailResolveTokenRef.current + 1;
+    detailResolveTokenRef.current = resolveToken;
     const fallbackTarget = memberToFallbackRecipient(member);
     setDetailTarget(fallbackTarget);
     setDetailDialogOpen(true);
@@ -899,21 +906,26 @@ export function GroupsScreen() {
         limit: 25,
       });
       const match = findBestRecipientMatch(member, result);
+      if (detailResolveTokenRef.current !== resolveToken) return;
       setDetailTarget(match ?? fallbackTarget);
       if (member.recipientType === "guestMailUser" && match?.recipientType !== "guestUser") {
         setDetailResolveError("Guest details require a matching Microsoft Graph guest record.");
       }
     } catch (err) {
+      if (detailResolveTokenRef.current !== resolveToken) return;
       const message = formatPresentedCommandFailure(
         presentCommandFailure(err, "Detail Error", "Failed to resolve member details."),
       );
       setDetailResolveError(message);
     } finally {
-      setDetailResolvePendingKey(null);
+      if (detailResolveTokenRef.current === resolveToken) {
+        setDetailResolvePendingKey(null);
+      }
     }
   }, []);
 
   const handleDetailClose = useCallback(() => {
+    detailResolveTokenRef.current += 1;
     setDetailDialogOpen(false);
     setDetailTarget(null);
     setDetailResolvePendingKey(null);
@@ -956,7 +968,7 @@ export function GroupsScreen() {
     setAddGroupPending(true);
     setAddGroupError(null);
     try {
-      const results = await Promise.all(
+      const settledResults = await Promise.allSettled(
         selectedGroups.map(async (group) => ({
           group,
           result: await addGroupMembersMutation.mutateAsync({
@@ -965,17 +977,36 @@ export function GroupsScreen() {
           }),
         })),
       );
-      const issue = results.flatMap(({ group, result }) =>
+      const successfulResults = settledResults.flatMap((settled) =>
+        settled.status === "fulfilled" ? [settled.value] : [],
+      );
+      const failedResults = settledResults.flatMap((settled, index) => {
+        if (settled.status === "fulfilled") return [];
+        const group = selectedGroups[index];
+        const message = formatPresentedCommandFailure(
+          presentCommandFailure(settled.reason, "Add Groups Error", `Failed to add member to ${group.displayName}.`),
+        );
+        return [`${group.displayName}: ${message}`];
+      });
+      const itemIssues = successfulResults.flatMap(({ group, result }) =>
         result.items
           .filter((item) => !isAddStatusClean(item.status))
           .map((item) => `${group.displayName}: ${ADD_STATUS_LABELS[item.status]} - ${item.detail}`),
-      )[0];
+      );
+      const issues = [...failedResults, ...itemIssues];
 
-      if (issue) {
-        setAddGroupError(issue);
+      if (issues.length > 0) {
+        const issueMessage = issues.slice(0, 3).join("\n");
+        setAddGroupError(issueMessage);
+        await refetchMemberships();
+        if (successfulResults.length > 0) {
+          toast.warning("Some groups were not updated", { description: issueMessage });
+        } else {
+          toast.error("Failed to add groups", { description: issueMessage });
+        }
       } else {
         setSelectedGroupKeys(new Set());
-        await membershipsQuery.refetch();
+        await refetchMemberships();
         toast.success("Group memberships updated", {
           description: `${selectedGroups.length} group${selectedGroups.length === 1 ? "" : "s"} updated.`,
         });
@@ -993,19 +1024,19 @@ export function GroupsScreen() {
     addGroupMembersMutation,
     detailMemberSelectionRef,
     groups,
-    membershipsQuery,
+    refetchMemberships,
     selectedGroupKeys,
   ]);
 
   const handleRemoveMembershipGroup = useCallback(async () => {
-    if (!membershipsQuery.member || !removeMembershipGroupTarget) {
+    if (!membershipMember || !removeMembershipGroupTarget) {
       return;
     }
 
     const memberRef: GroupMemberWriteRef = {
-      exchangeIdentity: membershipsQuery.member.exchangeIdentity,
-      objectId: membershipsQuery.member.objectId,
-      primaryEmail: membershipsQuery.member.primaryEmail,
+      exchangeIdentity: membershipMember.exchangeIdentity,
+      objectId: membershipMember.objectId,
+      primaryEmail: membershipMember.primaryEmail,
     };
 
     setRemovePending(true);
@@ -1021,7 +1052,7 @@ export function GroupsScreen() {
         setRemoveError(issueMessage);
       } else {
         setRemoveMembershipGroupTarget(null);
-        await membershipsQuery.refetch();
+        await refetchMemberships();
         void refetchMembers();
       }
     } catch (err) {
@@ -1035,8 +1066,9 @@ export function GroupsScreen() {
     }
   }, [
     detailTarget?.displayName,
-    membershipsQuery,
+    membershipMember,
     refetchMembers,
+    refetchMemberships,
     removeGroupMembersMutation,
     removeMembershipGroupTarget,
   ]);
