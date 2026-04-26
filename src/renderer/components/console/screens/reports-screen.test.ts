@@ -148,7 +148,7 @@ describe('ReportsScreen membership matrix states', () => {
 
     const html = renderToStaticMarkup(React.createElement(ReportsScreen));
 
-    expect(html).toContain('Generating…');
+    expect(html).toContain('Generating report');
     expect(html).toContain('Reading members.');
     expect(html).toContain('42%');
   });
@@ -181,7 +181,7 @@ describe('ReportsScreen membership matrix states', () => {
 
     expect(html).toContain('Report saved');
     expect(html).toContain('C:/Reports/membership-matrix.xlsx');
-    expect(html).toContain('3 groups · 25 recipients · 40 memberships');
+    expect(html).toContain('3 groups, 25 recipients, 40 memberships');
   });
 
   it('renders the persisted error from app context', () => {
