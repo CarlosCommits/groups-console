@@ -2,6 +2,19 @@ import { z } from 'zod';
 
 import { recipientConflictSchema } from './conflicts';
 
+const contactAliasSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9!#%*+\-/=?^_~]+(?:\.[A-Za-z0-9!#%*+\-/=?^_~]+)*$/, {
+    message:
+      'Alias can contain letters, numbers, ! # % * + - / = ? ^ _ ~, and periods between other valid characters.',
+  });
+
+const optionalContactTextSchema = (maxLength: number) =>
+  z.string().trim().min(1).max(maxLength).optional();
+
 export const contactRefSchema = z
   .object({
     exchangeIdentity: z.string().min(1),
@@ -12,10 +25,21 @@ export const contactRefSchema = z
 
 export const contactsCreatePayloadSchema = z
   .object({
-    firstName: z.string().trim().min(1).max(128),
-    lastName: z.string().trim().min(1).max(128),
+    displayName: z.string().trim().min(1).max(256),
+    alias: contactAliasSchema,
+    firstName: optionalContactTextSchema(128),
+    lastName: optionalContactTextSchema(128),
     email: z.string().email(),
-    companyName: z.string().trim().min(1).max(256),
+    companyName: optionalContactTextSchema(256),
+    title: optionalContactTextSchema(256),
+    department: optionalContactTextSchema(256),
+    phone: optionalContactTextSchema(64),
+    office: optionalContactTextSchema(256),
+    streetAddress: optionalContactTextSchema(256),
+    city: optionalContactTextSchema(128),
+    stateOrProvince: optionalContactTextSchema(128),
+    postalCode: optionalContactTextSchema(40),
+    countryOrRegion: optionalContactTextSchema(128),
   })
   .strict();
 

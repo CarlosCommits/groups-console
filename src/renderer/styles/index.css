@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @theme inline {
   /* Light theme color palette for Groups Console - blended concept */
