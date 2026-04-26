@@ -392,7 +392,6 @@ export function DirectoryScreen() {
     | { mode: "guest"; data: GuestsUpdateCompanyResult }
     | null
   >(null);
-  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
@@ -691,7 +690,7 @@ export function DirectoryScreen() {
   const handleUpdateSubmit = async () => {
     if (!detailTarget) return;
     setUpdatePending(true);
-    setUpdateError(null);
+    setUpdateResult(null);
     try {
       const mode = getUpdateMode(detailTarget);
       if (mode === "contact") {
@@ -703,6 +702,11 @@ export function DirectoryScreen() {
           stableKey: detailTarget.stableKey,
         });
         setUpdateResult({ mode: "contact", data: result });
+        if (result.verification.companyApplied) {
+          toast.success("Company updated", { description: result.verification.detail });
+        } else {
+          toast.warning("Company update needs attention", { description: result.verification.detail });
+        }
       } else {
         const result = await updateGuestCompanyMutation.mutateAsync({
           payload: {
@@ -712,13 +716,17 @@ export function DirectoryScreen() {
           stableKey: detailTarget.stableKey,
         });
         setUpdateResult({ mode: "guest", data: result });
+        if (result.verification.companyApplied) {
+          toast.success("Company updated", { description: result.verification.detail });
+        } else {
+          toast.warning("Company update needs attention", { description: result.verification.detail });
+        }
       }
     } catch (err: unknown) {
-      setUpdateError(
-        formatPresentedCommandFailure(
-          presentCommandFailure(err, "Update Error", "Operation failed."),
-        ),
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Update Error", "Operation failed."),
       );
+      toast.error("Failed to update company", { description: message });
     } finally {
       setUpdatePending(false);
     }
@@ -726,7 +734,6 @@ export function DirectoryScreen() {
 
   const handleUpdateClose = useCallback(() => {
     setUpdateResult(null);
-    setUpdateError(null);
     setUpdatePending(false);
   }, []);
 
@@ -736,7 +743,6 @@ export function DirectoryScreen() {
     setUpdateCompanyName(item.companyName ?? "");
     setUpdatePending(false);
     setUpdateResult(null);
-    setUpdateError(null);
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
     setAddGroupPending(false);
@@ -1480,7 +1486,6 @@ export function DirectoryScreen() {
           void handleUpdateSubmit();
         }}
         updateResult={updateResult}
-        updateError={updateError}
         memberSelectionRef={memberSelectionRef}
         membershipsLoading={membershipsQuery.isLoading}
         membershipsError={membershipsQuery.error}
