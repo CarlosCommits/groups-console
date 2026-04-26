@@ -637,10 +637,15 @@ export function AppProvider({ children }: AppProviderProps) {
   const connectExchange = useCallback(async () => {
     const attempted = await attemptExchangeConnect(exchangeUpn, { clearPendingOnComplete: false });
 
-    if (attempted) {
-      await refreshShellState();
+    if (!attempted) {
+      return;
     }
-    setPendingAction(null);
+
+    try {
+      await refreshShellState();
+    } finally {
+      setPendingAction(null);
+    }
   }, [attemptExchangeConnect, exchangeUpn, refreshShellState]);
 
   const disconnectExchange = useCallback(async () => {

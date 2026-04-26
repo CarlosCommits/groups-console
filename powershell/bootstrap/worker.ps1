@@ -129,7 +129,7 @@ switch ($CommandName) {
                 Install-PackageProvider -Name NuGet -Scope CurrentUser -Force -ErrorAction Stop | Out-Null
             }
 
-            Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop | Out-Null
         }
 
         $probe = Get-RadAppEnvironmentProbe
@@ -140,13 +140,21 @@ switch ($CommandName) {
         }
 
         $hasRequiredCommands = $exchangeModule.commandChecks.connectExchangeOnline -and $exchangeModule.commandChecks.disconnectExchangeOnline -and $exchangeModule.commandChecks.getConnectionInformation
+        $status = 'ready'
+        $detail = "ExchangeOnlineManagement $($exchangeModule.version) is installed and importable."
         if ($exchangeModule.import.importable -ne $true -or -not $hasRequiredCommands) {
-            throw "ExchangeOnlineManagement was installed but is not ready: $($exchangeModule.import.error)"
+            $status = 'warning'
+            $detail = if ($exchangeModule.import.importable -ne $true) {
+                "ExchangeOnlineManagement $($exchangeModule.version) is installed but not importable: $($exchangeModule.import.error)"
+            }
+            else {
+                "ExchangeOnlineManagement $($exchangeModule.version) imports successfully, but the expected pre-auth cmdlet subset is incomplete."
+            }
         }
 
         $result = [pscustomobject]@{
-            status                   = 'ready'
-            detail                   = "ExchangeOnlineManagement $($exchangeModule.version) is installed and importable."
+            status                   = $status
+            detail                   = $detail
             psVersion                = $probe.psVersion
             psEdition                = $probe.psEdition
             executionPolicy          = $probe.executionPolicy
