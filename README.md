@@ -1,14 +1,20 @@
 <p align="center">
-  <img src="logos/Groups%20Console%20logo%20design%20concept%202.png" alt="Groups Console logo" width="120">
+  <img src="logos/Groups%20Console%20logo%20design%20concept%202%20bottom-trimmed.png" alt="Groups Console logo" width="270">
 </p>
 
-# Groups Console
+<h1 align="center">Groups Console</h1>
 
-Windows-first Electron desktop app for Exchange Online and Microsoft Graph administration.
+<p align="center">
+  Windows-first Electron desktop app for Exchange Online and Microsoft Graph administration.
+</p>
+
+<p align="center">
+  <strong>Electron v2 desktop app</strong> &middot; Exchange Online &middot; Microsoft Graph &middot; Local diagnostics
+</p>
 
 > Status: this repository is the current Electron v2 app.
 
-![Groups Console dashboard](images/Dashboard%20image.png)
+![Groups Console dashboard](images/Dashboard%20image%20rounded.png)
 
 ## What it does today
 
@@ -26,11 +32,13 @@ The app is still evolving. It is already useful for real tenant workflows, but t
 
 ## Architecture at a glance
 
-- **Renderer:** React UI running in a sandboxed Electron renderer
-- **Preload:** narrow typed `window.groupsConsole` bridge
-- **Main process:** orchestration, dialogs, logging, diagnostics, Graph integration
-- **Exchange layer:** app-owned PowerShell worker/session host for Exchange Online operations
-- **Shared contracts:** Zod-validated DTOs and IPC contracts under `src/shared/**`
+| Layer | Responsibility |
+| --- | --- |
+| Renderer | React UI running in a sandboxed Electron renderer |
+| Preload | Narrow typed `window.groupsConsole` bridge |
+| Main process | Orchestration, dialogs, logging, diagnostics, and Graph integration |
+| Exchange layer | App-owned PowerShell worker/session host for Exchange Online operations |
+| Shared contracts | Zod-validated DTOs and IPC contracts under `src/shared/**` |
 
 Exchange remains the write path for distribution lists, mail-enabled security groups, and Exchange contacts. Microsoft Graph is used for guest-user lifecycle and selected directory reads.
 
@@ -38,11 +46,13 @@ Exchange remains the write path for distribution lists, mail-enabled security gr
 
 ### Workstation requirements
 
-- Windows admin workstation (`win32` is the supported runtime target)
-- Windows PowerShell 5.1 preferred
-- PowerShell 7 (`pwsh`) may be usable, but the app currently treats Windows PowerShell 5.1 as the preferred Exchange runtime
-- Internet access to Microsoft 365 / Microsoft Graph endpoints
-- Writable local app-data directory for logs and config
+| Requirement | Notes |
+| --- | --- |
+| Windows admin workstation | `win32` is the supported runtime target |
+| Windows PowerShell 5.1 | Preferred Exchange runtime |
+| PowerShell 7 (`pwsh`) | May be usable, but Windows PowerShell 5.1 is preferred |
+| Internet access | Required for Microsoft 365 and Microsoft Graph endpoints |
+| Writable app-data directory | Required for logs and local config |
 
 ### Required PowerShell module
 
@@ -135,10 +145,12 @@ These are **likely** requirements, not guaranteed universal role group names. Ex
 
 The app's local readiness model depends on four checks:
 
-- `powershell`
-- `exchangeModule`
-- `logDirectory`
-- `tenantConfig`
+| Check | Purpose |
+| --- | --- |
+| `powershell` | Confirms a supported PowerShell runtime is available |
+| `exchangeModule` | Confirms `ExchangeOnlineManagement` is installed and importable |
+| `logDirectory` | Confirms the app can write local diagnostics |
+| `tenantConfig` | Confirms tenant configuration exists and parses |
 
 If any of these are missing or degraded, the app should show that state instead of pretending it is fully ready.
 
@@ -172,16 +184,13 @@ Developer setup, scripts, verification commands, and architecture references liv
 
 ## Supported workflow boundaries
 
-Current scope is centered on:
-
-- Exchange-backed group administration
-- Graph-backed guest workflows
-- overlap-safe handling when contacts and guests share the same SMTP address
-- local diagnostics and supportability
-
-Notable constraints:
-
-- delegated interactive auth only
-- no server-hosted orchestration
-- no Graph write path for distribution lists or mail-enabled security groups
-- no assumption that SMTP alone is the canonical identity key
+| Area | Current stance |
+| --- | --- |
+| Exchange-backed group administration | Supported |
+| Graph-backed guest workflows | Supported |
+| Contact / guest SMTP overlap handling | Supported with asymmetric safety rules |
+| Local diagnostics and supportability | Supported |
+| Authentication model | Delegated interactive auth only |
+| Server-hosted orchestration | Not in scope |
+| Graph writes for distribution lists or mail-enabled security groups | Not in scope |
+| SMTP as canonical identity key | Not assumed |
