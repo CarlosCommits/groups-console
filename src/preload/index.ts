@@ -68,6 +68,7 @@ import {
   type GroupsRemoveMembersResult,
 } from '@/shared/contracts/exchange';
 import { sessionStatusSchema, type SessionStatusSchema } from '@/shared/contracts/session';
+import { updateStatusSchema, type UpdateStatus } from '@/shared/contracts/updates';
 import {
   reportsGenerateMembershipMatrixResultSchema,
   type ReportsGenerateMembershipMatrixPayload,
@@ -79,6 +80,10 @@ import { createCommandFailure } from './command-failure';
 
 const COMMAND_CHANNEL = 'groups-console:command';
 const PROGRESS_CHANNEL = 'groups-console:progress';
+const UPDATE_GET_STATUS_CHANNEL = 'groups-console:updates:get-status';
+const UPDATE_CHECK_CHANNEL = 'groups-console:updates:check';
+const UPDATE_INSTALL_CHANNEL = 'groups-console:updates:install';
+const UPDATE_STATUS_CHANNEL = 'groups-console:updates:status';
 
 const groupsConsoleApi = {
   session: {
@@ -92,6 +97,31 @@ const groupsConsoleApi = {
       }
 
       return sessionStatusSchema.parse(response.data);
+    },
+  },
+  updates: {
+    async getStatus(): Promise<UpdateStatus> {
+      const rawStatus: unknown = await ipcRenderer.invoke(UPDATE_GET_STATUS_CHANNEL);
+      return updateStatusSchema.parse(rawStatus);
+    },
+    async check(): Promise<UpdateStatus> {
+      const rawStatus: unknown = await ipcRenderer.invoke(UPDATE_CHECK_CHANNEL);
+      return updateStatusSchema.parse(rawStatus);
+    },
+    async install(): Promise<UpdateStatus> {
+      const rawStatus: unknown = await ipcRenderer.invoke(UPDATE_INSTALL_CHANNEL);
+      return updateStatusSchema.parse(rawStatus);
+    },
+    onStatusChanged(listener: (status: UpdateStatus) => void): () => void {
+      const statusListener = (_event: Electron.IpcRendererEvent, rawStatus: unknown) => {
+        listener(updateStatusSchema.parse(rawStatus));
+      };
+
+      ipcRenderer.on(UPDATE_STATUS_CHANNEL, statusListener);
+
+      return () => {
+        ipcRenderer.removeListener(UPDATE_STATUS_CHANNEL, statusListener);
+      };
     },
   },
   systemLogs: {
