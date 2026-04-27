@@ -19,12 +19,19 @@ import type { RecipientsSearchResult } from '@/shared/contracts/recipients';
 import type { SystemLogsListEventsPayload, SystemLogsListEventsResult } from '@/shared/contracts/system-logs';
 import type { ReportsGenerateMembershipMatrixPayload, ReportsGenerateMembershipMatrixResult } from '@/shared/contracts/reports';
 import type { SessionStatusSchema } from '@/shared/contracts/session';
+import type { UpdateStatus } from '@/shared/contracts/updates';
 
 declare global {
   interface Window {
     groupsConsole: {
       session: {
         getStatus: () => Promise<SessionStatusSchema>;
+      };
+      updates: {
+        getStatus: () => Promise<UpdateStatus>;
+        check: () => Promise<UpdateStatus>;
+        install: () => Promise<UpdateStatus>;
+        onStatusChanged: (listener: (status: UpdateStatus) => void) => () => void;
       };
       exchange: {
         getCapabilities: () => Promise<ExchangeCapabilities>;

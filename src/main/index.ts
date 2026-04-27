@@ -6,6 +6,8 @@ import { graphSessionManager } from '@/main/graph/graph-session-manager';
 
 import { createMainWindow } from './app/create-main-window';
 import { registerIpcHandlers } from './ipc/register-ipc-handlers';
+import { registerUpdateIpcHandlers } from './updates/register-update-ipc-handlers';
+import { initializeUpdates, shutdownUpdates } from './updates/update-manager';
 
 if (started) {
   app.quit();
@@ -17,7 +19,9 @@ void app.whenReady().then(() => {
   }
 
   registerIpcHandlers();
+  registerUpdateIpcHandlers();
   createMainWindow();
+  initializeUpdates();
 
   app.on('activate', () => {
     if (process.platform === 'darwin' && BrowserWindow.getAllWindows().length === 0) {
@@ -33,6 +37,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  shutdownUpdates();
   void exchangeSessionManager.shutdown();
   void graphSessionManager.shutdown();
 });

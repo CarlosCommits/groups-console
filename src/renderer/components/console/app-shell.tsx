@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/renderer/lib/utils";
+import type { UpdateStatus } from "@/shared/contracts/updates";
 import { AppSidebar } from "./app-sidebar";
 import { AppHeader } from "./app-header";
 import { useApp, type Screen } from "./app-context";
@@ -19,11 +20,52 @@ const SCREEN_TITLES: Record<Screen, string> = {
   settings: "Settings",
 };
 
+function useUpdateStatus() {
+  const [updateStatus, setUpdateStatus] = React.useState<UpdateStatus | null>(null);
+
+  React.useEffect(() => {
+    if (!window.groupsConsole?.updates) {
+      return;
+    }
+
+    let active = true;
+    void window.groupsConsole.updates.getStatus().then((status) => {
+      if (active) {
+        setUpdateStatus(status);
+      }
+    }).catch(() => {
+      // Update status is non-critical shell chrome; keep the app usable if the bridge rejects.
+    });
+
+    const unsubscribe = window.groupsConsole.updates.onStatusChanged((status) => {
+      setUpdateStatus(status);
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const installUpdate = React.useCallback(() => {
+    if (!window.groupsConsole?.updates) {
+      return;
+    }
+
+    void window.groupsConsole.updates.install().then(setUpdateStatus).catch(() => {
+      // The main process owns install failure state; avoid unhandled renderer rejections.
+    });
+  }, []);
+
+  return { updateStatus, installUpdate };
+}
+
 export function AppShell({
   children,
   className,
 }: AppShellProps) {
   const { shell, currentScreen } = useApp();
+  const { updateStatus, installUpdate } = useUpdateStatus();
   const hasResolvedShell =
     shell.session !== null ||
     shell.graphConnection !== null ||
@@ -49,6 +91,8 @@ export function AppShell({
         title={SCREEN_TITLES[currentScreen]}
         graphConnected={summary?.graphConnected ?? false}
         exchangeActive={summary?.exchangeActive ?? false}
+        updateStatus={updateStatus}
+        onInstallUpdate={installUpdate}
       />
       <main className="ml-60 pt-14 px-6 pb-6 min-h-screen">
         {summary?.readiness === "signedOut" ? (
