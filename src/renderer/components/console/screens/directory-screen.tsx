@@ -1110,9 +1110,9 @@ export function DirectoryScreen() {
 
   return (
     <AppShell>
-      <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex justify-end items-center mb-4 pt-6">
+          <div className="flex justify-end items-center mb-3">
             <div className="flex gap-2">
               <Button
                 size="sm"
