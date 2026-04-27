@@ -204,7 +204,10 @@ Release versioning, git tags, GitHub Release assets, and distribution guidance l
 
 ## License
 
+Copyright 2026 Carlos Canas.
+
 Groups Console is licensed under the [Apache License 2.0](LICENSE).
+Redistributions should preserve the license text, copyright notice, and [NOTICE](NOTICE) file.
 
 This project is not affiliated with, endorsed by, or sponsored by Microsoft.
 Use of Microsoft APIs is subject to Microsoft's applicable API terms.

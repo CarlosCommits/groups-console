@@ -38,8 +38,8 @@
     "test:watch": "vitest"
   },
   "author": {
-    "name": "Carlos",
-    "email": "41172581+CarlosCommits@users.noreply.github.com"
+    "name": "Carlos Canas",
+    "url": "https://github.com/CarlosCommits"
   },
   "license": "Apache-2.0",
   "engines": {
