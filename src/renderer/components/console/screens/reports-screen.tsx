@@ -107,8 +107,6 @@ export function ReportsScreen() {
 
   return (
     <AppShell>
-      <div className="py-6" />
-
       <div className="max-w-4xl space-y-5">
         <Card className={cn(CONSOLE_SURFACE_CARD, "overflow-hidden")}>
           <CardHeader className={CONSOLE_SURFACE_HEADER}>

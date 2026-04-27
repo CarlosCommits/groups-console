@@ -1209,7 +1209,7 @@ export function GroupsScreen() {
   if (!exchangeConnected) {
     return (
       <AppShell>
-        <div className="h-[calc(100vh-7rem)] pt-6 flex flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
             <div className="text-center py-16 px-8">
               <WifiOff className="size-10 text-slate-300 mx-auto mb-4" />
@@ -1229,7 +1229,7 @@ export function GroupsScreen() {
   if (groupsLoading) {
     return (
       <AppShell>
-        <div className="h-[calc(100vh-7rem)] pt-6 flex flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
             <div className="text-center py-16 px-8">
               <Loader2 className="size-8 text-[var(--color-primary)] mx-auto mb-4 animate-spin" />
@@ -1244,7 +1244,7 @@ export function GroupsScreen() {
   if (groupsError && appliedKind === null) {
     return (
       <AppShell>
-        <div className="h-[calc(100vh-7rem)] pt-6 flex flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
             <div className="text-center py-16 px-8">
               <AlertCircle className="size-10 text-[var(--color-error)] mx-auto mb-4" />
@@ -1265,7 +1265,7 @@ export function GroupsScreen() {
   if (groups.length === 0) {
     return (
       <AppShell>
-        <div className="h-[calc(100vh-7rem)] pt-6 flex flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
             <div className="text-center py-16 px-8">
               {showStaleGroupsError ? (
@@ -1295,7 +1295,7 @@ export function GroupsScreen() {
 
   return (
     <AppShell>
-      <div className="h-[calc(100vh-7rem)] pt-6 flex flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="flex flex-1 overflow-hidden rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
           <section className="w-96 flex flex-col bg-slate-50 border-r border-slate-200/50 flex-none h-full">
             <div className="p-4 bg-white border-b border-slate-200/50 flex-none">

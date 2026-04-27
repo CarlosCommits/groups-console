@@ -196,7 +196,7 @@ export function SettingsScreen() {
 
   return (
     <AppShell>
-      <div className="py-6">
+      <div className="mb-4">
         <div className="flex items-center justify-end">
           <Button
             variant="outline"

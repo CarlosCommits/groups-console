@@ -96,7 +96,7 @@ export function AppShell({
         updateStatus={updateStatus}
         onInstallUpdate={installUpdate}
       />
-      <main className="fixed top-[calc(var(--app-title-bar-safe-height)+3.5rem)] right-0 bottom-0 left-60 overflow-auto px-6 py-6">
+      <main className="fixed top-[calc(var(--app-title-bar-safe-height)+3.5rem)] right-0 bottom-0 left-60 overflow-auto px-4 py-4">
         {summary?.readiness === "signedOut" ? (
           <div className="flex min-h-full items-center justify-center">
             <div className="w-full max-w-md">
