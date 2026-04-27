@@ -2,7 +2,7 @@
 
 Windows-first Electron desktop app for Exchange Online and Microsoft Graph administration.
 
-> Status: this repository is the current Electron v2 app. The legacy `groups-console.ps1` script is still in the repo for reference, but it is not the primary active workflow anymore.
+> Status: this repository is the current Electron v2 app.
 
 ## What it does today
 
@@ -48,37 +48,21 @@ The current v2 app no longer depends on `ImportExcel` at runtime. Report export 
 
 ### Tenant / app requirements
 
-This app uses one multi-tenant Microsoft Entra app registration and can sign operators into any organizational Microsoft Entra tenant that has authorized the app.
+This app uses the bundled publisher-owned multi-tenant Microsoft Entra app registration and can sign operators into any organizational Microsoft Entra tenant that has authorized the app.
 
 You will need:
 
-- a multi-tenant Entra app registration client ID for delegated desktop/public-client Graph sign-in
-- an invitation redirect URL for guest invite flows
+- tenant-admin consent for the bundled Enterprise Application / service principal in the target tenant
 - delegated Graph consent for the scopes your tenant will use
 - an operator account that can both connect to Exchange Online PowerShell and perform the intended Graph operations
 
-## Microsoft tenant setup
+## Tenant authorization
 
-### 1. Create or choose a multi-tenant Entra app registration
+Groups Console does not require each tenant to create its own app registration for normal use. The repo ships with `config/tenant.json`, which points at the publisher-owned multi-tenant Microsoft Entra app registration.
 
 Groups Console uses delegated, interactive, system-browser-based Graph authentication through `@azure/msal-node`.
 
-The app registration should be configured as:
-
-- Supported account types: **Accounts in any organizational directory**
-- Platform: **Mobile and desktop applications**
-- Redirect URI: `http://localhost`
-- Public client flow enabled
-- No client secret or certificate for the desktop app
-
-Your tenant config supplies:
-
-- `graph.clientId`
-- `graph.inviteRedirectUrl`
-- optional `graph.authorityHost`
-- optional `graph.authorityTenant`
-- optional `graph.allowedTenantIds`
-- optional `graph.scopes`
+For a tenant to use Graph-backed workflows, a tenant admin must authorize the app in that tenant. That creates the tenant-local Enterprise Application / service principal for the bundled multi-tenant app registration. Customer tenants should not create client secrets or certificates for this desktop app.
 
 If you do not override scopes, the app requests these delegated Graph scopes by default:
 
@@ -89,13 +73,11 @@ If you do not override scopes, the app requests these delegated Graph scopes by 
 
 In many tenants, granting these scopes will require tenant-admin consent.
 
-The normal distribution model is one app registration owned by the publisher and one Enterprise Application/service principal created in each customer tenant when a tenant admin grants consent. Customer tenants should not create client secrets for this desktop app.
-
-### 2. Understand what the app can and cannot pre-validate
+### What the app can and cannot pre-validate
 
 The app can verify:
 
-- tenant config exists and parses
+- bundled or user-data tenant config exists and parses
 - Exchange tenant matches the active Graph tenant for write-safe workflows
 - local PowerShell/module prerequisites
 
@@ -143,51 +125,9 @@ Likely requirements include:
 
 These are **likely** requirements, not guaranteed universal role group names. Exchange RBAC differs by tenant customization.
 
-## Local configuration
-
-### `tenant.json`
-
-The tenant config schema is:
-
-```json
-{
-  "graph": {
-    "clientId": "<multi-tenant-entra-app-client-id>",
-    "inviteRedirectUrl": "https://www.microsoft365.com",
-    "authorityHost": "https://login.microsoftonline.com",
-    "authorityTenant": "organizations",
-    "allowedTenantIds": [
-      "<optional-tenant-allowlist-entry>"
-    ],
-    "scopes": [
-      "User.Read",
-      "User.Read.All",
-      "User.ReadWrite.All",
-      "User.Invite.All"
-    ]
-  }
-}
-```
-
-Notes:
-
-- `authorityHost` is optional
-- `authorityTenant` is optional; if omitted, the app uses `tenantId` for legacy pinned configs or `organizations` for multi-tenant configs
-- `tenantId` is optional legacy tenant pinning; omit it for normal multi-tenant sign-in
-- `allowedTenantIds` is optional; use it only when you want the local installation to reject tenants outside a known allowlist
-- If `authorityTenant` is set to `organizations` while `tenantId` or `allowedTenantIds` is also configured, sign-in can show the broad organizational account picker but the app will still reject tenants outside the local pin or allowlist after Graph returns the tenant identity
-- `scopes` is optional; if omitted, the app uses the default scope set above
-- `inviteRedirectUrl` is used for guest invitation flows; override it in user-data config if your tenant wants guests returned to a tenant-specific landing page after invite redemption
-
-Location rules:
-
-- The app first looks for `tenant.json` under the app user-data config directory.
-- If that file is not present, the app uses the bundled `config/tenant.json`, which contains the publisher-owned multi-tenant app registration client ID.
-- A user-data `tenant.json` is only needed when an operator wants to override scopes, authority host, invite redirect URL, or add local tenant allowlisting.
-
 ## Bootstrap and readiness checks
 
-The app’s local readiness model depends on four checks:
+The app's local readiness model depends on four checks:
 
 - `powershell`
 - `exchangeModule`
@@ -220,42 +160,9 @@ Execution policy stance:
 - if `MachinePolicy` or `UserPolicy` blocks execution, the app should surface a prerequisite error instead of mutating policy silently
 - the module install remediation path must not call persistent `Set-ExecutionPolicy`
 
-## Development setup
+## Development
 
-```bash
-npm install
-npm start
-```
-
-Available scripts:
-
-- `npm start` — start the Electron Forge dev app
-- `npm run lint` — run ESLint
-- `npm run lint:fix` — auto-fix lintable issues
-- `npm run typecheck` — run the three TypeScript projects (`main`, `preload`, `renderer`)
-- `npm run test` — run Vitest for `src/**/*.test.ts`
-- `npm run test:watch` — run Vitest in watch mode
-- `npm run package` — package the app with Electron Forge
-- `npm run make` — build distributables
-
-Notes:
-
-- packaging is currently based on **Electron Forge**, not `electron-builder`
-- packaged PowerShell assets are shipped via Forge `extraResource`
-- the renderer is browser-like by design; add privileged behavior through preload/main, not by importing Node APIs in `src/renderer/**`
-- on some Linux development hosts, Electron startup can fail if the local `chrome-sandbox` helper is not configured correctly; treat that as an environment issue and do not weaken the app sandbox/security settings to work around it
-
-## Verification expectations for contributors
-
-For changes that affect code behavior, the normal verification baseline is:
-
-```bash
-npm run lint
-npm run typecheck
-npm run test
-```
-
-The repo’s Vitest config currently targets `src/**/*.test.ts`. Playwright is present in the repo, but it is not wired into the default `npm test` script.
+Developer setup, scripts, verification commands, and architecture references live in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Supported workflow boundaries
 
@@ -272,17 +179,3 @@ Notable constraints:
 - no server-hosted orchestration
 - no Graph write path for distribution lists or mail-enabled security groups
 - no assumption that SMTP alone is the canonical identity key
-
-## Legacy note
-
-The repo still contains `groups-console.ps1` and legacy architecture references because the project evolved from a PowerShell script into a desktop app. For current development and future open-source onboarding, use the Electron v2 workflow described above.
-
-## Further reading
-
-- `docs/architecture/03-target-architecture.md`
-- `docs/architecture/04-security-model.md`
-- `docs/architecture/05-exchange-graph-integration.md`
-- `docs/architecture/09-packaging-deployment.md` *(some packaging details are historical; the live repo uses Electron Forge)*
-- `docs/architecture/11-test-strategy.md`
-- `docs/architecture/14-permission-matrix.md`
-- `docs/architecture/15-remaining-work-map.md`
