@@ -1,8 +1,14 @@
+<p align="center">
+  <img src="logos/Groups%20Console%20logo%20design%20concept%202.png" alt="Groups Console logo" width="120">
+</p>
+
 # Groups Console
 
 Windows-first Electron desktop app for Exchange Online and Microsoft Graph administration.
 
 > Status: this repository is the current Electron v2 app.
+
+![Groups Console dashboard](images/Dashboard%20image.png)
 
 ## What it does today
 
