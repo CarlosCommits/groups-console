@@ -51,15 +51,29 @@ describe('graph contracts', () => {
 
   it('accepts the tenant config shape', () => {
     const result = tenantConfigSchema.parse({
-      tenantId: 'tenant-configured',
       graph: {
         clientId: 'client-id',
         inviteRedirectUrl: 'https://example.com/invite-complete',
         authorityHost: 'https://login.microsoftonline.com',
+        authorityTenant: 'organizations',
         scopes: ['User.Read', 'User.Read.All', 'User.Invite.All'],
       },
     });
 
     expect(result.graph.clientId).toBe('client-id');
+    expect(result.tenantId).toBeUndefined();
+  });
+
+  it('accepts optional tenant allowlisting', () => {
+    const result = tenantConfigSchema.parse({
+      graph: {
+        clientId: 'client-id',
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+        authorityTenant: 'organizations',
+        allowedTenantIds: ['tenant-a', 'tenant-b'],
+      },
+    });
+
+    expect(result.graph.allowedTenantIds).toEqual(['tenant-a', 'tenant-b']);
   });
 });

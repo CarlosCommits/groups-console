@@ -7,7 +7,7 @@ Describe 'Invoke-GroupsConsoleConnectExchange' {
         $script:GroupsConsoleExchangeConnectionContext = $null
         $script:statusResult = @{
             state             = 'connected'
-            userPrincipalName = 'ccanas@example.com'
+            userPrincipalName = 'admin@example.com'
             tenantId          = '11111111-1111-1111-1111-111111111111'
         }
 
@@ -18,7 +18,7 @@ Describe 'Invoke-GroupsConsoleConnectExchange' {
         Mock Get-ConnectionInformation {
             return @(
                 [pscustomobject]@{
-                    UserPrincipalName = 'ccanas@example.com'
+                    UserPrincipalName = 'admin@example.com'
                     ConnectionId      = 'connection-1'
                     TenantId          = '11111111-1111-1111-1111-111111111111'
                     TokenStatus       = 'Active'
@@ -40,12 +40,12 @@ Describe 'Invoke-GroupsConsoleConnectExchange' {
         Mock Connect-ExchangeOnline {}
 
         $result = Invoke-GroupsConsoleConnectExchange -Payload @{
-            userPrincipalName = 'ccanas@example.com'
+            userPrincipalName = 'admin@example.com'
         }
 
         $result.state | Should -Be 'connected'
         Should -Invoke Connect-ExchangeOnline -Times 1 -ParameterFilter {
-            $UserPrincipalName -eq 'ccanas@example.com' -and
+            $UserPrincipalName -eq 'admin@example.com' -and
             $ShowBanner -eq $false -and
             $SkipLoadingFormatData -eq $true -and
             $DisableWAM -eq $true
@@ -62,12 +62,12 @@ Describe 'Invoke-GroupsConsoleConnectExchange' {
         Mock Connect-ExchangeOnline {}
 
         $result = Invoke-GroupsConsoleConnectExchange -Payload @{
-            userPrincipalName = 'ccanas@example.com'
+            userPrincipalName = 'admin@example.com'
         }
 
         $result.state | Should -Be 'connected'
         Should -Invoke Connect-ExchangeOnline -Times 1 -ParameterFilter {
-            $UserPrincipalName -eq 'ccanas@example.com' -and
+            $UserPrincipalName -eq 'admin@example.com' -and
             $ShowBanner -eq $false -and
             $SkipLoadingFormatData -eq $true -and
             -not $PSBoundParameters.ContainsKey('DisableWAM')

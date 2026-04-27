@@ -14,14 +14,18 @@ const DEFAULT_GRAPH_SCOPES = [
   'User.ReadWrite.All',
   'User.Invite.All',
 ];
+const DEFAULT_AUTHORITY_TENANT = 'organizations';
 
 export function createGraphPublicClient(
   config: TenantConfig,
 ): IPublicClientApplication {
+  const authorityHost = config.graph.authorityHost ?? 'https://login.microsoftonline.com';
+  const authorityTenant = config.graph.authorityTenant ?? config.tenantId ?? DEFAULT_AUTHORITY_TENANT;
+
   return new PublicClientApplication({
     auth: {
       clientId: config.graph.clientId,
-      authority: `${config.graph.authorityHost ?? 'https://login.microsoftonline.com'}/${config.tenantId}`,
+      authority: `${authorityHost}/${authorityTenant}`,
     },
   });
 }

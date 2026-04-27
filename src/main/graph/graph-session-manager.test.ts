@@ -58,14 +58,14 @@ import { GraphSessionManager } from './graph-session-manager';
 
 describe('GraphSessionManager', () => {
   const tenantConfig = {
-    tenantId: 'tenant-configured',
     graph: {
       clientId: 'client-id',
+      authorityTenant: 'organizations',
       inviteRedirectUrl: 'https://example.com/invite-complete',
     },
   };
 
-  it('connects with tenant pinning and returns matched status', async () => {
+  it('connects with a multi-tenant config and returns matched status', async () => {
     const manager = new GraphSessionManager();
     const publicClient = { kind: 'msal' };
     vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
@@ -110,16 +110,24 @@ describe('GraphSessionManager', () => {
     expect(result.exchangeAlignment).toBe('matched');
   });
 
-  it('returns error on tenant mismatch and signs out the account', async () => {
+  it('returns error for tenants outside an explicit allowlist and signs out the account', async () => {
     const manager = new GraphSessionManager();
     const publicClient = { kind: 'msal' };
+    const allowlistedTenantConfig = {
+      graph: {
+        clientId: 'client-id',
+        authorityTenant: 'organizations',
+        allowedTenantIds: ['tenant-configured'],
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    };
     const account = {
       tenantId: 'tenant-other',
       username: 'admin@example.com',
       name: 'Admin Example',
     };
 
-    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(loadTenantConfig).mockResolvedValue(allowlistedTenantConfig);
     vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
     vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
       account,
@@ -134,8 +142,109 @@ describe('GraphSessionManager', () => {
     const result = await manager.connect();
 
     expect(result.state).toBe('error');
-    expect(result.detail).toContain('did not match configured tenant');
+    expect(result.detail).toContain('is not allowed by this app configuration');
     expect(signOutGraphAccount).toHaveBeenCalledWith(publicClient, account);
+  });
+
+  it('keeps a legacy tenant pin allowed when an allowlist is added', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    const legacyConfigWithAllowlist = {
+      tenantId: 'tenant-configured',
+      graph: {
+        clientId: 'client-id',
+        allowedTenantIds: ['tenant-other'],
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    };
+
+    vi.mocked(loadTenantConfig).mockResolvedValue(legacyConfigWithAllowlist);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account: {
+        tenantId: 'tenant-configured',
+        username: 'admin@example.com',
+        name: 'Admin Example',
+      },
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'disconnected',
+      detail: 'Exchange session host is not running.',
+      runtime: null,
+      userPrincipalName: null,
+      connectionId: null,
+      tenantId: null,
+      tokenStatus: null,
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+
+    const result = await manager.connect();
+
+    expect(result.state).toBe('connected');
+    expect(result.configuredTenantId).toBe('tenant-configured');
+  });
+
+  it('does not report a singular configured tenant for a multi-tenant allowlist', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    const multiTenantAllowlistConfig = {
+      graph: {
+        clientId: 'client-id',
+        authorityTenant: 'organizations',
+        allowedTenantIds: ['tenant-configured', 'tenant-other'],
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    };
+
+    vi.mocked(loadTenantConfig).mockResolvedValue(multiTenantAllowlistConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account: {
+        tenantId: 'tenant-configured',
+        username: 'admin@example.com',
+        name: 'Admin Example',
+      },
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'disconnected',
+      detail: 'Exchange session host is not running.',
+      runtime: null,
+      userPrincipalName: null,
+      connectionId: null,
+      tenantId: null,
+      tokenStatus: null,
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+
+    const result = await manager.connect();
+
+    expect(result.state).toBe('connected');
+    expect(result.configuredTenantId).toBeNull();
+    expect(result.tenantId).toBe('tenant-configured');
   });
 
   it('searches guests through the active session', async () => {

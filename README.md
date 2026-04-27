@@ -48,28 +48,36 @@ The current v2 app no longer depends on `ImportExcel` at runtime. Report export 
 
 ### Tenant / app requirements
 
-This app is currently **single-tenant per configuration**. You configure one tenant at a time through `tenant.json`.
+This app uses one multi-tenant Microsoft Entra app registration and can sign operators into any organizational Microsoft Entra tenant that has authorized the app.
 
 You will need:
 
-- your Microsoft Entra tenant ID
-- an Entra app registration client ID for delegated desktop/public-client Graph sign-in
+- a multi-tenant Entra app registration client ID for delegated desktop/public-client Graph sign-in
 - an invitation redirect URL for guest invite flows
 - delegated Graph consent for the scopes your tenant will use
 - an operator account that can both connect to Exchange Online PowerShell and perform the intended Graph operations
 
 ## Microsoft tenant setup
 
-### 1. Create or choose an Entra app registration
+### 1. Create or choose a multi-tenant Entra app registration
 
 Groups Console uses delegated, interactive, system-browser-based Graph authentication through `@azure/msal-node`.
 
+The app registration should be configured as:
+
+- Supported account types: **Accounts in any organizational directory**
+- Platform: **Mobile and desktop applications**
+- Redirect URI: `http://localhost`
+- Public client flow enabled
+- No client secret or certificate for the desktop app
+
 Your tenant config supplies:
 
-- `tenantId`
 - `graph.clientId`
 - `graph.inviteRedirectUrl`
 - optional `graph.authorityHost`
+- optional `graph.authorityTenant`
+- optional `graph.allowedTenantIds`
 - optional `graph.scopes`
 
 If you do not override scopes, the app requests these delegated Graph scopes by default:
@@ -81,14 +89,17 @@ If you do not override scopes, the app requests these delegated Graph scopes by 
 
 In many tenants, granting these scopes will require tenant-admin consent.
 
+The normal distribution model is one app registration owned by the publisher and one Enterprise Application/service principal created in each customer tenant when a tenant admin grants consent. Customer tenants should not create client secrets for this desktop app.
+
 ### 2. Understand what the app can and cannot pre-validate
 
 The app can verify:
 
 - tenant config exists and parses
-- Graph tenant matches the configured tenant
 - Exchange tenant matches the active Graph tenant for write-safe workflows
 - local PowerShell/module prerequisites
+
+If `tenantId` or `graph.allowedTenantIds` is configured, the app can also verify that the signed-in Graph tenant is allowed by local configuration. Without those optional pins, any organizational tenant can sign in once that tenant has authorized the app.
 
 The app cannot reliably pre-check:
 
@@ -140,11 +151,14 @@ The tenant config schema is:
 
 ```json
 {
-  "tenantId": "<entra-tenant-id>",
   "graph": {
-    "clientId": "<entra-app-client-id>",
-    "inviteRedirectUrl": "https://your-company-site.example.com",
+    "clientId": "<multi-tenant-entra-app-client-id>",
+    "inviteRedirectUrl": "https://www.microsoft365.com",
     "authorityHost": "https://login.microsoftonline.com",
+    "authorityTenant": "organizations",
+    "allowedTenantIds": [
+      "<optional-tenant-allowlist-entry>"
+    ],
     "scopes": [
       "User.Read",
       "User.Read.All",
@@ -158,13 +172,18 @@ The tenant config schema is:
 Notes:
 
 - `authorityHost` is optional
+- `authorityTenant` is optional; if omitted, the app uses `tenantId` for legacy pinned configs or `organizations` for multi-tenant configs
+- `tenantId` is optional legacy tenant pinning; omit it for normal multi-tenant sign-in
+- `allowedTenantIds` is optional; use it only when you want the local installation to reject tenants outside a known allowlist
+- If `authorityTenant` is set to `organizations` while `tenantId` or `allowedTenantIds` is also configured, sign-in can show the broad organizational account picker but the app will still reject tenants outside the local pin or allowlist after Graph returns the tenant identity
 - `scopes` is optional; if omitted, the app uses the default scope set above
-- `inviteRedirectUrl` is used for guest invitation flows
+- `inviteRedirectUrl` is used for guest invitation flows; override it in user-data config if your tenant wants guests returned to a tenant-specific landing page after invite redemption
 
 Location rules:
 
-- **Development:** the app can read the repo-local `config/tenant.json`
-- **Packaged runtime:** the app looks for `tenant.json` under the app user-data config directory
+- The app first looks for `tenant.json` under the app user-data config directory.
+- If that file is not present, the app uses the bundled `config/tenant.json`, which contains the publisher-owned multi-tenant app registration client ID.
+- A user-data `tenant.json` is only needed when an operator wants to override scopes, authority host, invite redirect URL, or add local tenant allowlisting.
 
 ## Bootstrap and readiness checks
 
@@ -179,7 +198,7 @@ If any of these are missing or degraded, the app should show that state instead 
 
 The auth panel uses these checks before Exchange sign-in. It can block Exchange setup when PowerShell is missing, offer the current-user `ExchangeOnlineManagement` install action when the module is missing, and surface installed-but-not-importable module failures without trying to connect Exchange.
 
-Tenant mismatch also matters: the app is designed to block writes when Graph and Exchange are connected to different tenants.
+Tenant mismatch also matters: the app is designed to block writes when Graph and Exchange are connected to different tenants. Multi-tenant Graph sign-in does not loosen that safety check.
 
 ## Security and runtime model
 
@@ -249,7 +268,6 @@ Current scope is centered on:
 
 Notable constraints:
 
-- single-tenant configuration
 - delegated interactive auth only
 - no server-hosted orchestration
 - no Graph write path for distribution lists or mail-enabled security groups
