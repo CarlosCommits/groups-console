@@ -5,10 +5,13 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
+const windowsIconPath = 'assets/icons/groups-console.ico';
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'GroupsConsole',
+    icon: windowsIconPath,
     extraResource: ['powershell', 'config'],
   },
   rebuildConfig: {},
@@ -16,6 +19,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       name: 'GroupsConsole',
       setupExe: 'GroupsConsoleSetup.exe',
+      setupIcon: windowsIconPath,
     }),
     new MakerZIP({}, ['win32']),
   ],
