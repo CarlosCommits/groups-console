@@ -113,6 +113,7 @@ These are **likely** requirements, not guaranteed universal role group names. Ex
 Groups Console does not require each tenant to create its own app registration for normal use. The repo ships with `config/tenant.json`, which points at the publisher-owned multi-tenant Microsoft Entra app registration.
 
 Groups Console uses delegated, interactive, system-browser-based Graph authentication through `@azure/msal-node`.
+The Graph sign-in flow uses MSAL's localhost loopback redirect for the desktop interactive login; it does not require a client secret.
 
 For a tenant to use Graph-backed workflows, a tenant admin must authorize the app in that tenant. That creates the tenant-local Enterprise Application / service principal for the bundled multi-tenant app registration. Customer tenants should not create client secrets or certificates for this desktop app.
 

@@ -3,6 +3,13 @@ node_modules/
 out/
 .tmp-scaffold/
 dist/
+coverage/
 playwright-report/
 test-results/
 *.log
+.env
+.env.*
+!.env.example
+*.local
+diagnostics/
+exports/

@@ -1,36 +1,36 @@
-# 01. Current State Assessment
+# 01. Prototype State Assessment
 
 ## Purpose
 
-Document how Groups Console works today so v2 preserves the useful behavior, removes the risky parts, and avoids accidental regressions.
+Document how the original PowerShell prototype worked so v2 preserves the useful behavior, removes the risky parts, and avoids accidental regressions.
 
-## Current repository shape
+## Historical Repository Shape
 
-- `groups-console.ps1` — single monolithic PowerShell script
-- `README.md` — user-facing setup and usage notes
+- one monolithic PowerShell script
+- user-facing setup and usage notes
 
-## Current workflows
+## Historical Workflows
 
 ### Startup
 
-The script currently:
+The original script:
 
-1. prints ASCII branding
-2. checks execution policy and sets `RemoteSigned` for the current user
-3. installs `ExchangeOnlineManagement` if missing
-4. installs `ImportExcel` if missing
-5. prompts for an email address
-6. connects to Exchange Online interactively
-7. shows a console menu loop
+1. printed ASCII branding
+2. checked execution policy and set `RemoteSigned` for the current user
+3. installed `ExchangeOnlineManagement` if missing
+4. installed `ImportExcel` if missing
+5. prompted for an email address
+6. connected to Exchange Online interactively
+7. showed a console menu loop
 
-### Supported actions in v1
+### Supported Actions In V1
 
 1. Generate a distribution-list report
 2. Add a contact to multiple distribution lists
 3. Create a new mail contact
 4. Update contact company values from an Excel file
 
-## Exchange cmdlets in current use
+## Exchange Cmdlets In V1 Use
 
 - `Connect-ExchangeOnline`
 - `Disconnect-ExchangeOnline`
@@ -43,33 +43,33 @@ The script currently:
 - `New-MailContact`
 - `Set-Contact`
 
-## Current UI/UX characteristics
+## Historical UI/UX Characteristics
 
 - console-driven menu via `Write-Host` and `Read-Host`
 - one Windows GUI selection step via `Out-GridView`
 - one Windows GUI file picker via `System.Windows.Forms.OpenFileDialog`
 - progress only in the report flow via `Write-Progress`
-- mail notification uses `mailto:` launch rather than app-owned message composition
+- mail notification used `mailto:` launch rather than app-owned message composition
 
-## Current technical problems
+## Historical Technical Problems
 
-### Monolithic implementation
+### Monolithic Implementation
 
-UI, validation, orchestration, Exchange calls, Excel handling, and error output are all in one file. There is no module system, no typed contract boundary, and no reusable service layer.
+UI, validation, orchestration, Exchange calls, Excel handling, and error output were all in one file. There was no module system, no typed contract boundary, and no reusable service layer.
 
-### Unsafe environment behavior
+### Unsafe Environment Behavior
 
-The script changes execution policy during startup. v2 must not do this. Runtime invocation should be self-contained and local to the process.
+The script changed execution policy during startup. v2 must not do this. Runtime invocation should be self-contained and local to the process.
 
-### Windows-only control dependencies
+### Windows-Only Control Dependencies
 
-`Out-GridView` and `OpenFileDialog` are embedded in business workflows. They must move into Electron UI and main-process dialog APIs.
+`Out-GridView` and `OpenFileDialog` were embedded in business workflows. They moved into Electron UI and main-process dialog APIs.
 
-### Identity ambiguity
+### Identity Ambiguity
 
-The report and group-add flows key heavily off `PrimarySmtpAddress`. That is insufficient for future guest-user support because the same external email may be represented by multiple object types across systems.
+The report and group-add flows keyed heavily off `PrimarySmtpAddress`. That is insufficient for guest-user support because the same external email may be represented by multiple object types across systems.
 
-### Missing operational protections
+### Missing Operational Protections
 
 - minimal error handling
 - no structured logs
@@ -78,9 +78,9 @@ The report and group-add flows key heavily off `PrimarySmtpAddress`. That is ins
 - no preflight conflict model
 - no job model for long-running operations
 
-## Natural v2 split points
+## Natural V2 Split Points
 
-### Move to Electron UI
+### Move To Electron UI
 
 - menu/navigation
 - forms
@@ -91,7 +91,7 @@ The report and group-add flows key heavily off `PrimarySmtpAddress`. That is ins
 - error presentation
 - report download/export UX
 
-### Move to PowerShell worker modules
+### Move To PowerShell Worker Modules
 
 - Exchange connection lifecycle
 - distribution group reads/writes
@@ -99,7 +99,7 @@ The report and group-add flows key heavily off `PrimarySmtpAddress`. That is ins
 - mail contact create/update
 - Exchange-side recipient lookup and preflight checks
 
-### Move to TypeScript main-process adapters
+### Move To TypeScript Main-Process Adapters
 
 - Graph guest operations
 - app logging
@@ -107,15 +107,15 @@ The report and group-add flows key heavily off `PrimarySmtpAddress`. That is ins
 - IPC validation
 - report file writing with JavaScript libraries
 
-## Migration implications
+## Migration Implications
 
-- v2 should preserve the current administrator mental model: sign in, browse entities, inspect details, run a workflow, see a clear result.
-- v2 should not preserve the current implementation shape.
+- v2 should preserve the administrator mental model: sign in, browse entities, inspect details, run a workflow, see a clear result.
+- v2 should not preserve the prototype implementation shape.
 - report generation should no longer depend on `ImportExcel`; JavaScript-side export is lower-friction.
-- Exchange-only features should stay close to the current Exchange cmdlets so behavior remains predictable.
+- Exchange-only features should stay close to the Exchange cmdlets so behavior remains predictable.
 
-## Acceptance criteria
+## Acceptance Criteria
 
 - The v2 plan clearly identifies what behavior is preserved from v1.
-- Every current Windows UI dependency has a replacement strategy.
-- Every current PowerShell responsibility has a target home in v2.
+- Every historical Windows UI dependency has a replacement strategy.
+- Every historical PowerShell responsibility has a target home in v2.
