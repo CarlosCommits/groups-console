@@ -182,6 +182,8 @@ Execution policy stance:
 
 Developer setup, scripts, verification commands, and architecture references live in [DEVELOPMENT.md](DEVELOPMENT.md).
 
+Release versioning, git tags, GitHub Release assets, and distribution guidance live in [docs/release.md](docs/release.md).
+
 ## Supported workflow boundaries
 
 | Area | Current stance |
