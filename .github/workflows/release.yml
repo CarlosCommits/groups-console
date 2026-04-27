@@ -56,4 +56,9 @@ jobs:
             throw 'No release assets were produced under out/make.'
           }
 
-          gh release create $env:TAG_NAME @assets --title "Groups Console $env:TAG_NAME" --generate-notes
+          gh release view $env:TAG_NAME *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG_NAME @assets --clobber
+          } else {
+            gh release create $env:TAG_NAME @assets --title "Groups Console $env:TAG_NAME" --generate-notes
+          }
