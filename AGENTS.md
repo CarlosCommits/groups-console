@@ -2,7 +2,7 @@
 
 ## Repo shape
 
-- Current app is the Electron v2 desktop app in `src/{main,preload,renderer}`. Trust `package.json`, `forge.config.ts`, the root `README.md`, and the current `src/` entrypoints for active dev workflow; `groups-console.ps1` is legacy reference material only.
+- Current app is the Electron v2 desktop app in `src/{main,preload,renderer}`. Trust `package.json`, `forge.config.ts`, the root `README.md`, and the current `src/` entrypoints for active dev workflow.
 - Process split is strict: `src/main/**` owns Electron/PowerShell orchestration, `src/preload/index.ts` exposes the typed `window.groupsConsole` bridge, `src/renderer/**` is React UI, and `src/shared/**` holds Zod contracts/DTOs used across all three.
 - Renderer code must stay browser-only. `eslint.config.mjs` blocks `electron`, `node:*`, `fs`, `path`, `os`, and `child_process` imports under `src/renderer/**`; add new privileged behavior through preload/main instead.
 - Security settings are intentional: `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, `OnlyLoadAppFromAsar: true`, and the packaged PowerShell scripts are shipped via Forge `extraResource`. Do not weaken sandbox/security settings to work around local Linux Electron issues.
