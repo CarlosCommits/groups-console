@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu } from 'electron';
 import started from 'electron-squirrel-startup';
 
 import { exchangeSessionManager } from '@/main/exchange/exchange-session-manager';
@@ -20,6 +20,7 @@ void app.whenReady().then(() => {
 
   registerIpcHandlers();
   registerUpdateIpcHandlers();
+  Menu.setApplicationMenu(null);
   createMainWindow();
   initializeUpdates();
 

@@ -17,4 +17,15 @@ describe('getMainWindowOptions', () => {
 
     expect(options.webPreferences?.preload).toBe(path.join(__dirname, 'preload.js'));
   });
+
+  it('uses branded window chrome without a visible native menu bar', () => {
+    const options = getMainWindowOptions();
+
+    expect(options.autoHideMenuBar).toBe(true);
+    expect(options.titleBarStyle).toBe('hidden');
+    expect(options.titleBarOverlay).toEqual({
+      color: '#00504a',
+      symbolColor: '#ffffff',
+    });
+  });
 });
