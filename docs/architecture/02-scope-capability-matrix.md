@@ -7,7 +7,7 @@ Define the exact v2 scope and the system of authority for every supported entity
 ## Assumptions
 
 - Windows-first desktop application
-- single-tenant internal use
+- multi-tenant organizational use through one publisher-owned Entra app registration
 - Exchange-admin-only users
 - delegated interactive auth in v1
 
@@ -49,7 +49,7 @@ Define the exact v2 scope and the system of authority for every supported entity
 
 ## Explicit non-goals for initial release
 
-- multi-tenant switching
+- simultaneous multi-tenant sessions inside one app window
 - unattended scheduled jobs
 - server-hosted orchestration
 - in-app auto-update requirement

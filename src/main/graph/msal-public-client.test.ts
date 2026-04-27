@@ -1,8 +1,9 @@
 import type { IPublicClientApplication } from '@azure/msal-node';
 import { describe, expect, it, vi } from 'vitest';
 
-const { openExternal } = vi.hoisted(() => ({
+const { openExternal, publicClientApplication } = vi.hoisted(() => ({
   openExternal: vi.fn(),
+  publicClientApplication: vi.fn(),
 }));
 
 vi.mock('electron', () => ({
@@ -11,7 +12,47 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { acquireInteractiveGraphToken } from './msal-public-client';
+vi.mock('@azure/msal-node', () => ({
+  PublicClientApplication: publicClientApplication,
+}));
+
+import { acquireInteractiveGraphToken, createGraphPublicClient } from './msal-public-client';
+
+describe('createGraphPublicClient', () => {
+  it('uses the organizations authority for multi-tenant configs', () => {
+    createGraphPublicClient({
+      graph: {
+        clientId: 'client-id',
+        authorityTenant: 'organizations',
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    });
+
+    expect(publicClientApplication).toHaveBeenCalledWith({
+      auth: {
+        clientId: 'client-id',
+        authority: 'https://login.microsoftonline.com/organizations',
+      },
+    });
+  });
+
+  it('keeps legacy tenant-pinned configs pinned to their tenant authority', () => {
+    createGraphPublicClient({
+      tenantId: 'tenant-configured',
+      graph: {
+        clientId: 'client-id',
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    });
+
+    expect(publicClientApplication).toHaveBeenCalledWith({
+      auth: {
+        clientId: 'client-id',
+        authority: 'https://login.microsoftonline.com/tenant-configured',
+      },
+    });
+  });
+});
 
 describe('acquireInteractiveGraphToken', () => {
   it('uses the msal loopback flow without an explicit redirect URI', async () => {
@@ -23,9 +64,9 @@ describe('acquireInteractiveGraphToken', () => {
     };
 
     await acquireInteractiveGraphToken(publicClient as never, {
-      tenantId: 'tenant-configured',
       graph: {
         clientId: 'client-id',
+        authorityTenant: 'organizations',
         inviteRedirectUrl: 'https://example.com/invite-complete',
       },
     });

@@ -6,23 +6,18 @@ vi.mock('node:fs/promises', () => ({
 }));
 
 vi.mock('@/main/app/paths', () => ({
+  getGroupsConsoleBundledTenantConfigPath: () => '/resources/config/tenant.json',
   getGroupsConsoleTenantConfigPath: () => '/tmp/tenant.json',
-  getGroupsConsoleDevTenantConfigPath: () => '/repo/config/tenant.json',
-}));
-
-vi.mock('@/main/app/runtime-mode', () => ({
-  isPackagedRuntime: vi.fn(() => false),
 }));
 
 import { access, readFile } from 'node:fs/promises';
 
 import { loadTenantConfig } from './tenant-config';
-import { isPackagedRuntime } from '@/main/app/runtime-mode';
 
 const validTenantConfig = JSON.stringify({
-  tenantId: 'tenant-configured',
   graph: {
     clientId: 'client-id',
+    authorityTenant: 'organizations',
     inviteRedirectUrl: 'https://example.com/invite-complete',
   },
 });
@@ -30,7 +25,6 @@ const validTenantConfig = JSON.stringify({
 describe('loadTenantConfig', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(isPackagedRuntime).mockReturnValue(false);
   });
 
   it('reads the primary AppData tenant config when available', async () => {
@@ -43,8 +37,7 @@ describe('loadTenantConfig', () => {
     expect(vi.mocked(readFile)).toHaveBeenCalledWith('/tmp/tenant.json', 'utf8');
   });
 
-  it('falls back to the repo-local tenant config in development when AppData config is missing', async () => {
-    vi.mocked(isPackagedRuntime).mockReturnValue(false);
+  it('falls back to the bundled tenant config when AppData config is missing', async () => {
     vi.mocked(access)
       .mockRejectedValueOnce(Object.assign(new Error('missing primary'), { code: 'ENOENT' }))
       .mockResolvedValueOnce(undefined);
@@ -53,16 +46,20 @@ describe('loadTenantConfig', () => {
     const result = await loadTenantConfig();
 
     expect(result.graph.clientId).toBe('client-id');
-    expect(vi.mocked(readFile)).toHaveBeenCalledWith('/repo/config/tenant.json', 'utf8');
+    expect(vi.mocked(readFile)).toHaveBeenCalledWith('/resources/config/tenant.json', 'utf8');
   });
 
-  it('does not use the dev fallback in packaged runtime', async () => {
+  it('uses the bundled config fallback in packaged runtime when AppData config is missing', async () => {
     const missingPrimary = Object.assign(new Error('missing primary'), { code: 'ENOENT' });
-    vi.mocked(isPackagedRuntime).mockReturnValue(true);
-    vi.mocked(access).mockRejectedValueOnce(missingPrimary);
+    vi.mocked(access)
+      .mockRejectedValueOnce(missingPrimary)
+      .mockResolvedValueOnce(undefined);
+    vi.mocked(readFile).mockResolvedValue(validTenantConfig);
 
-    await expect(loadTenantConfig()).rejects.toThrow('missing primary');
-    expect(vi.mocked(readFile)).not.toHaveBeenCalled();
+    const result = await loadTenantConfig();
+
+    expect(result.graph.clientId).toBe('client-id');
+    expect(vi.mocked(readFile)).toHaveBeenCalledWith('/resources/config/tenant.json', 'utf8');
   });
 
   it('does not use the dev fallback for non-missing primary path errors', async () => {
@@ -80,5 +77,21 @@ describe('loadTenantConfig', () => {
     const result = await loadTenantConfig();
 
     expect(result.graph.clientId).toBe('client-id');
+    expect(result.tenantId).toBeUndefined();
+  });
+
+  it('still accepts a legacy tenant-pinned config', async () => {
+    vi.mocked(access).mockResolvedValue(undefined);
+    vi.mocked(readFile).mockResolvedValue(JSON.stringify({
+      tenantId: 'tenant-configured',
+      graph: {
+        clientId: 'client-id',
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    }));
+
+    const result = await loadTenantConfig();
+
+    expect(result.tenantId).toBe('tenant-configured');
   });
 });

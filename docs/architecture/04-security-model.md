@@ -55,10 +55,10 @@ The docs and implementation must include a permission matrix covering:
 
 ## Tenant enforcement
 
-The app is single-tenant. Before any mutation:
+The app accepts organizational tenants through the multi-tenant Entra app registration. Before any mutation:
 
-1. verify the signed-in Graph tenant matches configured tenant
-2. verify the Exchange connection is for the same tenant
+1. if local config pins or allowlists tenants, verify the signed-in Graph tenant is allowed
+2. verify the Exchange connection is for the same tenant as Graph
 3. block writes on mismatch
 
 ## Local secret and token handling

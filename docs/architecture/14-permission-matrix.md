@@ -16,7 +16,7 @@ These are the global conditions the app should evaluate before presenting a read
 
 | Prerequisite | Check | Failure behavior |
 |---|---|---|
-| Tenant configuration present and valid | Bootstrap check: `tenantConfig` | App shows missing-config message; no backend calls attempted |
+| Tenant configuration present and valid | Bootstrap check: `tenantConfig`; user-data config can override bundled defaults | App shows missing-config message only if neither user-data nor bundled config is readable; no backend calls attempted |
 | Writable log directory | Bootstrap check: `logDirectory` | App shows directory error; local logging and diagnostics are not ready |
 
 Both sessions must be valid for the same tenant before the app presents a fully connected state. If only one side is connected, the UI must show degraded capability, not false readiness. This is consistent with the session coordination rule in `05-exchange-graph-integration.md`.
@@ -45,11 +45,11 @@ The app handles execution policy at process scope only. It does not require loca
 
 Graph operations use delegated interactive auth via system browser flow. The configured Graph scope set is requested at connection time. If tenant config does not override it, the default scope set is `User.Read`, `User.Read.All`, `User.ReadWrite.All`, and `User.Invite.All`.
 
-Graph-owned workflows require a valid Graph session for the configured tenant. If Graph is disconnected or tenant-mismatched, Graph workflows are unavailable even if Exchange is connected.
+Graph-owned workflows require a valid Graph session for an allowed organizational tenant. If Graph is disconnected or tenant-mismatched with Exchange, Graph workflows are unavailable even if Exchange is connected.
 
 | Workflow | IPC command | Delegated scope requirement | Additional considerations |
 |---|---|---|---|
-| Guest search | `guests.search` | Directory read scope (covered by `User.Read.All`) | The operator must be allowed to read directory users in the configured tenant |
+| Guest search | `guests.search` | Directory read scope (covered by `User.Read.All`) | The operator must be allowed to read directory users in the signed-in tenant |
 | Guest invite | `guests.invite` | `User.Invite.All` | Tenant invitation policy or operator role may also restrict who can invite; the app cannot pre-validate this |
 | Guest company update | `guests.updateCompany` | `User.ReadWrite.All` (practical delegated requirement for updating other users) | Updating another user's profile requires delegated write scope; tenant admin role or conditional access policy may also apply |
 
@@ -67,7 +67,7 @@ This means:
 
 Exchange Online PowerShell operations are subject to Exchange RBAC role assignments. The app cannot pre-check exact RBAC role membership.
 
-Exchange-owned workflows require a valid Exchange session for the configured tenant. If Exchange is disconnected or tenant-mismatched, Exchange workflows are unavailable even if Graph is connected.
+Exchange-owned workflows require a valid Exchange session for the same tenant as Graph. If Exchange is disconnected or tenant-mismatched, Exchange workflows are unavailable even if Graph is connected.
 
 | Workflow | IPC command | Likely RBAC requirement | Additional considerations |
 |---|---|---|---|
