@@ -1,7 +1,7 @@
-import { CircleDot } from "lucide-react";
 import { cn } from "@/renderer/lib/utils";
 import { ConsoleNav } from "./nav";
 import { Avatar, AvatarFallback } from "@/renderer/components/ui/avatar";
+import groupsConsoleLogo from "../../../../logos/Groups Console logo design concept 2.png";
 
 export interface AppSidebarProps {
   userName?: string;
@@ -23,16 +23,18 @@ export function AppSidebar({
     >
       <div className="mb-6 px-2">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[var(--color-primary-container)] flex items-center justify-center">
-            <CircleDot className="size-4 text-[var(--color-on-primary-container)]" />
-          </div>
+          <span className="size-9 shrink-0 overflow-hidden rounded-lg">
+            <img
+              src={groupsConsoleLogo}
+              alt=""
+              aria-hidden="true"
+              className="size-full scale-[2.05] object-cover origin-center translate-y-[3px]"
+            />
+          </span>
           <div>
             <span className="text-lg font-extrabold text-[var(--color-primary)] font-headline tracking-tight">
               Groups Console
             </span>
-            <p className="text-[10px] text-[var(--color-outline)] uppercase tracking-widest">
-              Admin Operations
-            </p>
           </div>
         </div>
       </div>
