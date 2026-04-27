@@ -6,6 +6,7 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const windowsIconPath = 'assets/icons/groups-console.ico';
+const windowsInstallerLoadingGifPath = 'assets/installer/groups-console-loading.gif';
 const windowsControlPanelIconUrl =
   'https://raw.githubusercontent.com/CarlosCommits/groups-console/main/assets/icons/groups-console.ico';
 
@@ -21,6 +22,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       name: 'GroupsConsole',
       iconUrl: windowsControlPanelIconUrl,
+      loadingGif: windowsInstallerLoadingGifPath,
       setupExe: 'GroupsConsoleSetup.exe',
       setupIcon: windowsIconPath,
     }),
