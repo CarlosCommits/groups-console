@@ -3,6 +3,7 @@ import { cn } from "@/renderer/lib/utils";
 import type { UpdateStatus } from "@/shared/contracts/updates";
 import { AppSidebar } from "./app-sidebar";
 import { AppHeader } from "./app-header";
+import { AppTitleBar } from "./app-title-bar";
 import { useApp, type Screen } from "./app-context";
 import { deriveShellReadiness } from "./shell-readiness";
 import { ShellAuthPanel } from "./shell-auth-panel";
@@ -82,7 +83,8 @@ export function AppShell({
   ) : null;
 
   return (
-    <div className={cn("min-h-screen bg-[var(--color-surface)]", className)}>
+    <div className={cn("h-screen overflow-hidden bg-[var(--color-surface)]", className)}>
+      <AppTitleBar />
       <AppSidebar
         userName={summary?.displayName ?? "Loading shell…"}
         userRole={summary?.secondaryLine ?? "Loading application state"}
@@ -94,9 +96,9 @@ export function AppShell({
         updateStatus={updateStatus}
         onInstallUpdate={installUpdate}
       />
-      <main className="ml-60 pt-14 px-6 pb-6 min-h-screen">
+      <main className="fixed top-[calc(var(--app-title-bar-safe-height)+3.5rem)] right-0 bottom-0 left-60 overflow-auto px-6 py-6">
         {summary?.readiness === "signedOut" ? (
-          <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
+          <div className="flex min-h-full items-center justify-center">
             <div className="w-full max-w-md">
               {authPanel}
             </div>

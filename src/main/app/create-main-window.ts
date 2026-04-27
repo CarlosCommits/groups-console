@@ -5,6 +5,8 @@ import { registerTrustedWebContents } from '@/main/ipc/trusted-senders';
 
 import { isPackagedRuntime } from './runtime-mode';
 
+const brandTitleBarColor = '#00504a';
+
 export function getMainWindowOptions(): BrowserWindowConstructorOptions {
   return {
     width: 1280,
@@ -13,7 +15,13 @@ export function getMainWindowOptions(): BrowserWindowConstructorOptions {
     minHeight: 720,
     show: false,
     title: 'Groups Console',
-    backgroundColor: '#09090b',
+    backgroundColor: brandTitleBarColor,
+    autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: brandTitleBarColor,
+      symbolColor: '#ffffff',
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

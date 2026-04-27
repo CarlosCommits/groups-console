@@ -17,7 +17,7 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "h-screen w-60 fixed left-0 top-0 bg-white border-r border-[var(--color-outline-variant)]/30 flex flex-col py-4 px-3 z-50",
+        "fixed left-0 top-[var(--app-title-bar-safe-height)] z-50 flex h-[calc(100vh-var(--app-title-bar-safe-height))] w-60 flex-col border-r border-[var(--color-outline-variant)]/30 bg-white px-3 py-4",
         className
       )}
     >

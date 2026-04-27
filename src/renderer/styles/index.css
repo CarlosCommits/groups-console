@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+.app-drag-region {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.app-title-bar {
+  position: fixed;
+  inset-inline: 0;
+  top: env(titlebar-area-y, 0);
+  z-index: 60;
+  height: var(--app-title-bar-safe-height);
+  background: #00504a;
+  user-select: none;
+}
+
 @theme inline {
   /* Light theme color palette for Groups Console - blended concept */
   --color-background: #f7f9fb;
@@ -111,6 +129,9 @@
 
 @layer base {
   :root {
+    --app-title-bar-height: env(titlebar-area-height, 32px);
+    --app-title-bar-safe-height: calc(var(--app-title-bar-height) + 4px);
+
     color-scheme: light;
     font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     background-color: var(--color-background);

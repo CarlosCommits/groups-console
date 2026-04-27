@@ -56,7 +56,7 @@ export function AppHeader({
   return (
     <header
       className={cn(
-        "fixed top-0 left-60 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-[var(--color-outline-variant)]/30 flex justify-between items-center px-6 z-40",
+        "fixed top-[var(--app-title-bar-safe-height)] left-60 right-0 z-40 flex h-14 items-center justify-between border-b border-[var(--color-outline-variant)]/30 bg-white/90 px-6 backdrop-blur-md",
         className
       )}
     >
