@@ -8,6 +8,12 @@
   Windows-first desktop app for Exchange Online and Microsoft Graph administration.
 </p>
 
+<p align="center">
+  <a href="https://github.com/CarlosCommits/groups-console/releases/latest/download/GroupsConsoleSetup.exe">
+    <img src="https://img.shields.io/badge/Download%20for%20Windows-GroupsConsoleSetup.exe-00504a?style=for-the-badge&logo=windows&logoColor=white" alt="Download the latest Windows installer">
+  </a>
+</p>
+
 ![Groups Console dashboard](images/Dashboard%20image%20rounded.png)
 
 ## What it does today
@@ -70,6 +76,38 @@ You will need:
 - delegated Graph consent for the scopes your tenant will use
 - an operator account that can both connect to Exchange Online PowerShell and perform the intended Graph operations
 
+## Microsoft User Permissions
+
+For full operator access in the current app, the practical role set is:
+
+- **Exchange Recipient Administrator** for Exchange Online recipient work, including contacts, recipient lookup, distribution group membership, and mail-enabled security group membership changes.
+- **Microsoft Entra User Administrator** for Microsoft Graph guest work, including guest invitations and guest profile updates.
+- Tenant-admin consent for the delegated Microsoft Graph scopes requested by the app: `User.Read`, `User.Read.All`, `User.ReadWrite.All`, and `User.Invite.All`.
+
+This is the clean built-in-role answer for an operator who should be able to use every current app workflow. More restrictive setups may be possible with custom Exchange RBAC and tenant-specific Entra policy, but they need to be validated in the target tenant.
+
+### Microsoft Graph side
+
+For the current guest workflows, the repo documents these practical delegated requirements:
+
+- **Guest search:** directory read capability, typically covered by `User.Read.All`
+- **Guest invite:** `User.Invite.All`, plus whatever tenant invitation policy or Entra role rules your tenant enforces
+- **Guest company update:** `User.ReadWrite.All` in practice for updating other users, plus any tenant role/policy requirements
+
+The exact Entra role model varies by tenant. Do not assume a universal built-in role name will always be sufficient.
+
+### Exchange side
+
+Exchange operations require Exchange Online PowerShell access plus the RBAC rights needed for the specific action.
+
+Likely requirements include:
+
+- read-oriented Exchange roles for listing groups, reading members, and recipient search
+- write-oriented Exchange roles for adding/removing group members
+- recipient-management roles for creating contacts and updating contact company fields
+
+These are **likely** requirements, not guaranteed universal role group names. Exchange RBAC differs by tenant customization.
+
 ## Tenant authorization
 
 Groups Console does not require each tenant to create its own app registration for normal use. The repo ships with `config/tenant.json`, which points at the publisher-owned multi-tenant Microsoft Entra app registration.
@@ -106,38 +144,6 @@ The app cannot reliably pre-check:
 - per-group ownership/manager restrictions before every Exchange write
 
 If sign-in succeeds but an operation is denied, the app treats that as an authorization/runtime error and surfaces the backend failure instead of pretending the environment is ready.
-
-## Operator permissions
-
-For full operator access in the current app, the practical role set is:
-
-- **Exchange Recipient Administrator** for Exchange Online recipient work, including contacts, recipient lookup, distribution group membership, and mail-enabled security group membership changes.
-- **Microsoft Entra User Administrator** for Microsoft Graph guest work, including guest invitations and guest profile updates.
-- Tenant-admin consent for the delegated Microsoft Graph scopes requested by the app: `User.Read`, `User.Read.All`, `User.ReadWrite.All`, and `User.Invite.All`.
-
-This is the clean built-in-role answer for an operator who should be able to use every current app workflow. More restrictive setups may be possible with custom Exchange RBAC and tenant-specific Entra policy, but they need to be validated in the target tenant.
-
-### Microsoft Graph side
-
-For the current guest workflows, the repo documents these practical delegated requirements:
-
-- **Guest search:** directory read capability, typically covered by `User.Read.All`
-- **Guest invite:** `User.Invite.All`, plus whatever tenant invitation policy or Entra role rules your tenant enforces
-- **Guest company update:** `User.ReadWrite.All` in practice for updating other users, plus any tenant role/policy requirements
-
-The exact Entra role model varies by tenant. Do not assume a universal built-in role name will always be sufficient.
-
-### Exchange side
-
-Exchange operations require Exchange Online PowerShell access plus the RBAC rights needed for the specific action.
-
-Likely requirements include:
-
-- read-oriented Exchange roles for listing groups, reading members, and recipient search
-- write-oriented Exchange roles for adding/removing group members
-- recipient-management roles for creating contacts and updating contact company fields
-
-These are **likely** requirements, not guaranteed universal role group names. Exchange RBAC differs by tenant customization.
 
 ## Bootstrap and readiness checks
 
