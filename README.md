@@ -5,18 +5,16 @@
 <h1 align="center">Groups Console</h1>
 
 <p align="center">
-  Windows-first Electron desktop app for Exchange Online and Microsoft Graph administration.
+  Windows-first desktop app for Exchange Online and Microsoft Graph administration.
 </p>
-
-<p align="center">
-  <strong>Electron v2 desktop app</strong> &middot; Exchange Online &middot; Microsoft Graph &middot; Local diagnostics
-</p>
-
-> Status: this repository is the current Electron v2 app.
 
 ![Groups Console dashboard](images/Dashboard%20image%20rounded.png)
 
 ## What it does today
+
+Groups Console is built to make Microsoft 365 contact and group maintenance easier for non-IT administrators, such as office administrators, executive assistants, and operations staff who keep distribution lists up to date. The goal is to reduce routine dependency on IT teams for day-to-day Microsoft contacts, distribution lists, mail-enabled security groups, and guest-user cleanup.
+
+It focuses on workflows that are awkward in the standard Exchange admin experience, such as adding one contact to multiple groups from a single place. Instead of jumping between admin screens, operators get a focused desktop workspace for finding people, reviewing group membership, updating contacts, inviting guests, and applying common list-management changes.
 
 Groups Console currently supports:
 
@@ -196,3 +194,11 @@ Release versioning, git tags, GitHub Release assets, and distribution guidance l
 | Server-hosted orchestration | Not in scope |
 | Graph writes for distribution lists or mail-enabled security groups | Not in scope |
 | SMTP as canonical identity key | Not assumed |
+
+## License
+
+Groups Console is licensed under the [Apache License 2.0](LICENSE).
+
+This project is not affiliated with, endorsed by, or sponsored by Microsoft.
+Use of Microsoft APIs is subject to Microsoft's applicable API terms.
+Tenant administrators are responsible for reviewing all changes before applying them.
