@@ -253,7 +253,7 @@ describe('getGroupMemberships', () => {
           objectId: 'group-1',
           exchangeIdentity: 'example-directory-group',
           displayName: 'Example Directory',
-          alias: 'esadir',
+          alias: 'exampledir',
           primaryEmail: 'directory@example.com',
           groupKind: 'distributionList',
           managedByDisplayNames: [],
