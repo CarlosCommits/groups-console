@@ -9,7 +9,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'GroupsConsole',
-    extraResource: ['powershell'],
+    extraResource: ['powershell', 'config'],
   },
   rebuildConfig: {},
   makers: [

@@ -2,10 +2,9 @@ import { access, readFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 
 import {
-  getGroupsConsoleDevTenantConfigPath,
+  getGroupsConsoleBundledTenantConfigPath,
   getGroupsConsoleTenantConfigPath,
 } from '@/main/app/paths';
-import { isPackagedRuntime } from '@/main/app/runtime-mode';
 import { tenantConfigSchema, type TenantConfig } from '@/shared/contracts/graph';
 
 async function resolveTenantConfigPath(): Promise<string> {
@@ -24,13 +23,9 @@ async function resolveTenantConfigPath(): Promise<string> {
       throw error;
     }
 
-    if (isPackagedRuntime()) {
-      throw error;
-    }
-
-    const devFallbackPath = getGroupsConsoleDevTenantConfigPath();
-    await access(devFallbackPath, fsConstants.R_OK);
-    return devFallbackPath;
+    const bundledConfigPath = getGroupsConsoleBundledTenantConfigPath();
+    await access(bundledConfigPath, fsConstants.R_OK);
+    return bundledConfigPath;
   }
 }
 

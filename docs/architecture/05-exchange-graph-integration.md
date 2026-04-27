@@ -56,7 +56,7 @@ The shell runs startup/bootstrap checks before presenting the app as ready. Thes
 
 - delegated interactive sign-in
 - system browser flow only
-- tenant pinned after sign-in
+- tenant discovered after sign-in; optional local tenant pinning/allowlisting may reject unexpected tenants
 
 ### Exchange
 
@@ -78,7 +78,7 @@ Exchange Online PowerShell may require script execution support, but the app sho
 
 The app should expose a single “connected” experience only when both conditions are true for the active operator:
 
-1. Graph session is valid for the configured tenant
+1. Graph session is valid for an allowed organizational tenant
 2. Exchange session is valid for the same tenant
 
 If only one side is connected, the UI must show degraded capability, not false readiness.

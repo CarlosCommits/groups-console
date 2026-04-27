@@ -25,11 +25,13 @@ export const graphConnectionStatusSchema = z.object({
 });
 
 export const tenantConfigSchema = z.object({
-  tenantId: z.string().min(1),
+  tenantId: z.string().min(1).optional(),
   graph: z.object({
     clientId: z.string().min(1),
     inviteRedirectUrl: z.string().url(),
     authorityHost: z.string().url().optional(),
+    authorityTenant: z.string().min(1).optional(),
+    allowedTenantIds: z.array(z.string().min(1)).min(1).optional(),
     scopes: z.array(z.string().min(1)).min(1).optional(),
   }),
 });

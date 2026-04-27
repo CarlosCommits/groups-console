@@ -305,7 +305,7 @@ describe('startExchangeSessionHost', () => {
         resolve();
       });
     });
-    const requestPromise = host.request('connect', { userPrincipalName: 'ccanas@example.com' });
+    const requestPromise = host.request('connect', { userPrincipalName: 'admin@example.com' });
 
     await requestWritten;
 
