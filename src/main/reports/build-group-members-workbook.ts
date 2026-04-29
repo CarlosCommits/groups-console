@@ -17,7 +17,7 @@ export async function buildGroupMembersWorkbookBuffer(
   workbook.created = new Date(generatedAt);
 
   const worksheet = workbook.addWorksheet(WORKSHEET_NAME, {
-    views: [{ state: 'frozen', ySplit: 5 }],
+    views: [{ state: 'frozen', ySplit: 6 }],
   });
 
   worksheet.addRow(['Group', payload.groupDisplayName]);

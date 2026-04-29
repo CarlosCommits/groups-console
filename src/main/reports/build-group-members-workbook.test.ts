@@ -50,7 +50,7 @@ describe('buildGroupMembersWorkbookBuffer', () => {
 
     const worksheet = workbook.getWorksheet(WORKSHEET_NAME);
     expect(worksheet).toBeDefined();
-    expect(worksheet?.views[0]).toMatchObject({ state: 'frozen', ySplit: 5 });
+    expect(worksheet?.views[0]).toMatchObject({ state: 'frozen', ySplit: 6 });
     expect(worksheet?.getCell('B1').value).toBe('Finance Group');
     expect(worksheet?.getCell('B2').value).toBe('finance@example.com');
     expect(worksheet?.getCell('B4').value).toBe(2);
