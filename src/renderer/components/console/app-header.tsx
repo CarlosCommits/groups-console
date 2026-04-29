@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from "@/renderer/components/ui/tooltip";
 
-export const READY_TOOLTIP = "both exchange and graph connected";
+export const READY_TOOLTIP = "Both exchange and graph connected";
 
 export interface AppHeaderProps {
   title: string;
@@ -92,7 +92,7 @@ export function AppHeader({
                   Ready
                 </StatusBadge>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom" align="end" sideOffset={6}>
                 {READY_TOOLTIP}
               </TooltipContent>
             </Tooltip>
