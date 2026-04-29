@@ -10,6 +10,7 @@ import {
   AlertCircle,
   WifiOff,
   Info,
+  Download,
 } from "lucide-react";
 import {
   Table,
@@ -557,6 +558,7 @@ export function GroupsScreen() {
   const [removeConfirmTarget, setRemoveConfirmTarget] = useState<GroupMemberListItem | null>(null);
   const [removePending, setRemovePending] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [exportPending, setExportPending] = useState(false);
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
@@ -919,6 +921,29 @@ export function GroupsScreen() {
       setAddPending(false);
     }
   }, [selectedGroup, addCandidates, addSelectedKeys, addGroupMembersMutation]);
+
+  const handleExportMembers = useCallback(async () => {
+    if (!selectedGroup || exportPending) return;
+
+    setExportPending(true);
+    try {
+      const result = await window.groupsConsole.groups.exportMembers(
+        groupRefFromListItem(selectedGroup),
+        selectedGroup.displayName,
+        selectedGroup.primaryEmail,
+      );
+      toast.success("Group members exported", {
+        description: `${result.summary.memberCount} member${result.summary.memberCount === 1 ? "" : "s"} saved to ${result.outputPath}`,
+      });
+    } catch (err) {
+      const message = formatPresentedCommandFailure(
+        presentCommandFailure(err, "Export Members Error", "Failed to export group members."),
+      );
+      toast.error("Failed to export group members", { description: message });
+    } finally {
+      setExportPending(false);
+    }
+  }, [exportPending, selectedGroup]);
 
   const handleRemoveMember = useCallback(async () => {
     if (!selectedGroup || !removeConfirmTarget) return;
@@ -1301,8 +1326,11 @@ export function GroupsScreen() {
             <div className="p-4 bg-white border-b border-slate-200/50 flex-none">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="font-headline text-base font-bold text-[var(--color-foreground)]">
-                  Groups <span className="text-slate-400 font-normal ml-1">({groups.length})</span>
+                  All Groups
                 </h2>
+                <span className="text-sm font-semibold text-slate-400">
+                  {groups.length}
+                </span>
               </div>
               {showStaleGroupsError && (
                 <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2">
@@ -1333,8 +1361,8 @@ export function GroupsScreen() {
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <Table containerClassName="overflow-x-visible">
-                <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.25)]">
-                  <TableRow className="hover:bg-transparent">
+                <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.2)]">
+                  <TableRow className="border-slate-200/75 hover:bg-transparent">
                     <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-11 w-full px-3 text-sm font-bold text-slate-700")}>Display Name</TableHead>
                     <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "h-11 px-3 text-sm font-bold text-slate-700")}>Type</TableHead>
                   </TableRow>
@@ -1344,10 +1372,10 @@ export function GroupsScreen() {
                     <TableRow
                       key={group.exchangeIdentity}
                       className={cn(
-                        "group cursor-pointer border-l-2 transition-colors",
+                        "group cursor-pointer border-b-slate-200/60 transition-colors",
                         selectedGroup?.exchangeIdentity === group.exchangeIdentity
-                          ? "bg-[var(--color-primary)]/5 border-[var(--color-primary)]"
-                          : "hover:bg-white border-transparent"
+                          ? "bg-[var(--color-primary)]/7 shadow-[inset_3px_0_0_var(--color-primary)] hover:bg-[var(--color-primary)]/9"
+                          : "hover:bg-white"
                       )}
                       onClick={() => setSelectedGroupExchangeIdentity(group.exchangeIdentity)}
                     >
@@ -1434,17 +1462,6 @@ export function GroupsScreen() {
                         <UserPlus className="size-4 mr-1" />
                         Add Member
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        className="text-sm"
-                        disabled={!selectedGroup || membersFetching}
-                        onClick={() => void refetchMembers()}
-                        aria-label="Refresh members"
-                        title="Refresh members"
-                      >
-                        <RefreshCw className={cn("size-4", membersFetching && "animate-spin")} />
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1478,14 +1495,14 @@ export function GroupsScreen() {
                     {normalizedActiveTab === "members" ? (
                       <div className="flex items-center gap-2">
                         <Input
-                          className="bg-slate-100 border-none text-sm rounded-full pl-4 pr-4 py-2 w-64"
+                          className="h-8 w-64 rounded-md border-slate-200 bg-slate-50 px-3 text-sm shadow-none"
                           placeholder="Filter current list..."
                           type="text"
                           value={memberFilter}
                           onChange={(e) => setMemberFilter(e.target.value)}
                         />
                         <Select value={sortBy} onValueChange={setSortBy}>
-                          <SelectTrigger size="sm" className="bg-white border-slate-200 text-sm">
+                          <SelectTrigger size="sm" className="h-8 rounded-md border-slate-200 bg-white text-sm shadow-none">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1495,6 +1512,31 @@ export function GroupsScreen() {
                             </SelectGroup>
                           </SelectContent>
                         </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 shrink-0 rounded-md border-slate-200 bg-white px-3 text-sm font-semibold shadow-none hover:bg-slate-50"
+                          onClick={() => void handleExportMembers()}
+                          disabled={!selectedGroup || exportPending}
+                        >
+                          {exportPending ? (
+                            <Loader2 className="size-4 mr-1 animate-spin" />
+                          ) : (
+                            <Download className="size-4 mr-1" />
+                          )}
+                          Export
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="h-8 w-8 shrink-0 rounded-md border-slate-200 bg-white text-slate-600 shadow-none hover:bg-slate-50 hover:text-slate-900"
+                          disabled={!selectedGroup || membersFetching}
+                          onClick={() => void refetchMembers()}
+                          aria-label="Refresh members"
+                          title="Refresh members"
+                        >
+                          <RefreshCw className={cn("size-4", membersFetching && "animate-spin")} />
+                        </Button>
                       </div>
                     ) : (
                       <div className="pb-2" />
@@ -1545,10 +1587,10 @@ export function GroupsScreen() {
                           </div>
                         </div>
                       ) : (
-                        <div className="min-h-full w-full border-y border-slate-200/70 bg-white">
+                        <div className="min-h-full w-full border-y border-slate-200/50 bg-white">
                           <Table className="text-sm" containerClassName="overflow-x-visible">
                             <TableHeader className="bg-slate-50/95 shadow-[0_1px_0_rgba(148,163,184,0.35)]">
-                              <TableRow className="hover:bg-transparent">
+                              <TableRow className="border-slate-200/60 hover:bg-transparent">
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "w-64 max-w-64 text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Name</TableHead>
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "w-72 max-w-72 text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Email</TableHead>
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "text-[11px] font-semibold uppercase tracking-wide text-slate-500")}>Recipient Details</TableHead>
@@ -1556,7 +1598,7 @@ export function GroupsScreen() {
                                 <TableHead className={cn(STICKY_TABLE_HEAD_CLASS, "w-10 text-right")}></TableHead>
                               </TableRow>
                             </TableHeader>
-                            <TableBody>
+                            <TableBody className="[&_tr]:border-slate-200/65">
                               <TooltipProvider>
                                 {visibleMembers.map((member) => (
                                 <TableRow
