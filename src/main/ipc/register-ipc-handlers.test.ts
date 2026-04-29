@@ -69,6 +69,10 @@ vi.mock('@/main/exchange/get-group-memberships', () => ({
   getGroupMemberships: vi.fn(),
 }));
 
+vi.mock('@/main/reports/export-group-members', () => ({
+  exportGroupMembers: vi.fn(),
+}));
+
 vi.mock('@/main/graph/invite-guest-user', () => ({
   inviteGuestUser: vi.fn(),
 }));
@@ -85,6 +89,7 @@ import { createContact } from '@/main/exchange/create-contact';
 import { getGroupMemberships } from '@/main/exchange/get-group-memberships';
 import { getExchangeRecipientDetails } from '@/main/exchange/get-recipient-details';
 import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connection-status';
+import { exportGroupMembers } from '@/main/reports/export-group-members';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { inviteGuestUser } from '@/main/graph/invite-guest-user';
 import { getSessionStatus } from '@/main/ipc/handlers/get-session-status';
@@ -536,6 +541,64 @@ describe('registerIpcHandlers', () => {
             exchangeIdentity: 'finance-group',
           },
         ],
+      },
+    });
+  });
+
+  it('routes groups.exportMembers through the shared handler', async () => {
+    vi.mocked(exportGroupMembers).mockResolvedValue({
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      outputPath: 'C:/Reports/finance-members.xlsx',
+      generatedAt: '2026-04-14T12:00:00.000Z',
+      summary: {
+        memberCount: 2,
+      },
+    });
+
+    registerIpcHandlers();
+    const handler = handleMock.mock.calls[0]?.[1];
+
+    const response = await handler(
+      { sender: { send: vi.fn() } },
+      {
+        requestId: 'req-export-members',
+        command: 'groups.exportMembers',
+        issuedAt: new Date().toISOString(),
+        payload: {
+          group: {
+            exchangeIdentity: 'finance-group',
+            objectId: null,
+            groupKind: 'distributionList',
+          },
+          groupDisplayName: 'Finance Group',
+          groupPrimaryEmail: 'finance@example.com',
+        },
+      },
+    );
+
+    expect(exportGroupMembers).toHaveBeenCalledWith(
+      {
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        groupDisplayName: 'Finance Group',
+        groupPrimaryEmail: 'finance@example.com',
+      },
+      { browserWindow: null },
+    );
+    expect(response).toMatchObject({
+      success: true,
+      data: {
+        outputPath: 'C:/Reports/finance-members.xlsx',
+        summary: {
+          memberCount: 2,
+        },
       },
     });
   });

@@ -53,6 +53,25 @@ describe('command contracts', () => {
     expect(result.command).toBe('reports.generateMembershipMatrix');
   });
 
+  it('accepts the groups.exportMembers command name', () => {
+    const result = commandRequestSchema.parse({
+      requestId: 'req-export-members',
+      command: 'groups.exportMembers',
+      issuedAt: new Date().toISOString(),
+      payload: {
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        groupDisplayName: 'Finance Group',
+        groupPrimaryEmail: 'finance@example.com',
+      },
+    });
+
+    expect(result.command).toBe('groups.exportMembers');
+  });
+
   it('accepts contact and guest detail command names', () => {
     const contactRequest = commandRequestSchema.parse({
       requestId: 'req-789',
