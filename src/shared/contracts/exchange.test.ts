@@ -16,6 +16,8 @@ import {
   groupsAddMembersResultSchema,
   groupsRemoveMembersPayloadSchema,
   groupsRemoveMembersResultSchema,
+  groupsExportMembersPayloadSchema,
+  groupsExportMembersResultSchema,
   groupsGetMembersPayloadSchema,
   groupsGetMembersResultSchema,
   exchangeListGroupsPayloadSchema,
@@ -70,6 +72,32 @@ describe('exchange contracts', () => {
       }),
     ).not.toThrow();
     expect(() => groupsGetMembersPayloadSchema.parse({})).toThrow();
+  });
+
+  it('accepts strict group member export payloads', () => {
+    expect(() =>
+      groupsExportMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        groupDisplayName: 'Finance Group',
+        groupPrimaryEmail: 'finance@example.com',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      groupsExportMembersPayloadSchema.parse({
+        group: {
+          exchangeIdentity: 'finance-group',
+          objectId: null,
+          groupKind: 'distributionList',
+        },
+        groupDisplayName: 'Finance Group',
+        groupPrimaryEmail: null,
+        extra: true,
+      }),
+    ).toThrow();
   });
 
   it('accepts strict group memberships payloads', () => {
@@ -382,6 +410,23 @@ describe('exchange contracts', () => {
     });
 
     expect(result.items[1]?.recipientType).toBe('guestMailUser');
+  });
+
+  it('accepts a group member export result payload', () => {
+    const result = groupsExportMembersResultSchema.parse({
+      group: {
+        exchangeIdentity: 'finance-group',
+        objectId: null,
+        groupKind: 'distributionList',
+      },
+      outputPath: 'C:/Reports/finance-members.xlsx',
+      generatedAt: '2026-04-14T12:00:00.000Z',
+      summary: {
+        memberCount: 2,
+      },
+    });
+
+    expect(result.summary.memberCount).toBe(2);
   });
 
   it('accepts an add-members result payload', () => {

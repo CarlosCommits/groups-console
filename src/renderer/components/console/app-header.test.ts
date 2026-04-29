@@ -52,7 +52,7 @@ describe("AppHeader", () => {
     });
 
     it("uses the exact tooltip text for the combined badge", () => {
-      expect(READY_TOOLTIP).toBe("both exchange and graph connected");
+      expect(READY_TOOLTIP).toBe("Both exchange and graph connected");
     });
   });
 

@@ -12,6 +12,7 @@ import type {
     GroupMemberSelectionRef,
     GroupMemberWriteRef,
   GroupsAddMembersResult,
+  GroupsExportMembersResult,
   GroupsGetMembershipsResult,
   GroupsGetMembersResult,
   GroupsRemoveMembersResult,
@@ -57,6 +58,11 @@ declare global {
       };
       groups: {
         getMembers: (group: ExchangeGroupRef) => Promise<GroupsGetMembersResult>;
+        exportMembers: (
+          group: ExchangeGroupRef,
+          groupDisplayName: string,
+          groupPrimaryEmail: string | null,
+        ) => Promise<GroupsExportMembersResult>;
         getMemberships: (member: GroupMemberSelectionRef) => Promise<GroupsGetMembershipsResult>;
         addMembers: (
           group: ExchangeGroupRef,
