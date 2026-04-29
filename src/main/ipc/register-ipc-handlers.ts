@@ -57,6 +57,8 @@ import {
   exchangeListGroupsResultSchema,
   groupsAddMembersPayloadSchema,
   groupsAddMembersResultSchema,
+  groupsExportMembersPayloadSchema,
+  groupsExportMembersResultSchema,
   groupsGetMembershipsPayloadSchema,
   groupsGetMembershipsResultSchema,
   groupsGetMembersPayloadSchema,
@@ -90,6 +92,7 @@ import { getExchangeConnectionStatus } from '@/main/exchange/get-exchange-connec
 import { getGroupMemberships } from '@/main/exchange/get-group-memberships';
 import { getGroupMembers } from '@/main/exchange/get-group-members';
 import { listExchangeGroups } from '@/main/exchange/list-exchange-groups';
+import { exportGroupMembers } from '@/main/reports/export-group-members';
 import { generateMembershipMatrixReport } from '@/main/reports/generate-membership-matrix';
 import { exportDiagnostics } from '@/main/ipc/handlers/export-diagnostics';
 import {
@@ -550,6 +553,19 @@ async function executeCommand(
     case 'groups.getMembers': {
       const payload = groupsGetMembersPayloadSchema.parse(request.payload);
       const result = groupsGetMembersResultSchema.parse(await getGroupMembers(payload));
+
+      return commandResponseSchema.parse({
+        requestId: request.requestId,
+        success: true,
+        completedAt: new Date().toISOString(),
+        data: result,
+      }) as CommandResponse;
+    }
+    case 'groups.exportMembers': {
+      const payload = groupsExportMembersPayloadSchema.parse(request.payload);
+      const result = groupsExportMembersResultSchema.parse(
+        await exportGroupMembers(payload, { browserWindow: senderWindow }),
+      );
 
       return commandResponseSchema.parse({
         requestId: request.requestId,
