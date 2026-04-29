@@ -54,6 +54,7 @@ import {
   type ExchangeRecipientGetDetailsResult,
   exchangeListGroupsResultSchema,
   groupsAddMembersResultSchema,
+  groupsExportMembersResultSchema,
   groupsGetMembershipsResultSchema,
   groupsGetMembersResultSchema,
   groupsRemoveMembersResultSchema,
@@ -63,6 +64,7 @@ import {
   type GroupMemberSelectionRef,
   type GroupMemberWriteRef,
   type GroupsAddMembersResult,
+  type GroupsExportMembersResult,
   type GroupsGetMembershipsResult,
   type GroupsGetMembersResult,
   type GroupsRemoveMembersResult,
@@ -268,6 +270,25 @@ const groupsConsoleApi = {
       }
 
       return groupsGetMembersResultSchema.parse(response.data);
+    },
+    async exportMembers(
+      group: ExchangeGroupRef,
+      groupDisplayName: string,
+      groupPrimaryEmail: string | null,
+    ): Promise<GroupsExportMembersResult> {
+      const request = createCommandRequest('groups.exportMembers', {
+        group,
+        groupDisplayName,
+        groupPrimaryEmail,
+      });
+      const rawResponse: unknown = await ipcRenderer.invoke(COMMAND_CHANNEL, request);
+      const response = commandResponseSchema.parse(rawResponse);
+
+      if (!response.success) {
+        throw createCommandFailure(response.error, 'Unable to export group members.');
+      }
+
+      return groupsExportMembersResultSchema.parse(response.data);
     },
     async getMemberships(member: GroupMemberSelectionRef): Promise<GroupsGetMembershipsResult> {
       const request = createCommandRequest('groups.getMemberships', { member });
