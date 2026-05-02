@@ -720,7 +720,7 @@ export function RecipientDetailDialog({
                           {bulkRemovalEnabled && bulkRemovalBarVisible && (
                             <div
                               className={cn(
-                                "sticky top-0 z-20 -mx-4 flex items-center justify-between gap-2 overflow-hidden bg-background/95 px-4 backdrop-blur transition-[max-height,opacity,padding,transform] duration-200 ease-out supports-backdrop-filter:bg-background/85",
+                                "sticky -top-px z-20 -mx-4 flex items-center justify-between gap-2 overflow-hidden bg-background/95 px-4 backdrop-blur transition-[max-height,opacity,padding,transform] duration-200 ease-out supports-backdrop-filter:bg-background/85",
                                 bulkRemovalBarActive
                                   ? "max-h-12 translate-y-0 py-2 opacity-100"
                                   : "pointer-events-none max-h-0 -translate-y-2 py-0 opacity-0",
@@ -764,8 +764,8 @@ export function RecipientDetailDialog({
                           <div className="rounded-sm border border-border/20 bg-background">
                             <div
                               className={cn(
-                                "sticky top-0 z-10 grid items-center gap-2 border-b border-border/70 bg-muted/95 px-2 py-2 backdrop-blur transition-[top] duration-200 ease-out supports-backdrop-filter:bg-muted/85",
-                                bulkRemovalEnabled && bulkRemovalBarActive && "top-[2.75rem]",
+                                "sticky -top-px z-10 grid items-center gap-2 border-b border-border/70 bg-muted/95 px-2 py-2 backdrop-blur transition-[top] duration-200 ease-out supports-backdrop-filter:bg-muted/85",
+                                bulkRemovalEnabled && bulkRemovalBarActive && "top-[calc(2.75rem-1px)]",
                                 bulkRemovalEnabled
                                   ? "grid-cols-[2.5rem_minmax(0,1fr)_auto_3rem]"
                                   : "grid-cols-[minmax(0,1fr)_auto_3rem]",
@@ -855,11 +855,6 @@ export function RecipientDetailDialog({
                     Available Groups
                   </h3>
                 </div>
-                {selectedGroupsCount > 0 && (
-                  <span className="text-sm font-bold text-[var(--color-primary)]">
-                    {visibleSelectedGroupsCount} of {selectedGroupsCount} selected
-                  </span>
-                )}
               </div>
               {memberSelectionRef && !allGroupsLoading && (
                 <div className="shrink-0 border-b border-border/50 bg-background px-4 py-3">
