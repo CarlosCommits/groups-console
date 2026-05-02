@@ -16,6 +16,10 @@ vi.mock('@azure/msal-node', () => ({
   PublicClientApplication: publicClientApplication,
 }));
 
+vi.mock('./graph-auth-cache', () => ({
+  createElectronMsalCachePlugin: vi.fn(() => undefined),
+}));
+
 import { acquireInteractiveGraphToken, createGraphPublicClient } from './msal-public-client';
 
 describe('createGraphPublicClient', () => {

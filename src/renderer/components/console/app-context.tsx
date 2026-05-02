@@ -29,6 +29,7 @@ export type PendingAction =
   | "exchangeInstallModule"
   | "exchangeConnect"
   | "exchangeDisconnect"
+  | "signOut"
   | null;
 
 export interface ActionErrors {
@@ -153,6 +154,7 @@ interface AppContextValue {
   installExchangeModule: () => Promise<void>;
   connectExchange: () => Promise<void>;
   disconnectExchange: () => Promise<void>;
+  signOut: () => Promise<void>;
   generateMembershipMatrix: (kind: ReportGroupKind) => Promise<void>;
   clearMembershipMatrixGeneration: () => void;
 }
@@ -202,6 +204,32 @@ const initialShellState: ShellState = {
   isHydrating: true,
   loadError: null,
 };
+
+const LAST_EXCHANGE_UPN_STORAGE_KEY = "groupsConsole:lastExchangeUpn";
+
+function readLastExchangeUpn(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(LAST_EXCHANGE_UPN_STORAGE_KEY) ?? "";
+}
+
+function rememberLastExchangeUpn(userPrincipalName: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(LAST_EXCHANGE_UPN_STORAGE_KEY, userPrincipalName);
+}
+
+function forgetLastExchangeUpn(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(LAST_EXCHANGE_UPN_STORAGE_KEY);
+}
 
 export const initialDirectoryScreenState: DirectoryScreenState = {
   activeTab: "all",
@@ -410,6 +438,7 @@ export function AppProvider({ children }: AppProviderProps) {
     initialShellState.exchangeConnection,
   );
   const exchangeConnectInFlight = useRef(false);
+  const startupExchangeRestoreAttempted = useRef(false);
 
   useEffect(() => {
     if (previousExchangeUpnPreset.current !== exchangeUpnPreset) {
@@ -544,15 +573,21 @@ export function AppProvider({ children }: AppProviderProps) {
 
     try {
       const result = await window.groupsConsole.exchange.connect(trimmedUserPrincipalName);
+      if (result.state === "connected") {
+        rememberLastExchangeUpn(result.userPrincipalName ?? trimmedUserPrincipalName);
+      }
+
       if (result.state === "error") {
         setActionErrors((prev) => ({ ...prev, exchange: result.detail }));
         setLastExchangeConnectFailure(result.detail);
+        return false;
       }
     } catch (err) {
       const presented = presentCommandFailure(err, "Exchange Connect Error", "Exchange connect failed.");
       const message = formatPresentedCommandFailure(presented);
       setActionErrors((prev) => ({ ...prev, exchange: message }));
       setLastExchangeConnectFailure(message);
+      return false;
     } finally {
       exchangeConnectInFlight.current = false;
       if (clearPendingOnComplete) {
@@ -572,6 +607,7 @@ export function AppProvider({ children }: AppProviderProps) {
       return;
     }
     setPendingAction("graphConnect");
+    startupExchangeRestoreAttempted.current = true;
     clearError("graph");
     try {
       const result = await window.groupsConsole.graph.connect();
@@ -657,16 +693,53 @@ export function AppProvider({ children }: AppProviderProps) {
   const connectExchange = useCallback(async () => {
     const attempted = await attemptExchangeConnect(exchangeUpn, { clearPendingOnComplete: false });
 
-    if (!attempted) {
-      return;
-    }
-
     try {
-      await refreshShellState();
+      if (attempted) {
+        await refreshShellState();
+      }
     } finally {
       setPendingAction(null);
     }
   }, [attemptExchangeConnect, exchangeUpn, refreshShellState]);
+
+  useEffect(() => {
+    if (startupExchangeRestoreAttempted.current || pendingAction !== null || shell.isHydrating) {
+      return;
+    }
+
+    if (
+      shell.graphConnection?.state !== "connected" ||
+      shell.exchangeConnection?.state === "connected" ||
+      deriveExchangePrerequisiteBlocker(shell) !== null
+    ) {
+      return;
+    }
+
+    const restoredExchangeUpn =
+      readLastExchangeUpn().trim() ||
+      shell.graphConnection.accountUsername?.trim() ||
+      "";
+
+    if (!restoredExchangeUpn) {
+      return;
+    }
+
+    startupExchangeRestoreAttempted.current = true;
+
+    void (async () => {
+      try {
+        const attempted = await attemptExchangeConnect(restoredExchangeUpn, {
+          clearPendingOnComplete: false,
+        });
+
+        if (attempted) {
+          await refreshShellState();
+        }
+      } finally {
+        setPendingAction(null);
+      }
+    })();
+  }, [attemptExchangeConnect, pendingAction, refreshShellState, shell]);
 
   const disconnectExchange = useCallback(async () => {
     if (!requireBridge("exchange")) {
@@ -677,6 +750,7 @@ export function AppProvider({ children }: AppProviderProps) {
       return;
     }
     setPendingAction("exchangeDisconnect");
+    startupExchangeRestoreAttempted.current = true;
     clearError("exchange");
     try {
       const result = await window.groupsConsole.exchange.disconnect();
@@ -688,6 +762,62 @@ export function AppProvider({ children }: AppProviderProps) {
     } catch (err) {
       const presented = presentCommandFailure(err, "Exchange Disconnect Error", "Exchange disconnect failed.");
       setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
+    } finally {
+      setPendingAction(null);
+      await refreshShellState();
+    }
+  }, [clearError, refreshShellState]);
+
+  const signOut = useCallback(async () => {
+    if (!requireServices("exchange", "graph")) {
+      const message = "Application bridge is not available. Please restart the application.";
+      setActionErrors((prev) => ({
+        ...prev,
+        exchange: message,
+        graph: message,
+      }));
+      return;
+    }
+
+    setPendingAction("signOut");
+    startupExchangeRestoreAttempted.current = true;
+    clearError("exchange");
+    clearError("graph");
+
+    try {
+      const [exchangeResult, graphResult] = await Promise.allSettled([
+        window.groupsConsole.exchange.disconnect(),
+        window.groupsConsole.graph.disconnect(),
+      ]);
+
+      setLastExchangeConnectFailure(null);
+      forgetLastExchangeUpn();
+
+      if (exchangeResult.status === "fulfilled" && exchangeResult.value.state === "error") {
+        setActionErrors((prev) => ({ ...prev, exchange: exchangeResult.value.detail }));
+      }
+
+      if (exchangeResult.status === "rejected") {
+        const presented = presentCommandFailure(
+          exchangeResult.reason,
+          "Exchange Disconnect Error",
+          "Exchange disconnect failed.",
+        );
+        setActionErrors((prev) => ({ ...prev, exchange: formatPresentedCommandFailure(presented) }));
+      }
+
+      if (graphResult.status === "fulfilled" && graphResult.value.state === "error") {
+        setActionErrors((prev) => ({ ...prev, graph: graphResult.value.detail }));
+      }
+
+      if (graphResult.status === "rejected") {
+        const presented = presentCommandFailure(
+          graphResult.reason,
+          "Graph Disconnect Error",
+          "Graph disconnect failed.",
+        );
+        setActionErrors((prev) => ({ ...prev, graph: formatPresentedCommandFailure(presented) }));
+      }
     } finally {
       setPendingAction(null);
       await refreshShellState();
@@ -750,6 +880,7 @@ export function AppProvider({ children }: AppProviderProps) {
         installExchangeModule,
         connectExchange,
         disconnectExchange,
+        signOut,
         generateMembershipMatrix,
         clearMembershipMatrixGeneration,
       }}

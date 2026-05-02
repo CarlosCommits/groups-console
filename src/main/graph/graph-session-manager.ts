@@ -29,6 +29,11 @@ import {
   updateGraphGuestCompany,
 } from './graph-client';
 import {
+  forgetGraphAccount,
+  getPreferredGraphAccount,
+  rememberGraphAccount,
+} from './graph-auth-cache';
+import {
   acquireInteractiveGraphToken,
   acquireSilentGraphToken,
   createGraphPublicClient,
@@ -62,11 +67,8 @@ export class GraphSessionManager {
         }
 
         const organization = await fetchGraphOrganization(authResult.accessToken);
-
-        const allowedTenantIds = getAllowedTenantIds(config);
-
-        if (allowedTenantIds.length > 0 && !allowedTenantIds.includes(organization.id)) {
-          await signOutGraphAccount(publicClient, account);
+        if (!isAllowedTenant(config, organization.id)) {
+          await this.signOutAndForgetGraphAccount(publicClient, account);
           this.session = null;
 
           return createGraphErrorStatus(
@@ -86,6 +88,7 @@ export class GraphSessionManager {
           tenantDisplayName: organization.displayName,
           accountDisplayName: me.displayName,
         };
+        await rememberGraphAccount(account);
 
         const exchangeAlignment = await determineExchangeAlignment(this.session.tenantId);
 
@@ -117,7 +120,11 @@ export class GraphSessionManager {
     return await this.runExclusive(async () => {
       if (!this.session) {
         const config = await tryLoadTenantConfig();
-        return createGraphDisconnectedStatus(config, 'Graph session is not connected.');
+        if (!config) {
+          return createGraphDisconnectedStatus(config, 'Graph session is not connected.');
+        }
+
+        return await this.restoreCachedSession(config);
       }
 
       try {
@@ -159,6 +166,11 @@ export class GraphSessionManager {
     return await this.runExclusive(async () => {
       if (!this.session) {
         const config = await tryLoadTenantConfig();
+        if (config) {
+          await this.signOutCachedAccount(config);
+        } else {
+          await forgetGraphAccount();
+        }
         return createGraphDisconnectedStatus(config, 'Graph session is not connected.');
       }
 
@@ -167,6 +179,7 @@ export class GraphSessionManager {
       try {
         await signOutGraphAccount(this.session.publicClient, this.session.account);
       } finally {
+        await forgetGraphAccount();
         this.session = null;
       }
 
@@ -219,14 +232,89 @@ export class GraphSessionManager {
   }
 
   async shutdown(): Promise<void> {
-    await this.runExclusive(async () => {
-      if (!this.session) {
-        return;
+    await this.runExclusive(() => {
+      this.session = null;
+      return Promise.resolve();
+    });
+  }
+
+  private async restoreCachedSession(config: TenantConfig): Promise<GraphConnectionStatus> {
+    const publicClient = createGraphPublicClient(config);
+    const account = await getPreferredGraphAccount(publicClient);
+
+    if (!account) {
+      return createGraphDisconnectedStatus(config, 'Graph session is not connected.');
+    }
+
+    try {
+      const authResult = await acquireSilentGraphToken(publicClient, config, account);
+      const organization = await fetchGraphOrganization(authResult.accessToken);
+
+      if (!isAllowedTenant(config, organization.id)) {
+        await this.signOutAndForgetGraphAccount(publicClient, account);
+        return createGraphErrorStatus(
+          config,
+          `Authenticated tenant ${organization.id} is not allowed by this app configuration.`,
+        );
       }
 
-      await signOutGraphAccount(this.session.publicClient, this.session.account);
+      const me = await fetchGraphMe(authResult.accessToken);
+
+      this.session = {
+        config,
+        publicClient,
+        account,
+        tokenExpiresOnUtc: authResult.expiresOn?.toISOString() ?? null,
+        tenantId: organization.id,
+        tenantDisplayName: organization.displayName,
+        accountDisplayName: me.displayName,
+      };
+
+      await rememberGraphAccount(account);
+
+      const exchangeAlignment = await determineExchangeAlignment(this.session.tenantId);
+
+      return {
+        state: 'connected',
+        detail: 'Connected to Microsoft Graph.',
+        authMethod: 'interactiveBrowser',
+        configuredTenantId: getConfiguredTenantId(this.session.config),
+        tenantId: this.session.tenantId,
+        tenantDisplayName: this.session.tenantDisplayName,
+        accountUsername: this.session.account.username,
+        accountDisplayName: this.session.accountDisplayName ?? this.session.account.name ?? null,
+        tokenExpiresOnUtc: this.session.tokenExpiresOnUtc,
+        exchangeAlignment,
+      };
+    } catch (error) {
       this.session = null;
-    });
+
+      return createGraphErrorStatus(
+        config,
+        error instanceof Error ? error.message : 'Graph session is unavailable.',
+        classifyGraphStatusFailure('graph.getConnectionStatus', error),
+      );
+    }
+  }
+
+  private async signOutCachedAccount(config: TenantConfig): Promise<void> {
+    const publicClient = createGraphPublicClient(config);
+    const account = await getPreferredGraphAccount(publicClient);
+
+    await this.signOutAndForgetGraphAccount(publicClient, account);
+  }
+
+  private async signOutAndForgetGraphAccount(
+    publicClient: IPublicClientApplication,
+    account: AccountInfo | null,
+  ): Promise<void> {
+    try {
+      if (account) {
+        await signOutGraphAccount(publicClient, account);
+      }
+    } finally {
+      await forgetGraphAccount();
+    }
   }
 
   private async acquireGraphToken(): Promise<{ accessToken: string; config: TenantConfig }> {
@@ -357,6 +445,12 @@ function getAllowedTenantIds(config: TenantConfig): string[] {
   }
 
   return allowedTenantIds;
+}
+
+function isAllowedTenant(config: TenantConfig, tenantId: string): boolean {
+  const allowedTenantIds = getAllowedTenantIds(config);
+
+  return allowedTenantIds.length === 0 || allowedTenantIds.includes(tenantId);
 }
 
 function getConfiguredTenantId(config: TenantConfig): string | null {
