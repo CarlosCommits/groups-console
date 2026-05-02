@@ -104,6 +104,7 @@ import {
 import {
   formatSingleRemoveMemberSuccessDescription,
   getPrimaryRemoveMemberStatus,
+  getRemoveMembersIssueDescriptions,
   getRemoveMembersIssueMessage,
   isRemoveMemberStatusClean,
   REMOVE_MEMBER_STATUS_LABELS,
@@ -119,6 +120,7 @@ import type {
   ExchangeGroupRef,
   GroupMemberSelectionRef,
   GroupsAddMembersResult,
+  GroupsRemoveMembersResult,
 } from "@/shared/contracts/exchange";
 import type {
   ContactsCreateResult,
@@ -144,6 +146,11 @@ type DetailResult =
   | { mode: "contact"; data: ContactDetails }
   | { mode: "guest"; data: GuestDetails }
   | { mode: "exchangeRecipient"; data: ExchangeRecipientDetails };
+
+type RemoveGroupsTarget = {
+  mode: "single" | "bulk";
+  groups: ExchangeGroupListItem[];
+};
 
 const ADD_STATUS_LABELS: Record<GroupsAddMembersResult["items"][number]["status"], string> = {
   added: "Added",
@@ -297,6 +304,49 @@ function showAddGroupsToast(
   toast.success("Group memberships updated", {
     description: `${addedCount} added; ${alreadyMemberCount} already existed`,
   });
+}
+
+function showRemoveGroupsToast(
+  memberName: string,
+  batchResults: Array<{ group: ExchangeGroupListItem; result: GroupsRemoveMembersResult }>,
+): boolean {
+  const issues = batchResults.flatMap(({ group, result }) =>
+    getRemoveMembersIssueDescriptions(result).map((description) =>
+      `${group.displayName}: ${description}`,
+    ),
+  );
+
+  if (issues.length > 0) {
+    toast.warning("Some removals need attention", {
+      description: issues.join("\n"),
+    });
+    return false;
+  }
+
+  const cleanStatuses = batchResults.flatMap(({ result }) =>
+    result.items.map((item) => item.status),
+  );
+  const removedCount = cleanStatuses.filter((status) => status === "removed").length;
+  const notMemberCount = cleanStatuses.filter((status) => status === "notMember").length;
+
+  if (removedCount > 0 && notMemberCount === 0) {
+    toast.success(removedCount === 1 ? "Removed from group" : "Removed from groups", {
+      description: `${memberName} was removed from ${removedCount} group${removedCount === 1 ? "" : "s"}`,
+    });
+    return true;
+  }
+
+  if (removedCount === 0) {
+    toast.success("Not a member", {
+      description: `${memberName} was not a member of ${notMemberCount} selected group${notMemberCount === 1 ? "" : "s"}`,
+    });
+    return true;
+  }
+
+  toast.success("Group memberships updated", {
+    description: `${removedCount} removed; ${notMemberCount} already absent`,
+  });
+  return true;
 }
 
 const AVATAR_COLORS = [
@@ -456,12 +506,13 @@ export function DirectoryScreen() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailTarget, setDetailTarget] = useState<RecipientSearchItem | null>(null);
 
-  const [removeGroupTarget, setRemoveGroupTarget] = useState<ExchangeGroupListItem | null>(null);
+  const [removeGroupsTarget, setRemoveGroupsTarget] = useState<RemoveGroupsTarget | null>(null);
   const [removeGroupPending, setRemoveGroupPending] = useState(false);
   const [removeGroupError, setRemoveGroupError] = useState<string | null>(null);
 
   const [groupFilterText, setGroupFilterText] = useState("");
   const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
+  const [selectedRemovalGroupKeys, setSelectedRemovalGroupKeys] = useState<Set<string>>(new Set());
   const [addGroupPending, setAddGroupPending] = useState(false);
   const [addGroupError, setAddGroupError] = useState<string | null>(null);
 
@@ -557,6 +608,17 @@ export function DirectoryScreen() {
   const currentMemberRef = membershipsQuery.member;
   const currentMemberships = membershipsQuery.groups;
 
+  useEffect(() => {
+    const currentMembershipKeys = new Set(currentMemberships.map((group) => group.exchangeIdentity));
+    setSelectedRemovalGroupKeys((previous) => {
+      const next = new Set(
+        [...previous].filter((exchangeIdentity) => currentMembershipKeys.has(exchangeIdentity)),
+      );
+
+      return next.size === previous.size ? previous : next;
+    });
+  }, [currentMemberships]);
+
   const availableGroups = useMemo(() => {
     const currentMembershipKeys = new Set(
       currentMemberships.map((group) => group.exchangeIdentity),
@@ -595,6 +657,13 @@ export function DirectoryScreen() {
   );
 
   const hasHiddenSelectedGroups = selectedGroupKeys.size > visibleSelectedGroupsCount;
+
+  const selectedRemovalGroups = useMemo(
+    () => currentMemberships.filter((group) => selectedRemovalGroupKeys.has(group.exchangeIdentity)),
+    [currentMemberships, selectedRemovalGroupKeys],
+  );
+
+  const selectedRemovalGroupsCount = selectedRemovalGroups.length;
 
   const addGroupMembersMutation = useAddGroupMembersMutation(shell.exchangeConnection);
   const removeGroupMembersMutation = useRemoveGroupMembersMutation(shell.exchangeConnection);
@@ -874,9 +943,10 @@ export function DirectoryScreen() {
     setUpdateResult(null);
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
+    setSelectedRemovalGroupKeys(new Set());
     setAddGroupPending(false);
     setAddGroupError(null);
-    setRemoveGroupTarget(null);
+    setRemoveGroupsTarget(null);
     setRemoveGroupPending(false);
     setRemoveGroupError(null);
   }, []);
@@ -888,9 +958,10 @@ export function DirectoryScreen() {
     setUpdateCompanyName("");
     setGroupFilterText("");
     setSelectedGroupKeys(new Set());
+    setSelectedRemovalGroupKeys(new Set());
     setAddGroupPending(false);
     setAddGroupError(null);
-    setRemoveGroupTarget(null);
+    setRemoveGroupsTarget(null);
     setRemoveGroupPending(false);
     setRemoveGroupError(null);
   }, [handleUpdateClose]);
@@ -921,6 +992,28 @@ export function DirectoryScreen() {
 
   const handleClearSelection = useCallback(() => {
     setSelectedGroupKeys(new Set());
+  }, []);
+
+  const handleToggleRemovalGroupSelection = useCallback((exchangeIdentity: string) => {
+    setSelectedRemovalGroupKeys((previous) => {
+      const next = new Set(previous);
+
+      if (next.has(exchangeIdentity)) {
+        next.delete(exchangeIdentity);
+      } else {
+        next.add(exchangeIdentity);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllCurrentMemberships = useCallback(() => {
+    setSelectedRemovalGroupKeys(new Set(currentMemberships.map((group) => group.exchangeIdentity)));
+  }, [currentMemberships]);
+
+  const handleClearRemovalSelection = useCallback(() => {
+    setSelectedRemovalGroupKeys(new Set());
   }, []);
 
   const handleAddGroups = useCallback(async () => {
@@ -972,8 +1065,8 @@ export function DirectoryScreen() {
     visibleSelectedGroupsCount,
   ]);
 
-  const handleRemoveGroup = useCallback(async () => {
-    if (!removeGroupTarget || !currentMemberRef) {
+  const handleRemoveGroups = useCallback(async () => {
+    if (!removeGroupsTarget || !currentMemberRef || removeGroupsTarget.groups.length === 0) {
       return;
     }
 
@@ -981,44 +1074,105 @@ export function DirectoryScreen() {
     setRemoveGroupError(null);
 
     try {
-      const result = await removeGroupMembersMutation.mutateAsync({
-        groupRef: groupRefFromListItem(removeGroupTarget),
-        memberRefs: [currentMemberRef],
-      });
+      const batchResults: Array<{ group: ExchangeGroupListItem; result: GroupsRemoveMembersResult }> = [];
+      const failedResults: string[] = [];
 
-      const status = getPrimaryRemoveMemberStatus(result, "failed");
+      for (const group of removeGroupsTarget.groups) {
+        try {
+          const result = await removeGroupMembersMutation.mutateAsync({
+            groupRef: groupRefFromListItem(group),
+            memberRefs: [currentMemberRef],
+          });
 
-      if (isRemoveMemberStatusClean(status)) {
-        toast.success(REMOVE_MEMBER_STATUS_LABELS[status], {
-          description: formatSingleRemoveMemberSuccessDescription(
-            detailTarget?.displayName ?? "Recipient",
-            removeGroupTarget.displayName,
-            result,
-          ),
+          batchResults.push({ group, result });
+        } catch (err: unknown) {
+          const message = formatPresentedCommandFailure(
+            presentCommandFailure(err, "Remove From Group Error", `Failed to remove from ${group.displayName}.`),
+          );
+          failedResults.push(`${group.displayName}: ${message}`);
+        }
+      }
+
+      if (removeGroupsTarget.mode === "single") {
+        const firstResult = batchResults[0];
+        if (!firstResult && failedResults.length > 0) {
+          const message = failedResults.join("\n");
+          setRemoveGroupError(message);
+          toast.error("Failed to remove from group", { description: message });
+          await membershipsQuery.refetch();
+          return;
+        }
+
+        if (!firstResult) {
+          return;
+        }
+
+        const { group, result } = firstResult;
+        const status = getPrimaryRemoveMemberStatus(result, "failed");
+
+        if (isRemoveMemberStatusClean(status)) {
+          toast.success(REMOVE_MEMBER_STATUS_LABELS[status], {
+            description: formatSingleRemoveMemberSuccessDescription(
+              detailTarget?.displayName ?? "Recipient",
+              group.displayName,
+              result,
+            ),
+          });
+          setRemoveGroupsTarget(null);
+          setSelectedRemovalGroupKeys((previous) => {
+            const next = new Set(previous);
+            next.delete(group.exchangeIdentity);
+            return next;
+          });
+          await membershipsQuery.refetch();
+          return;
+        }
+
+        const message =
+          getRemoveMembersIssueMessage(result) ??
+          `${REMOVE_MEMBER_STATUS_LABELS[status]}: Membership update failed.`;
+        setRemoveGroupError(message);
+        toast.warning("Remove from group needs attention", {
+          description: `${group.displayName}: ${message}`,
         });
-        setRemoveGroupTarget(null);
         await membershipsQuery.refetch();
         return;
       }
 
-      const message =
-        getRemoveMembersIssueMessage(result) ??
-        `${REMOVE_MEMBER_STATUS_LABELS[status]}: Membership update failed.`;
-      setRemoveGroupError(message);
-      toast.warning("Remove from group needs attention", {
-        description: `${removeGroupTarget.displayName}: ${message}`,
-      });
+      const itemIssues = batchResults.flatMap(({ group, result }) =>
+        getRemoveMembersIssueDescriptions(result).map((description) =>
+          `${group.displayName}: ${description}`,
+        ),
+      );
+      const issues = [...failedResults, ...itemIssues];
+
+      if (issues.length > 0) {
+        const issueMessage = issues.join("\n");
+        setRemoveGroupError(issueMessage);
+        await membershipsQuery.refetch();
+        if (batchResults.length > 0) {
+          toast.warning("Some removals need attention", { description: issueMessage });
+        } else {
+          toast.error("Failed to remove from selected group(s)", { description: issueMessage });
+        }
+      } else {
+        showRemoveGroupsToast(detailTarget?.displayName ?? "Recipient", batchResults);
+        setRemoveGroupsTarget(null);
+        setSelectedRemovalGroupKeys(new Set());
+        await membershipsQuery.refetch();
+      }
 
     } catch (err: unknown) {
       const message = formatPresentedCommandFailure(
-        presentCommandFailure(err, "Remove From Group Error", "Failed to remove from group."),
+        presentCommandFailure(err, "Remove From Group Error", "Failed to remove from selected group(s)."),
       );
       setRemoveGroupError(message);
-      toast.error("Failed to remove from group", { description: message });
+      toast.error("Failed to remove from selected group(s)", { description: message });
+      await membershipsQuery.refetch();
     } finally {
       setRemoveGroupPending(false);
     }
-  }, [currentMemberRef, detailTarget?.displayName, membershipsQuery, removeGroupMembersMutation, removeGroupTarget]);
+  }, [currentMemberRef, detailTarget?.displayName, membershipsQuery, removeGroupMembersMutation, removeGroupsTarget]);
 
   const tabs = [
     { label: "All", value: "all" },
@@ -1106,7 +1260,7 @@ export function DirectoryScreen() {
     : false;
 
   const selectedGroupsCount = selectedGroupKeys.size;
-  const recipientDialogPending = addGroupPending || updatePending;
+  const recipientDialogPending = addGroupPending || updatePending || removeGroupPending;
 
   return (
     <AppShell>
@@ -2062,17 +2216,33 @@ export function DirectoryScreen() {
           void handleAddGroups();
         }}
         addGroupError={addGroupError}
+        bulkRemoval={{
+          enabled: true,
+          selectedGroupKeys: selectedRemovalGroupKeys,
+          selectedGroupsCount: selectedRemovalGroupsCount,
+          pending: removeGroupPending,
+          onToggleGroupSelection: handleToggleRemovalGroupSelection,
+          onSelectAllCurrentMemberships: handleSelectAllCurrentMemberships,
+          onClearSelection: handleClearRemovalSelection,
+          onRequestRemoveSelectedGroups: () => {
+            if (selectedRemovalGroups.length === 0) {
+              return;
+            }
+            setRemoveGroupError(null);
+            setRemoveGroupsTarget({ mode: "bulk", groups: selectedRemovalGroups });
+          },
+        }}
         onRequestRemoveGroup={(group) => {
           setRemoveGroupError(null);
-          setRemoveGroupTarget(group);
+          setRemoveGroupsTarget({ mode: "single", groups: [group] });
         }}
       />
 
       <Dialog
-        open={removeGroupTarget !== null}
+        open={removeGroupsTarget !== null}
         onOpenChange={(open): void => {
           if (!open && canDismissMutationDialog(removeGroupPending)) {
-            setRemoveGroupTarget(null);
+            setRemoveGroupsTarget(null);
             setRemoveGroupError(null);
           }
         }}
@@ -2082,20 +2252,31 @@ export function DirectoryScreen() {
           showCloseButton={canDismissMutationDialog(removeGroupPending)}
         >
           <DialogHeader>
-            <DialogTitle>Remove Member</DialogTitle>
+            <DialogTitle>
+              {removeGroupsTarget?.mode === "bulk" ? "Remove From Groups" : "Remove Member"}
+            </DialogTitle>
             <DialogDescription>
-              {removeGroupTarget && detailTarget ? (
+              {removeGroupsTarget && detailTarget ? (
                 <>
                   Are you sure you want to remove{" "}
                   <span className="font-semibold">{detailTarget.displayName}</span>
                   {detailTarget.primaryEmail && (
                     <span className="text-slate-500"> ({detailTarget.primaryEmail})</span>
                   )}
-                  {" "}from{" "}
-                  <span className="font-semibold">{removeGroupTarget.displayName}</span>?
+                  {removeGroupsTarget.groups.length === 1 ? (
+                    <>
+                      {" "}from{" "}
+                      <span className="font-semibold">{removeGroupsTarget.groups[0].displayName}</span>?
+                    </>
+                  ) : (
+                    <>
+                      {" "}from{" "}
+                      <span className="font-semibold">{removeGroupsTarget.groups.length} groups</span>?
+                    </>
+                  )}
                 </>
               ) : (
-                "Remove this membership?"
+                "Remove selected membership(s)?"
               )}
             </DialogDescription>
           </DialogHeader>
@@ -2112,7 +2293,10 @@ export function DirectoryScreen() {
               variant="outline"
               size="sm"
               disabled={removeGroupPending}
-              onClick={() => setRemoveGroupTarget(null)}
+              onClick={() => {
+                setRemoveGroupsTarget(null);
+                setRemoveGroupError(null);
+              }}
             >
               Cancel
             </Button>
@@ -2121,11 +2305,11 @@ export function DirectoryScreen() {
               size="sm"
               disabled={removeGroupPending || !currentMemberRef}
               onClick={(): void => {
-                void handleRemoveGroup();
+                void handleRemoveGroups();
               }}
             >
               {removeGroupPending && <Loader2 className="mr-1 size-3.5 animate-spin" />}
-              Remove
+              {removeGroupsTarget?.mode === "bulk" ? `Remove ${removeGroupsTarget.groups.length}` : "Remove"}
             </Button>
           </DialogFooter>
         </DialogContent>
