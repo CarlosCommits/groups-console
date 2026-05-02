@@ -65,7 +65,7 @@ export function AppShell({
   children,
   className,
 }: AppShellProps) {
-  const { shell, currentScreen } = useApp();
+  const { shell, currentScreen, pendingAction, signOut } = useApp();
   const { updateStatus, installUpdate } = useUpdateStatus();
   const hasResolvedShell =
     shell.session !== null ||
@@ -82,12 +82,19 @@ export function AppShell({
     />
   ) : null;
 
+  const canSignOut =
+    shell.graphConnection?.state === "connected" ||
+    shell.exchangeConnection?.state === "connected";
+
   return (
     <div className={cn("h-screen overflow-hidden bg-[var(--color-surface)]", className)}>
       <AppTitleBar />
       <AppSidebar
         userName={summary?.displayName ?? "Loading shell…"}
         userRole={summary?.secondaryLine ?? "Loading application state"}
+        canSignOut={canSignOut}
+        isSigningOut={pendingAction === "signOut"}
+        onSignOut={() => { void signOut(); }}
       />
       <AppHeader
         title={SCREEN_TITLES[currentScreen]}

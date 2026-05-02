@@ -104,11 +104,52 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
   const isGraphConnecting = pendingAction === "graphConnect";
   const isExchangeModuleInstalling = pendingAction === "exchangeInstallModule";
   const isExchangeConnecting = pendingAction === "exchangeConnect";
+  const isExchangeRestoreBanner = setupStep === "exchangeNeeded" && isExchangeConnecting;
   const exchangePrerequisiteBlocker = deriveExchangePrerequisiteBlocker(shell);
 
-  const panelClass = blocking
-    ? "relative overflow-hidden rounded-lg border border-[var(--color-outline-variant)]/25 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbfb_100%)] p-7 shadow-[0_18px_45px_rgba(25,28,30,0.08)]"
-    : "rounded-lg border border-amber-200/70 bg-amber-50 p-4 shadow-sm";
+  const panelClass = isExchangeRestoreBanner
+    ? "rounded-lg border border-teal-100 bg-white p-4 shadow-sm"
+    : blocking
+      ? "relative overflow-hidden rounded-lg border border-[var(--color-outline-variant)]/25 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbfb_100%)] p-7 shadow-[0_18px_45px_rgba(25,28,30,0.08)]"
+      : "rounded-lg border border-amber-200/70 bg-amber-50 p-4 shadow-sm";
+
+  if (isExchangeRestoreBanner) {
+    return (
+      <div className={panelClass}>
+        {shell.loadError && (
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-[var(--color-error)]/20 bg-red-50 px-3 py-2 text-sm text-[var(--color-error)]">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>{shell.loadError}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-teal-100 bg-teal-50">
+            <Loader2 className="size-5 animate-spin text-[var(--color-primary)]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <StatusBadge variant="success" size="sm">Graph Connected</StatusBadge>
+              <span className="truncate text-xs text-[var(--color-outline)]">
+                {shell.graphConnection?.accountUsername ?? ""}
+              </span>
+            </div>
+            <h2 className="font-headline text-sm font-extrabold leading-tight text-[var(--color-foreground)]">
+              Restoring Exchange Online
+            </h2>
+            <p className="mt-1 text-xs text-[var(--color-outline)]" aria-live="polite">
+              Signing in to PowerShell as {exchangeUpn || shell.graphConnection?.accountUsername || "the selected account"}.
+            </p>
+          </div>
+          <StatusBadge variant="warning" size="sm" className="shrink-0">
+            Signing in
+          </StatusBadge>
+        </div>
+        {actionErrors.exchange && (
+          <p className="mt-3 text-xs text-[var(--color-error)]">{actionErrors.exchange}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={panelClass}>
@@ -215,17 +256,8 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
               disabled={isBusy || exchangeUpn.trim().length === 0 || exchangePrerequisiteBlocker !== null}
               onClick={() => { void connectExchange(); }}
             >
-              {isExchangeConnecting ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <Plug className="size-3.5" />
-                  Connect Exchange
-                </>
-              )}
+              <Plug className="size-3.5" />
+              Connect Exchange
             </Button>
           </div>
           {exchangePrerequisiteBlocker?.canInstallModule && (
@@ -245,11 +277,6 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
                 "Install Exchange module"
               )}
             </Button>
-          )}
-          {isExchangeConnecting && (
-            <p className="text-xs text-[var(--color-outline)]" aria-live="polite">
-              Signing in to PowerShell Exchange Online...
-            </p>
           )}
           {actionErrors.exchange && (
             <p className="text-xs text-[var(--color-error)]">{actionErrors.exchange}</p>
