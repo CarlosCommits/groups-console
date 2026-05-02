@@ -127,12 +127,6 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
             <Loader2 className="size-5 animate-spin text-[var(--color-primary)]" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex flex-wrap items-center gap-2">
-              <StatusBadge variant="success" size="sm">Graph Connected</StatusBadge>
-              <span className="truncate text-xs text-[var(--color-outline)]">
-                {shell.graphConnection?.accountUsername ?? ""}
-              </span>
-            </div>
             <h2 className="font-headline text-sm font-extrabold leading-tight text-[var(--color-foreground)]">
               Restoring Exchange Online
             </h2>
@@ -140,9 +134,6 @@ export function ShellAuthPanel({ setupStep, blocking }: ShellAuthPanelProps) {
               Signing in to PowerShell as {exchangeUpn || shell.graphConnection?.accountUsername || "the selected account"}.
             </p>
           </div>
-          <StatusBadge variant="warning" size="sm" className="shrink-0">
-            Signing in
-          </StatusBadge>
         </div>
         {actionErrors.exchange && (
           <p className="mt-3 text-xs text-[var(--color-error)]">{actionErrors.exchange}</p>
