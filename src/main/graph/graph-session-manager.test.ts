@@ -32,6 +32,12 @@ vi.mock('./graph-client', () => ({
   updateGraphGuestCompany: vi.fn(),
 }));
 
+vi.mock('./graph-auth-cache', () => ({
+  forgetGraphAccount: vi.fn(),
+  getPreferredGraphAccount: vi.fn(),
+  rememberGraphAccount: vi.fn(),
+}));
+
 vi.mock('@/main/exchange/get-exchange-connection-status', () => ({
   getExchangeConnectionStatus: vi.fn(),
 }));
@@ -54,6 +60,11 @@ import {
   createGraphPublicClient,
   signOutGraphAccount,
 } from './msal-public-client';
+import {
+  forgetGraphAccount,
+  getPreferredGraphAccount,
+  rememberGraphAccount,
+} from './graph-auth-cache';
 import { GraphSessionManager } from './graph-session-manager';
 
 describe('GraphSessionManager', () => {
@@ -144,6 +155,45 @@ describe('GraphSessionManager', () => {
     expect(result.state).toBe('error');
     expect(result.detail).toContain('is not allowed by this app configuration');
     expect(signOutGraphAccount).toHaveBeenCalledWith(publicClient, account);
+    expect(forgetGraphAccount).toHaveBeenCalled();
+  });
+
+  it('forgets a disallowed Graph account even when MSAL sign-out fails', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    const allowlistedTenantConfig = {
+      graph: {
+        clientId: 'client-id',
+        authorityTenant: 'organizations',
+        allowedTenantIds: ['tenant-configured'],
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    };
+    const account = {
+      tenantId: 'tenant-other',
+      username: 'admin@example.com',
+      name: 'Admin Example',
+    };
+
+    vi.mocked(forgetGraphAccount).mockClear();
+    vi.mocked(loadTenantConfig).mockResolvedValue(allowlistedTenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account,
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-other',
+      displayName: 'Other Tenant',
+    });
+    vi.mocked(signOutGraphAccount).mockRejectedValueOnce(new Error('MSAL cache write failed'));
+
+    const result = await manager.connect();
+
+    expect(result.state).toBe('error');
+    expect(result.detail).toContain('MSAL cache write failed');
+    expect(forgetGraphAccount).toHaveBeenCalled();
   });
 
   it('keeps a legacy tenant pin allowed when an allowlist is added', async () => {
@@ -245,6 +295,119 @@ describe('GraphSessionManager', () => {
     expect(result.state).toBe('connected');
     expect(result.configuredTenantId).toBeNull();
     expect(result.tenantId).toBe('tenant-configured');
+  });
+
+  it('restores a cached Graph account silently when connection status is requested', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    const account = {
+      tenantId: 'tenant-configured',
+      username: 'admin@example.com',
+      name: 'Admin Example',
+    };
+
+    vi.mocked(acquireInteractiveGraphToken).mockClear();
+    vi.mocked(rememberGraphAccount).mockClear();
+    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(getPreferredGraphAccount).mockResolvedValue(account as never);
+    vi.mocked(acquireSilentGraphToken).mockResolvedValue({
+      account,
+      accessToken: 'token-2',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'disconnected',
+      detail: 'Exchange session host is not running.',
+      runtime: null,
+      userPrincipalName: null,
+      connectionId: null,
+      tenantId: null,
+      tokenStatus: null,
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+
+    const result = await manager.getConnectionStatus();
+
+    expect(result.state).toBe('connected');
+    expect(result.accountUsername).toBe('admin@example.com');
+    expect(acquireInteractiveGraphToken).not.toHaveBeenCalled();
+    expect(rememberGraphAccount).toHaveBeenCalledWith(account);
+  });
+
+  it('does not sign out the cached Graph account during app shutdown', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    const account = {
+      tenantId: 'tenant-configured',
+      username: 'admin@example.com',
+      name: 'Admin Example',
+    };
+
+    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(acquireInteractiveGraphToken).mockResolvedValue({
+      account,
+      accessToken: 'token-1',
+      expiresOn: new Date('2026-04-02T00:00:00.000Z'),
+    } as never);
+    vi.mocked(fetchGraphOrganization).mockResolvedValue({
+      id: 'tenant-configured',
+      displayName: 'Example Tenant',
+    });
+    vi.mocked(fetchGraphMe).mockResolvedValue({
+      id: 'me-1',
+      displayName: 'Admin Example',
+      userPrincipalName: 'admin@example.com',
+    });
+    vi.mocked(getExchangeConnectionStatus).mockResolvedValue({
+      state: 'disconnected',
+      detail: 'Exchange session host is not running.',
+      runtime: null,
+      userPrincipalName: null,
+      connectionId: null,
+      tenantId: null,
+      tokenStatus: null,
+      tokenExpiryTimeUtc: null,
+      connectedAtUtc: null,
+    });
+
+    await manager.connect();
+    vi.mocked(signOutGraphAccount).mockClear();
+    await manager.shutdown();
+
+    expect(signOutGraphAccount).not.toHaveBeenCalled();
+  });
+
+  it('forgets a cached Graph account during disconnect when MSAL sign-out fails', async () => {
+    const manager = new GraphSessionManager();
+    const publicClient = { kind: 'msal' };
+    const account = {
+      tenantId: 'tenant-configured',
+      username: 'admin@example.com',
+      name: 'Admin Example',
+    };
+
+    vi.mocked(forgetGraphAccount).mockClear();
+    vi.mocked(loadTenantConfig).mockResolvedValue(tenantConfig);
+    vi.mocked(createGraphPublicClient).mockReturnValue(publicClient as never);
+    vi.mocked(getPreferredGraphAccount).mockResolvedValue(account as never);
+    vi.mocked(signOutGraphAccount).mockRejectedValueOnce(new Error('MSAL cache write failed'));
+
+    await expect(manager.disconnect()).rejects.toThrow('MSAL cache write failed');
+
+    expect(signOutGraphAccount).toHaveBeenCalledWith(publicClient, account);
+    expect(forgetGraphAccount).toHaveBeenCalled();
   });
 
   it('searches guests through the active session', async () => {

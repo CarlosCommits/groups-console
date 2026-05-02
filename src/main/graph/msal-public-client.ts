@@ -8,6 +8,8 @@ import {
 
 import type { TenantConfig } from '@/shared/contracts/graph';
 
+import { createElectronMsalCachePlugin } from './graph-auth-cache';
+
 const DEFAULT_GRAPH_SCOPES = [
   'User.Read',
   'User.Read.All',
@@ -21,12 +23,14 @@ export function createGraphPublicClient(
 ): IPublicClientApplication {
   const authorityHost = config.graph.authorityHost ?? 'https://login.microsoftonline.com';
   const authorityTenant = config.graph.authorityTenant ?? config.tenantId ?? DEFAULT_AUTHORITY_TENANT;
+  const cachePlugin = createElectronMsalCachePlugin();
 
   return new PublicClientApplication({
     auth: {
       clientId: config.graph.clientId,
       authority: `${authorityHost}/${authorityTenant}`,
     },
+    ...(cachePlugin ? { cache: { cachePlugin } } : {}),
   });
 }
 
