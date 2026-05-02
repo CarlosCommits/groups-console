@@ -659,7 +659,7 @@ export function GroupsScreen() {
     exchangeConnection,
     shell.graphConnection,
   );
-  const normalizedActiveTab = activeTab === "settings" ? "details" : activeTab;
+  const normalizedActiveTab = activeTab === "details" || activeTab === "settings" ? "details" : "members";
   const detailResolved = detailDialogOpen && detailResolvePendingKey === null && detailResolveError === null;
 
   const contactDetailsQuery = useContactDetailsQuery(
@@ -1480,7 +1480,7 @@ export function GroupsScreen() {
     <AppShell>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="flex flex-1 overflow-hidden rounded-xl border border-[var(--color-outline-variant)]/20 bg-white shadow-sm">
-          <section className="w-96 flex flex-col bg-slate-50 border-r border-slate-200/50 flex-none h-full">
+          <section className="w-80 xl:w-96 flex flex-col bg-slate-50 border-r border-slate-200/50 flex-none h-full">
             <div className="p-4 bg-white border-b border-slate-200/50 flex-none">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="font-headline text-base font-bold text-[var(--color-foreground)]">
@@ -1636,12 +1636,6 @@ export function GroupsScreen() {
                         className="h-7 min-w-28 rounded-md px-3 py-1 text-sm font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[var(--color-primary)] data-[state=active]:shadow-sm hover:text-slate-800"
                       >
                         Members{!membersLoading ? ` (${members.length})` : ""}
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="owners"
-                        className="h-7 min-w-24 rounded-md px-3 py-1 text-sm font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[var(--color-primary)] data-[state=active]:shadow-sm hover:text-slate-800"
-                      >
-                        Owners
                       </TabsTrigger>
                       <TabsTrigger
                         value="details"
@@ -1831,14 +1825,6 @@ export function GroupsScreen() {
                           </Table>
                         </div>
                       )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="owners" className="mt-0 flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar h-full">
-                      <div className="flex items-center justify-center py-16">
-                        <span className="text-sm text-slate-400">Owner details are not yet available.</span>
-                      </div>
                     </div>
                   </TabsContent>
 
