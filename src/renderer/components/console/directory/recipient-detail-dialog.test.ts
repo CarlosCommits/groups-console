@@ -504,7 +504,7 @@ describe('RecipientDetailDialog', () => {
     expect(markup).toContain('Remove selected (1)');
     expect(markup).toContain('Select all');
     expect(markup).toContain('Clear');
-    expect(markup).toContain('sticky top-0 z-20');
+    expect(markup).toContain('sticky -top-px z-20');
     expect(markup).toContain('transition-[max-height,opacity,padding,transform]');
     expect(markup).toContain('translate-y-0');
     expect(markup).toContain('opacity-100');
