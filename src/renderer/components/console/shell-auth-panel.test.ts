@@ -275,7 +275,7 @@ describe("ShellAuthPanel - exchangeNeeded branch", () => {
     expect(markup).not.toContain("Signing in to PowerShell Exchange Online...");
   });
 
-  it("shows Signing in label and spinner when pendingAction is exchangeConnect", () => {
+  it("shows a compact restore banner when pendingAction is exchangeConnect", () => {
     const markup = renderPanel("exchangeNeeded", {
       shell: makeShell({
         graphConnection: makeGraph(),
@@ -285,7 +285,8 @@ describe("ShellAuthPanel - exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).toContain("Signing in...");
+    expect(markup).toContain("Restoring Exchange Online");
+    expect(markup).toContain("Signing in to PowerShell as admin@example.com.");
     expect(markup).not.toContain(">Connect Exchange<");
   });
 
@@ -299,7 +300,7 @@ describe("ShellAuthPanel - exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).toContain("Signing in to PowerShell Exchange Online...");
+    expect(markup).toContain("Signing in to PowerShell as admin@example.com.");
     expect(markup).toContain('aria-live="polite"');
   });
 
@@ -313,10 +314,10 @@ describe("ShellAuthPanel - exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).not.toContain("Signing in to PowerShell Exchange Online...");
+    expect(markup).not.toContain("Signing in to PowerShell as admin@example.com.");
   });
 
-  it("disables the button when pendingAction is exchangeConnect", () => {
+  it("does not render the manual connect controls when pendingAction is exchangeConnect", () => {
     const markup = renderPanel("exchangeNeeded", {
       shell: makeShell({
         graphConnection: makeGraph(),
@@ -326,8 +327,8 @@ describe("ShellAuthPanel - exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    // The button should be disabled because isBusy is true when pendingAction !== null
-    expect(markup).toContain("disabled");
+    expect(markup).toContain("Restoring Exchange Online");
+    expect(markup).not.toContain("Connect Exchange");
   });
 
   it("still shows exchange error alongside in-progress state", () => {
@@ -341,7 +342,7 @@ describe("ShellAuthPanel - exchangeNeeded branch", () => {
       exchangeUpn: "admin@example.com",
     });
 
-    expect(markup).toContain("Signing in...");
+    expect(markup).toContain("Restoring Exchange Online");
     expect(markup).toContain("Connection timed out.");
   });
 });
