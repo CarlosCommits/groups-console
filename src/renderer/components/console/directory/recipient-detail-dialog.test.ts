@@ -59,9 +59,9 @@ vi.mock('@/renderer/components/ui/input', () => ({
 }));
 
 vi.mock('@/renderer/components/ui/checkbox', () => ({
-  Checkbox: ({ onCheckedChange }: { onCheckedChange?: () => void }) => {
+  Checkbox: ({ onCheckedChange, ...props }: { onCheckedChange?: () => void } & React.ComponentProps<'div'>) => {
     checkboxProps.push({ onCheckedChange });
-    return React.createElement('div', { 'data-slot': 'checkbox' });
+    return React.createElement('div', { 'data-slot': 'checkbox', ...props });
   },
 }));
 
@@ -222,6 +222,16 @@ const defaultProps = {
   addGroupPending: false,
   onAddGroups: vi.fn(),
   addGroupError: null,
+  bulkRemoval: {
+    enabled: true as const,
+    selectedGroupKeys: new Set<string>(),
+    selectedGroupsCount: 0,
+    pending: false,
+    onToggleGroupSelection: vi.fn(),
+    onSelectAllCurrentMemberships: vi.fn(),
+    onClearSelection: vi.fn(),
+    onRequestRemoveSelectedGroups: vi.fn(),
+  },
   onRequestRemoveGroup: vi.fn(),
 };
 
@@ -477,6 +487,35 @@ describe('RecipientDetailDialog', () => {
   it('provides an accessible label for current-group remove actions', () => {
     const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, defaultProps));
     expect(markup).toContain('aria-label="Remove Test Contact from Test Group"');
+  });
+
+  it('renders bulk current-group removal controls', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(RecipientDetailDialog, {
+        ...defaultProps,
+        bulkRemoval: {
+          ...defaultProps.bulkRemoval,
+          selectedGroupKeys: new Set(['group1@example.com']),
+          selectedGroupsCount: 1,
+        },
+      }),
+    );
+
+    expect(markup).toContain('Remove selected (1)');
+    expect(markup).toContain('Select all');
+    expect(markup).toContain('Clear');
+    expect(markup).toContain('sticky top-0 z-20');
+    expect(markup).toContain('transition-[max-height,opacity,padding,transform]');
+    expect(markup).toContain('translate-y-0');
+    expect(markup).toContain('opacity-100');
+    expect(markup).toContain('aria-label="Select Test Group for group membership removal"');
+  });
+
+  it('hides bulk current-group removal actions until a membership is selected', () => {
+    const markup = renderToStaticMarkup(React.createElement(RecipientDetailDialog, defaultProps));
+    expect(markup).not.toContain('Remove selected (0)');
+    expect(markup).not.toContain('>Select all</button>');
+    expect(markup).toContain('aria-label="Select Test Group for group membership removal"');
   });
 
   it('reveals current-group remove actions on focus as well as hover', () => {

@@ -275,6 +275,20 @@ interface RecipientDetailDialogProps {
   addGroupPending: boolean;
   onAddGroups: () => void;
   addGroupError: string | null;
+  bulkRemoval:
+    | {
+        enabled: true;
+        selectedGroupKeys: Set<string>;
+        selectedGroupsCount: number;
+        pending: boolean;
+        onToggleGroupSelection: (exchangeIdentity: string) => void;
+        onSelectAllCurrentMemberships: () => void;
+        onClearSelection: () => void;
+        onRequestRemoveSelectedGroups: () => void;
+      }
+    | {
+        enabled: false;
+      };
   onRequestRemoveGroup: (group: ExchangeGroupListItem) => void;
 }
 
@@ -315,9 +329,19 @@ export function RecipientDetailDialog({
   addGroupPending,
   onAddGroups,
   addGroupError,
+  bulkRemoval,
   onRequestRemoveGroup,
 }: RecipientDetailDialogProps) {
   const [editingCompany, setEditingCompany] = useState(false);
+  const [bulkRemovalBarVisible, setBulkRemovalBarVisible] = useState(
+    () => bulkRemoval.enabled && bulkRemoval.selectedGroupsCount > 0,
+  );
+  const [bulkRemovalBarActive, setBulkRemovalBarActive] = useState(
+    () => bulkRemoval.enabled && bulkRemoval.selectedGroupsCount > 0,
+  );
+  const [lastSelectedRemovalCount, setLastSelectedRemovalCount] = useState(
+    () => bulkRemoval.enabled ? bulkRemoval.selectedGroupsCount : 0,
+  );
 
   useEffect(() => {
     setEditingCompany(false);
@@ -337,6 +361,46 @@ export function RecipientDetailDialog({
   const submitCompanyUpdate = () => {
     onUpdateSubmit();
   };
+  const bulkRemovalEnabled = bulkRemoval.enabled;
+  const selectedRemovalCount = bulkRemoval.enabled ? bulkRemoval.selectedGroupsCount : 0;
+  const removePending = bulkRemoval.enabled ? bulkRemoval.pending : false;
+  const displayedRemovalCount = selectedRemovalCount > 0 ? selectedRemovalCount : lastSelectedRemovalCount;
+
+  useEffect(() => {
+    if (!bulkRemovalEnabled) {
+      setBulkRemovalBarVisible(false);
+      setBulkRemovalBarActive(false);
+      setLastSelectedRemovalCount(0);
+      return;
+    }
+
+    if (selectedRemovalCount > 0) {
+      setLastSelectedRemovalCount(selectedRemovalCount);
+      setBulkRemovalBarVisible(true);
+      let secondFrame = 0;
+      const frame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          setBulkRemovalBarActive(true);
+        });
+      });
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.cancelAnimationFrame(secondFrame);
+      };
+    }
+
+    setBulkRemovalBarActive(false);
+    if (!bulkRemovalBarVisible) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setBulkRemovalBarVisible(false);
+      setLastSelectedRemovalCount(0);
+    }, 200);
+
+    return () => window.clearTimeout(timeout);
+  }, [bulkRemovalBarVisible, bulkRemovalEnabled, selectedRemovalCount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -652,52 +716,129 @@ export function RecipientDetailDialog({
                           This person is not currently in any groups.
                         </p>
                       ) : (
-                        <div className="rounded-sm border border-border/20 bg-background">
-                          <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto_3rem] items-center gap-2 border-b border-border/70 bg-muted/95 px-2 py-2 backdrop-blur supports-backdrop-filter:bg-muted/85">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              Group
-                            </div>
-                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              Type
-                            </div>
-                            <div />
-                          </div>
-                          <div className="divide-y divide-border/60">
-                            {currentMemberships.map((group) => (
-                              <div
-                                key={group.exchangeIdentity}
-                                className="group grid grid-cols-[minmax(0,1fr)_auto_3rem] items-start gap-2 px-2 py-2 transition-colors hover:bg-muted/30"
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex flex-col">
-                                    <span className="text-sm font-semibold text-foreground">
-                                      {group.displayName}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {group.primaryEmail ?? group.exchangeIdentity}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="pt-0.5">
-                                  <Badge variant="outline" className="text-[11px] px-1.5 py-0">
-                                    {GROUP_KIND_LABELS[group.groupKind]}
-                                  </Badge>
-                                </div>
-                                <div className="flex justify-end">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    className={CONSOLE_ROW_ACTION_ICON_BUTTON}
-                                    aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
-                                    onClick={() => {
-                                      onRequestRemoveGroup(group);
-                                    }}
-                                  >
-                                    <UserMinus className="size-5" />
-                                  </Button>
-                                </div>
+                        <div className="flex flex-col gap-2">
+                          {bulkRemovalEnabled && bulkRemovalBarVisible && (
+                            <div
+                              className={cn(
+                                "sticky top-0 z-20 -mx-4 flex items-center justify-between gap-2 overflow-hidden bg-background/95 px-4 backdrop-blur transition-[max-height,opacity,padding,transform] duration-200 ease-out supports-backdrop-filter:bg-background/85",
+                                bulkRemovalBarActive
+                                  ? "max-h-12 translate-y-0 py-2 opacity-100"
+                                  : "pointer-events-none max-h-0 -translate-y-2 py-0 opacity-0",
+                              )}
+                            >
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-sm"
+                                  disabled={removePending || selectedRemovalCount === currentMemberships.length}
+                                  onClick={bulkRemoval.onSelectAllCurrentMemberships}
+                                >
+                                  Select all
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-sm"
+                                  disabled={removePending}
+                                  onClick={bulkRemoval.onClearSelection}
+                                >
+                                  Clear
+                                </Button>
                               </div>
-                            ))}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={removePending || selectedRemovalCount === 0}
+                                onClick={bulkRemoval.onRequestRemoveSelectedGroups}
+                              >
+                                {removePending ? (
+                                  <Loader2 className="mr-1 size-3.5 animate-spin" />
+                                ) : (
+                                  <UserMinus className="mr-1 size-3.5" />
+                                )}
+                                Remove selected ({displayedRemovalCount})
+                              </Button>
+                            </div>
+                          )}
+                          <div className="rounded-sm border border-border/20 bg-background">
+                            <div
+                              className={cn(
+                                "sticky top-0 z-10 grid items-center gap-2 border-b border-border/70 bg-muted/95 px-2 py-2 backdrop-blur transition-[top] duration-200 ease-out supports-backdrop-filter:bg-muted/85",
+                                bulkRemovalEnabled && bulkRemovalBarActive && "top-[2.75rem]",
+                                bulkRemovalEnabled
+                                  ? "grid-cols-[2.5rem_minmax(0,1fr)_auto_3rem]"
+                                  : "grid-cols-[minmax(0,1fr)_auto_3rem]",
+                              )}
+                            >
+                              {bulkRemovalEnabled && <div />}
+                              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Group
+                              </div>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Type
+                              </div>
+                              <div />
+                            </div>
+                            <div className="divide-y divide-border/60">
+                              {currentMemberships.map((group) => {
+                                const selected = bulkRemoval.enabled
+                                  ? bulkRemoval.selectedGroupKeys.has(group.exchangeIdentity)
+                                  : false;
+                                return (
+                                  <div
+                                    key={group.exchangeIdentity}
+                                    className={cn(
+                                      "group grid items-start gap-2 px-2 py-2 transition-colors",
+                                      bulkRemovalEnabled
+                                        ? "grid-cols-[2.5rem_minmax(0,1fr)_auto_3rem]"
+                                        : "grid-cols-[minmax(0,1fr)_auto_3rem]",
+                                      selected ? "bg-destructive/5" : "hover:bg-muted/30",
+                                    )}
+                                  >
+                                    {bulkRemovalEnabled && (
+                                      <div>
+                                        <Checkbox
+                                          checked={selected}
+                                          onCheckedChange={() => bulkRemoval.onToggleGroupSelection(group.exchangeIdentity)}
+                                          disabled={removePending}
+                                          aria-label={`Select ${group.displayName} for group membership removal`}
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-foreground">
+                                          {group.displayName}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {group.primaryEmail ?? group.exchangeIdentity}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="pt-0.5">
+                                      <Badge variant="outline" className="text-[11px] px-1.5 py-0">
+                                        {GROUP_KIND_LABELS[group.groupKind]}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className={CONSOLE_ROW_ACTION_ICON_BUTTON}
+                                        aria-label={`Remove ${detailTarget.displayName} from ${group.displayName}`}
+                                        onClick={() => {
+                                          onRequestRemoveGroup(group);
+                                        }}
+                                        disabled={removePending}
+                                      >
+                                        <UserMinus className="size-5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
                       )}
