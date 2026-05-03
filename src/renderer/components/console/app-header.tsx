@@ -51,7 +51,7 @@ export function AppHeader({
       ? "rounded-full border-amber-300/70 bg-amber-100/70 text-amber-900 shadow-none hover:bg-amber-100/70 disabled:opacity-100"
       : updateStatus?.state === "available"
         ? "rounded-full border-emerald-300/70 bg-emerald-100/70 text-emerald-900 shadow-none hover:bg-emerald-100/70 disabled:opacity-100"
-        : "rounded-full border-sky-300/70 bg-sky-100/80 text-sky-900 shadow-none hover:bg-sky-200/80";
+        : "rounded-full border-blue-700 bg-blue-600 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] hover:bg-blue-700 hover:text-white";
 
   return (
     <header
