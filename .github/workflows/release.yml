@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -56,9 +58,45 @@ jobs:
             throw 'No release assets were produced under out/make.'
           }
 
+          $previousTag = git describe --tags --abbrev=0 "$env:TAG_NAME^" 2>$null
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($previousTag)) {
+            $commitRange = "$previousTag..$env:TAG_NAME"
+          } else {
+            $commitRange = $env:TAG_NAME
+          }
+
+          $candidateCommits = @(
+            git log $commitRange --first-parent --no-merges --format='%H%x09%s (%h)' |
+              Where-Object { $_ -notmatch "^[^\t]+\tchore\(release\): " }
+          )
+
+          $directCommits = @()
+          foreach ($commit in $candidateCommits) {
+            $sha, $summary = $commit -split "`t", 2
+            $associatedPullRequestCount = gh api "repos/$env:GITHUB_REPOSITORY/commits/$sha/pulls" -H "Accept: application/vnd.github+json" --jq 'length' 2>$null
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($associatedPullRequestCount)) {
+              $associatedPullRequestCount = 0
+            }
+
+            if ([int]$associatedPullRequestCount -eq 0) {
+              $directCommits += "- $summary"
+            }
+          }
+
+          $notesArgs = @()
+          if ($directCommits.Count -gt 0) {
+            $directCommitNotes = @(
+              '## Direct Commits'
+              ''
+              $directCommits
+              ''
+            ) -join "`n"
+            $notesArgs = @('--notes', $directCommitNotes)
+          }
+
           gh release view $env:TAG_NAME *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:TAG_NAME @assets --clobber
           } else {
-            gh release create $env:TAG_NAME @assets --title "Groups Console $env:TAG_NAME" --generate-notes
+            gh release create $env:TAG_NAME @assets --title "Groups Console $env:TAG_NAME" @notesArgs --generate-notes
           }
