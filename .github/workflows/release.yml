@@ -11,7 +11,7 @@ permissions:
 jobs:
   windows-release:
     name: Build Windows release
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Check out repository
@@ -22,7 +22,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.11.1
           cache: npm
 
       - name: Install dependencies
@@ -33,6 +33,20 @@ jobs:
 
       - name: Build distributables
         run: npm run make
+
+      - name: Normalize update zip name
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $zip = Get-ChildItem -Path out/make -Recurse -File -Filter "*-win32-x64-$version.zip" |
+            Select-Object -First 1
+
+          if (-not $zip) {
+            throw 'No Windows x64 ZIP distributable was produced under out/make.'
+          }
+
+          $aliasName = $zip.Name -replace "-$([regex]::Escape($version))\.zip$", '.zip'
+          Move-Item -Path $zip.FullName -Destination (Join-Path $zip.DirectoryName $aliasName) -Force
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -51,8 +65,10 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
         shell: pwsh
         run: |
-          $assets = Get-ChildItem -Path out/make -Recurse -File -Include *.exe,*.nupkg,RELEASES,*.zip |
-            ForEach-Object { $_.FullName }
+          $assets = @(
+            Get-ChildItem -Path out/make -Recurse -File -Include *.exe,*.nupkg,RELEASES,*.zip |
+              ForEach-Object { (Resolve-Path -Path $_.FullName -Relative) -replace '\\', '/' }
+          )
 
           if ($assets.Count -eq 0) {
             throw 'No release assets were produced under out/make.'
