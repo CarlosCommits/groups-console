@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
+
+vi.mock('electron', () => ({
+  app: { isPackaged: false },
+  BrowserWindow: vi.fn(),
+  shell: { openExternal: vi.fn() },
+}));
 
 import { getMainWindowOptions } from './create-main-window';
 

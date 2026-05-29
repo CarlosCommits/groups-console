@@ -1,4 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('electron', () => ({
+  app: { isPackaged: false },
+}));
 
 import { clearTrustedWebContents, registerTrustedWebContents } from './trusted-senders';
 import { validateEventSender } from './validate-event-sender';
