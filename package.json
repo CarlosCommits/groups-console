@@ -1,7 +1,7 @@
 {
   "name": "groups-console",
   "productName": "Groups Console",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Windows-first Exchange admin desktop app.",
   "main": ".vite/build/index.js",
   "homepage": "https://github.com/CarlosCommits/groups-console#readme",
