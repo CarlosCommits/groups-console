@@ -57,46 +57,12 @@ function Invoke-GroupsConsoleRemoveGroupMembers {
     $processedResolvedMembers = New-Object 'System.Collections.Generic.HashSet[string]'
 
     foreach ($memberRef in $Payload.members) {
-        $resolvedRecipient = $null
-
-        try {
-            $resolvedRecipient = Get-Recipient -Identity ([string]$memberRef.exchangeIdentity) -ErrorAction Stop | Select-Object -First 1
-        }
-        catch {
-            $results += @{
-                member = @{
-                    exchangeIdentity = [string]$memberRef.exchangeIdentity
-                    objectId = if ($memberRef.objectId) { [string]$memberRef.objectId } else { $null }
-                    primaryEmail = if ($memberRef.primaryEmail) { [string]$memberRef.primaryEmail } else { $null }
-                }
-                status = 'invalid'
-                detail = "Recipient '$($memberRef.exchangeIdentity)' could not be resolved."
-            }
-            continue
-        }
-
-        $recipientObjectId = if ($resolvedRecipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $resolvedRecipient.ExternalDirectoryObjectId) {
-            [string]$resolvedRecipient.ExternalDirectoryObjectId
-        }
-        elseif ($resolvedRecipient.PSObject.Properties.Name -contains 'Guid' -and $resolvedRecipient.Guid) {
-            [string]$resolvedRecipient.Guid
-        }
-        else {
-            $null
-        }
-
-        $recipientPrimaryEmail = if ($resolvedRecipient.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and $resolvedRecipient.PrimarySmtpAddress) {
-            [string]$resolvedRecipient.PrimarySmtpAddress
-        }
-        elseif ($resolvedRecipient.PSObject.Properties.Name -contains 'WindowsEmailAddress' -and $resolvedRecipient.WindowsEmailAddress) {
-            [string]$resolvedRecipient.WindowsEmailAddress
-        }
-        else {
-            if ($memberRef.primaryEmail) { [string]$memberRef.primaryEmail } else { $null }
-        }
+        $recipientWriteIdentity = [string]$memberRef.exchangeIdentity
+        $recipientObjectId = if ($memberRef.objectId) { [string]$memberRef.objectId } else { $null }
+        $recipientPrimaryEmail = if ($memberRef.primaryEmail) { [string]$memberRef.primaryEmail } else { $null }
 
         $normalizedMember = @{
-            exchangeIdentity = [string]$resolvedRecipient.Identity
+            exchangeIdentity = $recipientWriteIdentity
             objectId = $recipientObjectId
             primaryEmail = $recipientPrimaryEmail
         }
@@ -135,7 +101,7 @@ function Invoke-GroupsConsoleRemoveGroupMembers {
         }
 
         try {
-            Remove-DistributionGroupMember -Identity $resolvedGroup.Identity -Member $resolvedRecipient.Identity -BypassSecurityGroupManagerCheck -Confirm:$false -ErrorAction Stop
+            Remove-DistributionGroupMember -Identity $resolvedGroup.Identity -Member $recipientWriteIdentity -BypassSecurityGroupManagerCheck -Confirm:$false -ErrorAction Stop
             $results += @{
                 member = $normalizedMember
                 status = 'removed'
@@ -233,8 +199,8 @@ function Test-GroupsConsoleRecipientIdentityMatch {
         $leftObjectId = [string]$LeftRecipient.Guid
     }
 
-    if ($leftObjectId -and $RightMember.objectId -and $leftObjectId -eq [string]$RightMember.objectId) {
-        return $true
+    if ($leftObjectId -and $RightMember.objectId) {
+        return $leftObjectId -eq [string]$RightMember.objectId
     }
 
     return [string]$LeftRecipient.Identity -eq [string]$RightMember.exchangeIdentity

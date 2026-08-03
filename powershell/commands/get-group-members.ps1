@@ -58,6 +58,16 @@ function Invoke-GroupsConsoleGetGroupMembers {
                 $null
             }
 
+            $memberExchangeIdentity = if ($member.PSObject.Properties.Name -contains 'Guid' -and $member.Guid) {
+                [string]$member.Guid
+            }
+            elseif ($member.PSObject.Properties.Name -contains 'DistinguishedName' -and $member.DistinguishedName) {
+                [string]$member.DistinguishedName
+            }
+            else {
+                [string]$member.Identity
+            }
+
             $recipientType = switch ($member.RecipientTypeDetails.ToString()) {
                 'UserMailbox' { 'mailbox' }
                 'SharedMailbox' { 'mailbox' }
@@ -89,7 +99,7 @@ function Invoke-GroupsConsoleGetGroupMembers {
 
             @{
                 objectId = $objectId
-                exchangeIdentity = [string]$member.Identity
+                exchangeIdentity = $memberExchangeIdentity
                 displayName = [string]$member.DisplayName
                 primaryEmail = $primaryEmail
                 alias = if ($member.Alias) { [string]$member.Alias } else { $null }

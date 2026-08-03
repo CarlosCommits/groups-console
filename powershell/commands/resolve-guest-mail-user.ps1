@@ -101,10 +101,20 @@ function Invoke-GroupsConsoleResolveGuestMailUser {
         $canonicalGuestObjectId
     }
 
+    $resolvedExchangeIdentity = if ($resolvedRecipient.PSObject.Properties.Name -contains 'Guid' -and $resolvedRecipient.Guid) {
+        [string]$resolvedRecipient.Guid
+    }
+    elseif ($resolvedRecipient.PSObject.Properties.Name -contains 'DistinguishedName' -and $resolvedRecipient.DistinguishedName) {
+        [string]$resolvedRecipient.DistinguishedName
+    }
+    else {
+        [string]$resolvedRecipient.Identity
+    }
+
     return @{
         resolved = $true
         member = @{
-            exchangeIdentity = [string]$resolvedRecipient.Identity
+            exchangeIdentity = $resolvedExchangeIdentity
             objectId = $resolvedObjectId
             primaryEmail = $resolvedPrimaryEmail
         }
