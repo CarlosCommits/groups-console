@@ -106,8 +106,9 @@ describe("AppHeader", () => {
       });
       expect(html).toContain("Update Available");
       expect(html).toContain("rounded-full");
-      expect(html).toContain("bg-blue-600");
-      expect(html).toContain("text-white");
+      expect(html).toContain('data-variant="default"');
+      expect(html).toContain("bg-primary");
+      expect(html).toContain("font-bold");
       expect(html).not.toContain("disabled=\"\"");
     });
 
