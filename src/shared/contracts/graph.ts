@@ -27,7 +27,12 @@ export const graphConnectionStatusSchema = z.object({
 export const tenantConfigSchema = z.object({
   tenantId: z.string().min(1).optional(),
   graph: z.object({
-    clientId: z.string().min(1),
+    clientId: z
+      .string()
+      .uuid()
+      .refine((value) => value !== '00000000-0000-0000-0000-000000000000', {
+        message: 'Microsoft Graph clientId must not be the nil GUID placeholder.',
+      }),
     inviteRedirectUrl: z.string().url(),
     authorityHost: z.string().url().optional(),
     authorityTenant: z.string().min(1).optional(),

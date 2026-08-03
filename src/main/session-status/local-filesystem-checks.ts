@@ -6,6 +6,7 @@ import {
   getGroupsConsoleLogDirectory,
   getGroupsConsoleTenantConfigPath,
 } from '@/main/app/paths';
+import { tenantConfigSchema } from '@/shared/contracts/graph';
 import type { BootstrapCheck } from '@/shared/dto/session-status';
 
 export type LocalBootstrapCheck = Pick<BootstrapCheck, 'status' | 'detail'>;
@@ -55,7 +56,13 @@ export async function checkTenantConfigPresence(
         };
       }
 
-      JSON.parse(fileContents);
+      const parsedConfig = tenantConfigSchema.safeParse(JSON.parse(fileContents) as unknown);
+      if (!parsedConfig.success) {
+        return {
+          status: 'warning',
+          detail: `Tenant configuration at ${candidatePath} is invalid: ${parsedConfig.error.issues[0]?.message ?? 'Unknown validation error.'}`,
+        };
+      }
 
       return {
         status: 'ready',

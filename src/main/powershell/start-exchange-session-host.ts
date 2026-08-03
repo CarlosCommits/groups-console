@@ -6,6 +6,8 @@ import { getGroupsConsolePowerShellAssetRoot } from '@/main/app/paths';
 import { getCurrentOperationContext, writeOperationalLog } from '@/main/logging';
 import type { ProgressEvent } from '@/shared/contracts/command';
 
+import { createPowerShellProcessEnvironment } from './powershell-process-environment';
+
 export type ExchangeSessionHostCommand =
   | 'connect'
   | 'getStatus'
@@ -118,6 +120,7 @@ async function spawnCandidate(
         hostScriptPath,
       ],
       {
+        env: createPowerShellProcessEnvironment(command),
         windowsHide: true,
         stdio: 'pipe',
       },

@@ -16,7 +16,7 @@ import { loadTenantConfig } from './tenant-config';
 
 const validTenantConfig = JSON.stringify({
   graph: {
-    clientId: 'client-id',
+    clientId: '11111111-1111-4111-8111-111111111111',
     authorityTenant: 'organizations',
     inviteRedirectUrl: 'https://example.com/invite-complete',
   },
@@ -33,7 +33,7 @@ describe('loadTenantConfig', () => {
 
     const result = await loadTenantConfig();
 
-    expect(result.graph.clientId).toBe('client-id');
+    expect(result.graph.clientId).toBe('11111111-1111-4111-8111-111111111111');
     expect(vi.mocked(readFile)).toHaveBeenCalledWith('/tmp/tenant.json', 'utf8');
   });
 
@@ -45,7 +45,7 @@ describe('loadTenantConfig', () => {
 
     const result = await loadTenantConfig();
 
-    expect(result.graph.clientId).toBe('client-id');
+    expect(result.graph.clientId).toBe('11111111-1111-4111-8111-111111111111');
     expect(vi.mocked(readFile)).toHaveBeenCalledWith('/resources/config/tenant.json', 'utf8');
   });
 
@@ -58,7 +58,7 @@ describe('loadTenantConfig', () => {
 
     const result = await loadTenantConfig();
 
-    expect(result.graph.clientId).toBe('client-id');
+    expect(result.graph.clientId).toBe('11111111-1111-4111-8111-111111111111');
     expect(vi.mocked(readFile)).toHaveBeenCalledWith('/resources/config/tenant.json', 'utf8');
   });
 
@@ -76,7 +76,7 @@ describe('loadTenantConfig', () => {
 
     const result = await loadTenantConfig();
 
-    expect(result.graph.clientId).toBe('client-id');
+    expect(result.graph.clientId).toBe('11111111-1111-4111-8111-111111111111');
     expect(result.tenantId).toBeUndefined();
   });
 
@@ -85,7 +85,7 @@ describe('loadTenantConfig', () => {
     vi.mocked(readFile).mockResolvedValue(JSON.stringify({
       tenantId: 'tenant-configured',
       graph: {
-        clientId: 'client-id',
+        clientId: '11111111-1111-4111-8111-111111111111',
         inviteRedirectUrl: 'https://example.com/invite-complete',
       },
     }));

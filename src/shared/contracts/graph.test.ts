@@ -52,7 +52,7 @@ describe('graph contracts', () => {
   it('accepts the tenant config shape', () => {
     const result = tenantConfigSchema.parse({
       graph: {
-        clientId: 'client-id',
+        clientId: '11111111-1111-4111-8111-111111111111',
         inviteRedirectUrl: 'https://example.com/invite-complete',
         authorityHost: 'https://login.microsoftonline.com',
         authorityTenant: 'organizations',
@@ -60,14 +60,14 @@ describe('graph contracts', () => {
       },
     });
 
-    expect(result.graph.clientId).toBe('client-id');
+    expect(result.graph.clientId).toBe('11111111-1111-4111-8111-111111111111');
     expect(result.tenantId).toBeUndefined();
   });
 
   it('accepts optional tenant allowlisting', () => {
     const result = tenantConfigSchema.parse({
       graph: {
-        clientId: 'client-id',
+        clientId: '11111111-1111-4111-8111-111111111111',
         inviteRedirectUrl: 'https://example.com/invite-complete',
         authorityTenant: 'organizations',
         allowedTenantIds: ['tenant-a', 'tenant-b'],
@@ -75,5 +75,14 @@ describe('graph contracts', () => {
     });
 
     expect(result.graph.allowedTenantIds).toEqual(['tenant-a', 'tenant-b']);
+  });
+
+  it('rejects the nil Graph application ID placeholder', () => {
+    expect(() => tenantConfigSchema.parse({
+      graph: {
+        clientId: '00000000-0000-0000-0000-000000000000',
+        inviteRedirectUrl: 'https://example.com/invite-complete',
+      },
+    })).toThrow('must not be the nil GUID placeholder');
   });
 });

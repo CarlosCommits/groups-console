@@ -2,6 +2,8 @@ import { execFile } from 'node:child_process';
 
 import { getGroupsConsoleWorkerScriptPath } from '@/main/app/paths';
 
+import { createPowerShellProcessEnvironment } from './powershell-process-environment';
+
 export type PowerShellWorkerCommand =
   | 'bootstrap.inspectEnvironment'
   | 'exchange.getCapabilities'
@@ -116,6 +118,7 @@ function execPowerShellWorker(
         workerCommand,
       ],
       {
+        env: createPowerShellProcessEnvironment(command),
         windowsHide: true,
         timeout: options.timeoutMs ?? 10_000,
         maxBuffer: 1024 * 1024,
