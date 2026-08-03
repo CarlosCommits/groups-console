@@ -65,7 +65,7 @@ export function AppSidebar({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="mt-auto flex w-full items-center gap-3 border-t border-[var(--color-outline-variant)]/20 px-2 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-sidebar-ring)]"
+            className="mt-auto flex w-full cursor-pointer items-center gap-3 border-t border-[var(--color-outline-variant)]/20 px-2 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-sidebar-ring)]"
             aria-label="Open profile menu"
           >
             <Avatar className="size-8">

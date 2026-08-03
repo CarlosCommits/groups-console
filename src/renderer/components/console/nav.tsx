@@ -1,7 +1,7 @@
 import {
   LayoutDashboard,
   Users,
-  FolderSearch,
+  BookUser,
   BarChart3,
   Settings,
   type LucideIcon,
@@ -51,7 +51,7 @@ export interface ConsoleNavProps {
 const navItems: { screen: Screen; icon: LucideIcon; label: string }[] = [
   { screen: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { screen: "groups", icon: Users, label: "Groups" },
-  { screen: "directory", icon: FolderSearch, label: "Directory" },
+  { screen: "directory", icon: BookUser, label: "Directory" },
   { screen: "reports", icon: BarChart3, label: "Reports" },
   { screen: "settings", icon: Settings, label: "Settings" },
 ];

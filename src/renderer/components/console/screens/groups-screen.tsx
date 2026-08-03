@@ -1532,7 +1532,7 @@ export function GroupsScreen() {
                       className={cn(
                         "group cursor-pointer border-b-slate-200/60 transition-colors",
                         selectedGroup?.exchangeIdentity === group.exchangeIdentity
-                          ? "bg-[var(--color-primary)]/7 shadow-[inset_3px_0_0_var(--color-primary)] hover:bg-[var(--color-primary)]/9"
+                          ? "bg-[var(--color-primary)]/8 ring-1 ring-inset ring-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/11"
                           : "hover:bg-white"
                       )}
                       onClick={() => setSelectedGroupExchangeIdentity(group.exchangeIdentity)}
