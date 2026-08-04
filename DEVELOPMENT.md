@@ -4,6 +4,7 @@
 
 ```bash
 npm install
+Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
 npm start
 ```
 
@@ -14,7 +15,9 @@ npm start
 - `npm run lint:fix` - auto-fix lintable issues
 - `npm run typecheck` - run the three TypeScript projects (`main`, `preload`, `renderer`)
 - `npm run test` - run Vitest for `src/**/*.test.ts`
+- `npm run test:powershell` - run the Pester 5.7.1 suite under `powershell/tests`
 - `npm run test:watch` - run Vitest in watch mode
+- `npm run verify` - run lint, all TypeScript projects, Vitest, and Pester
 - `npm run package` - package the app with Electron Forge
 - `npm run make` - build distributables
 
@@ -23,12 +26,10 @@ npm start
 For changes that affect code behavior, the normal verification baseline is:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test
+npm run verify
 ```
 
-The repo's Vitest config currently targets `src/**/*.test.ts`. Playwright is present in the repo, but it is not wired into the default `npm test` script.
+The repo's Vitest config currently targets `src/**/*.test.ts`. PowerShell tests require exactly Pester 5.7.1; the release workflow installs that version before verification. Playwright is present in the repo, but it is not wired into the default `npm test` script.
 
 ## Development Notes
 
