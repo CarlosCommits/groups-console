@@ -58,15 +58,7 @@ function Invoke-GroupsConsoleGetGroupMembers {
                 $null
             }
 
-            $memberExchangeIdentity = if ($member.PSObject.Properties.Name -contains 'Guid' -and $member.Guid) {
-                [string]$member.Guid
-            }
-            elseif ($member.PSObject.Properties.Name -contains 'DistinguishedName' -and $member.DistinguishedName) {
-                [string]$member.DistinguishedName
-            }
-            else {
-                [string]$member.Identity
-            }
+            $memberExchangeIdentity = Get-GroupsConsoleRecipientWriteIdentity -Recipient $member
 
             $recipientType = switch ($member.RecipientTypeDetails.ToString()) {
                 'UserMailbox' { 'mailbox' }
