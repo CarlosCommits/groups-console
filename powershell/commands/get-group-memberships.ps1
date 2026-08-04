@@ -36,6 +36,8 @@ function Invoke-GroupsConsoleGetGroupMemberships {
         throw "Exchange recipient '$exchangeIdentity' does not have a DistinguishedName for membership lookup."
     }
 
+    $memberExchangeIdentity = Get-GroupsConsoleRecipientWriteIdentity -Recipient $resolvedRecipient
+
     function ConvertTo-GroupsConsoleOPathStringLiteral {
         param(
             [Parameter(Mandatory = $true)]
@@ -148,7 +150,7 @@ function Invoke-GroupsConsoleGetGroupMemberships {
 
     return @{
         member = @{
-            exchangeIdentity = [string]$resolvedRecipient.Identity
+            exchangeIdentity = $memberExchangeIdentity
             objectId = $memberObjectId
             primaryEmail = $memberPrimaryEmail
         }

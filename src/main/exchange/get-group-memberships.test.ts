@@ -486,6 +486,11 @@ describe('get-group-memberships PowerShell command', () => {
     expect(commandScript).toContain('Exchange OPATH single-quoted literals escape embedded single quotes');
     expect(commandScript).toContain("-Filter \"Members -eq $distinguishedNameFilterLiteral\"");
     expect(commandScript).toContain('-ErrorAction Stop');
+    expect(commandScript).toContain(
+      '$memberExchangeIdentity = Get-GroupsConsoleRecipientWriteIdentity -Recipient $resolvedRecipient',
+    );
+    expect(commandScript).toContain('exchangeIdentity = $memberExchangeIdentity');
+    expect(commandScript).not.toContain('exchangeIdentity = [string]$resolvedRecipient.Identity');
     expect(commandScript).not.toMatch(/\bGet-DistributionGroupMember\b/);
   });
 });
