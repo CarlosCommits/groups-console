@@ -1,4 +1,8 @@
 BeforeAll {
+    function Get-Recipient { param($Identity, $ErrorAction) }
+    function Get-MailUser { param($Identity, $ErrorAction) }
+    function Get-User { param($Identity, $ErrorAction) }
+
     . (Join-Path $PSScriptRoot '..\commands\lookup-recipient-ownership.ps1')
     . (Join-Path $PSScriptRoot '..\commands\get-recipient-details.ps1')
 }

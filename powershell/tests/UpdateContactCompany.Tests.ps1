@@ -1,9 +1,11 @@
-. (Join-Path $PSScriptRoot '..\commands\lookup-recipient-ownership.ps1')
-. (Join-Path $PSScriptRoot '..\commands\update-contact-company.ps1')
+BeforeAll {
+    function Get-MailContact { }
+    function Set-Contact { }
+    function Get-Contact { }
 
-function Get-MailContact { }
-function Set-Contact { }
-function Get-Contact { }
+    . (Join-Path $PSScriptRoot '..\commands\lookup-recipient-ownership.ps1')
+    . (Join-Path $PSScriptRoot '..\commands\update-contact-company.ps1')
+}
 
 Describe 'Invoke-GroupsConsoleUpdateContactCompany' {
     BeforeEach {
@@ -35,13 +37,13 @@ Describe 'Invoke-GroupsConsoleUpdateContactCompany' {
             companyName = 'New Company'
         }
 
-        $result.contact.primaryEmail | Should Be 'jane.personal@example.com'
-        $result.contact.primaryEmail | Should Not Be 'SMTP:jane.personal@example.com'
-        $result.verification.companyApplied | Should Be $true
+        $result.contact.primaryEmail | Should -Be 'jane.personal@example.com'
+        $result.contact.primaryEmail | Should -Not -Be 'SMTP:jane.personal@example.com'
+        $result.verification.companyApplied | Should -BeTrue
 
-        Assert-MockCalled Get-MailContact -Times 1
-        Assert-MockCalled Set-Contact -Times 1
-        Assert-MockCalled Get-Contact -Times 1
+        Should -Invoke Get-MailContact -Times 1 -Exactly
+        Should -Invoke Set-Contact -Times 1 -Exactly
+        Should -Invoke Get-Contact -Times 1 -Exactly
     }
 
     It 'clears the company value when the requested company is blank' {
@@ -56,9 +58,9 @@ Describe 'Invoke-GroupsConsoleUpdateContactCompany' {
             companyName = ''
         }
 
-        $result.contact.companyName | Should Be $null
-        $result.verification.companyApplied | Should Be $true
+        $result.contact.companyName | Should -BeNullOrEmpty
+        $result.verification.companyApplied | Should -BeTrue
 
-        Assert-MockCalled Set-Contact -ParameterFilter { $Company -eq $null } -Times 1
+        Should -Invoke Set-Contact -Times 1 -Exactly -ParameterFilter { $Company -eq $null }
     }
 }

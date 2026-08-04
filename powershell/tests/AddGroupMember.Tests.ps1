@@ -1,8 +1,10 @@
-function Get-DistributionGroup { param($Identity, $ErrorAction) }
-function Get-DistributionGroupMember { param($Identity, $ResultSize) }
-function Add-DistributionGroupMember { param($Identity, $Member, [switch]$BypassSecurityGroupManagerCheck, [switch]$Confirm, $ErrorAction) }
+BeforeAll {
+    function Get-DistributionGroup { param($Identity, $ErrorAction) }
+    function Get-DistributionGroupMember { param($Identity, $ResultSize) }
+    function Add-DistributionGroupMember { param($Identity, $Member, [switch]$BypassSecurityGroupManagerCheck, [switch]$Confirm, $ErrorAction) }
 
-. (Join-Path $PSScriptRoot '..\commands\add-group-member.ps1')
+    . (Join-Path $PSScriptRoot '..\commands\add-group-member.ps1')
+}
 
 Describe 'Invoke-GroupsConsoleAddGroupMembers' {
     BeforeEach {
@@ -72,11 +74,11 @@ Describe 'Invoke-GroupsConsoleAddGroupMembers' {
             verify = $true
         }
 
-        $result.summary.added | Should Be 1
-        $result.summary.alreadyMember | Should Be 1
-        $result.verification.verifiedAdded | Should Be 1
-        $result.items[0].member.exchangeIdentity | Should Be $script:contactGuid
-        Assert-MockCalled Add-DistributionGroupMember -Times 1 -ParameterFilter {
+        $result.summary.added | Should -Be 1
+        $result.summary.alreadyMember | Should -Be 1
+        $result.verification.verifiedAdded | Should -Be 1
+        $result.items[0].member.exchangeIdentity | Should -Be $script:contactGuid
+        Should -Invoke Add-DistributionGroupMember -Times 1 -Exactly -ParameterFilter {
             $Identity -eq 'Trade' -and $Member -eq $script:contactGuid
         }
     }

@@ -1,4 +1,15 @@
 BeforeAll {
+    function Get-GroupsConsoleExchangeConnectionStatus { }
+    function Get-ConnectionInformation { param($ErrorAction) }
+    function Connect-ExchangeOnline {
+        param(
+            $UserPrincipalName,
+            $ShowBanner,
+            $SkipLoadingFormatData,
+            $DisableWAM
+        )
+    }
+
     . (Join-Path $PSScriptRoot '..\commands\connect-exchange.ps1')
 }
 
