@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 try {
+    . "$PSScriptRoot\..\commands\recipient-identity.ps1"
     . "$PSScriptRoot\..\commands\get-exchange-connection-status.ps1"
     . "$PSScriptRoot\..\commands\connect-exchange.ps1"
     . "$PSScriptRoot\..\commands\disconnect-exchange.ps1"

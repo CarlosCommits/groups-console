@@ -66,18 +66,9 @@ function Invoke-GroupsConsoleSearchRecipients {
         }
 
         # Identity can be a non-unique display value in Exchange Online. Carry the
-        # selected directory object's distinguished name so later membership
-        # writes cannot resolve a different recipient that happens to share a
-        # name or SMTP address.
-        $exchangeIdentity = if ($recipient.PSObject.Properties.Name -contains 'Guid' -and $recipient.Guid) {
-            [string]$recipient.Guid
-        }
-        elseif ($recipient.PSObject.Properties.Name -contains 'DistinguishedName' -and $recipient.DistinguishedName) {
-            [string]$recipient.DistinguishedName
-        }
-        else {
-            [string]$recipient.Identity
-        }
+        # selected directory object's GUID or distinguished name so later writes
+        # cannot resolve a different recipient that shares a name or SMTP address.
+        $exchangeIdentity = Get-GroupsConsoleRecipientWriteIdentity -Recipient $recipient
 
         $primaryEmail = if ($recipient.PSObject.Properties.Name -contains 'PrimarySmtpAddress' -and $recipient.PrimarySmtpAddress) {
             [string]$recipient.PrimarySmtpAddress
