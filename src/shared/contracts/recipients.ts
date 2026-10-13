@@ -41,6 +41,8 @@ export const recipientSearchItemSchema = z.object({
   recipientType: recipientSearchTypeSchema,
   membershipSupport: recipientMembershipSupportSchema,
   objectId: z.string().nullable(),
+  // objectId may fall back to an Exchange GUID. Only this explicit ID links to Graph.
+  externalDirectoryObjectId: z.string().min(1).nullable().optional(),
   exchangeIdentity: z.string().nullable(),
   primaryEmail: z.string().nullable(),
   displayName: z.string().min(1),

@@ -1,11 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  recipientSearchItemSchema,
   recipientsSearchPayloadSchema,
   recipientsSearchResultSchema,
 } from './recipients';
 
 describe('recipient search contracts', () => {
+  it('preserves the explicit Exchange directory ID separately from its fallback object ID', () => {
+    const recipient = {
+      source: 'exchange',
+      stableKey: 'exchange:objectId:exchange-guid',
+      recipientType: 'guestMailUser',
+      membershipSupport: 'exchangeDirect',
+      objectId: 'exchange-guid',
+      externalDirectoryObjectId: 'entra-guest-id',
+      exchangeIdentity: 'exchange-guid',
+      primaryEmail: 'guest@example.com',
+      displayName: 'Guest Example',
+      alias: null,
+      recipientTypeDetails: 'GuestMailUser',
+      companyName: null,
+      companySource: 'none',
+    };
+
+    expect(recipientSearchItemSchema.parse(recipient).externalDirectoryObjectId).toBe('entra-guest-id');
+    expect(recipientSearchItemSchema.parse({ ...recipient, externalDirectoryObjectId: null }).externalDirectoryObjectId).toBeNull();
+    const legacyRecipient = { ...recipient, externalDirectoryObjectId: undefined };
+    expect(recipientSearchItemSchema.parse(legacyRecipient).externalDirectoryObjectId).toBeUndefined();
+  });
+
   it('accepts valid strict search payloads', () => {
     expect(() =>
       recipientsSearchPayloadSchema.parse({

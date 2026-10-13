@@ -55,8 +55,15 @@ function Invoke-GroupsConsoleSearchRecipients {
             continue
         }
 
-        $objectId = if ($recipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $recipient.ExternalDirectoryObjectId) {
+        $externalDirectoryObjectId = if ($recipient.PSObject.Properties.Name -contains 'ExternalDirectoryObjectId' -and $recipient.ExternalDirectoryObjectId) {
             [string]$recipient.ExternalDirectoryObjectId
+        }
+        else {
+            $null
+        }
+
+        $objectId = if ($externalDirectoryObjectId) {
+            $externalDirectoryObjectId
         }
         elseif ($recipient.PSObject.Properties.Name -contains 'Guid' -and $recipient.Guid) {
             [string]$recipient.Guid
@@ -119,6 +126,7 @@ function Invoke-GroupsConsoleSearchRecipients {
                 recipientType = $recipientType
                 membershipSupport = if ($recipientType -ne 'unknown') { 'exchangeDirect' } else { 'unsupported' }
                 objectId = $objectId
+                externalDirectoryObjectId = $externalDirectoryObjectId
                 exchangeIdentity = $exchangeIdentity
                 primaryEmail = $primaryEmail
                 displayName = [string]$recipient.DisplayName
