@@ -100,8 +100,15 @@ class AppRecipientDirectory implements RecipientDirectoryProvider {
         query: payload.query,
         limit: payload.limit,
       });
+      const graphGuestIds = new Set(guestResult.items.map((guest) => guest.objectId.trim().toLowerCase()));
       const mergedItems = [
-        ...exchangeResult.items,
+        ...exchangeResult.items.filter((recipient) => !(
+          graphStatus.exchangeAlignment === 'matched' &&
+          recipient.source === 'exchange' &&
+          recipient.recipientType === 'guestMailUser' &&
+          recipient.externalDirectoryObjectId &&
+          graphGuestIds.has(recipient.externalDirectoryObjectId.trim().toLowerCase())
+        )),
         ...guestResult.items.map((guest) => ({
           source: 'graph' as const,
           stableKey: guest.stableKey,

@@ -15,6 +15,7 @@ vi.mock('@/main/graph/get-graph-connection-status', () => ({
 import { searchExchangeRecipients } from '@/main/exchange/search-recipients';
 import { getGraphConnectionStatus } from '@/main/graph/get-graph-connection-status';
 import { searchGuestUsers } from '@/main/graph/search-guest-users';
+import type { RecipientSearchItem } from '@/shared/contracts/recipients';
 
 import { recipientDirectory } from './recipient-directory';
 
@@ -121,6 +122,141 @@ describe('recipientDirectory', () => {
     expect(result.items.some((item) => item.source === 'graph' && item.membershipSupport === 'graphBridgeable')).toBe(true);
     expect(recipientDirectory.getCachedRecipientByStableKey('graph:objectId:guest-1')?.recipientType).toBe('guestUser');
     expect(recipientDirectory.getCachedRecipientByStableKey('exchange:objectId:recipient-1')?.recipientType).toBe('mailContact');
+  });
+
+  describe('matching Exchange and Graph guest records', () => {
+    const guestId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const contact: RecipientSearchItem = {
+      source: 'exchange',
+      stableKey: 'exchange:objectId:contact-id',
+      recipientType: 'mailContact',
+      membershipSupport: 'exchangeDirect',
+      objectId: 'contact-id',
+      externalDirectoryObjectId: 'contact-id',
+      exchangeIdentity: 'contact-guid',
+      primaryEmail: 'brian@example.com',
+      displayName: 'Brian Example',
+      alias: null,
+      recipientTypeDetails: 'MailContact',
+      companyName: null,
+      companySource: 'none',
+    };
+    const exchangeGuest: RecipientSearchItem = {
+      ...contact,
+      stableKey: `exchange:objectId:${guestId}`,
+      recipientType: 'guestMailUser',
+      objectId: guestId,
+      externalDirectoryObjectId: guestId.toUpperCase(),
+      exchangeIdentity: 'guest-exchange-guid',
+      recipientTypeDetails: 'GuestMailUser',
+    };
+    const graphStatus = {
+      state: 'connected' as const,
+      detail: 'Connected to Microsoft Graph.',
+      authMethod: 'interactiveBrowser' as const,
+      configuredTenantId: 'tenant-configured',
+      tenantId: 'tenant-configured',
+      tenantDisplayName: 'Example Tenant',
+      accountUsername: 'admin@example.com',
+      accountDisplayName: 'Admin Example',
+      tokenExpiresOnUtc: '2026-04-02T00:00:00.000Z',
+      exchangeAlignment: 'matched' as const,
+    };
+    const search = () => recipientDirectory.searchRecipients({
+      query: 'Brian',
+      types: ['mailContact', 'guestMailUser', 'guestUser'],
+      limit: 2,
+    });
+    const mockExchangeItems = (items: RecipientSearchItem[]) => {
+      vi.mocked(searchExchangeRecipients).mockResolvedValue({
+        query: 'Brian',
+        appliedLimit: 2,
+        appliedTypes: ['mailContact', 'guestMailUser'],
+        sourceStatus: { exchange: 'searched', graph: 'skipped' },
+        items,
+      });
+    };
+
+    beforeEach(() => {
+      mockExchangeItems([contact, exchangeGuest]);
+      vi.mocked(getGraphConnectionStatus).mockResolvedValue(graphStatus);
+      vi.mocked(searchGuestUsers).mockResolvedValue({
+        query: 'Brian',
+        appliedLimit: 2,
+        items: [{
+          stableKey: `graph:objectId:${guestId}`,
+          objectId: guestId,
+          displayName: 'Brian Example',
+          primaryEmail: 'brian@example.com',
+          userPrincipalName: 'brian_example.com#EXT#@tenant.onmicrosoft.com',
+          companyName: 'Example Corp',
+          externalUserState: 'Accepted',
+        }],
+      });
+    });
+
+    it('returns the separate contact and one Graph guest before applying the combined limit', async () => {
+      const result = await search();
+
+      expect(result.items.map((item) => item.recipientType)).toEqual(['mailContact', 'guestUser']);
+      expect(result.items[1]).toMatchObject({
+        source: 'graph',
+        stableKey: `graph:objectId:${guestId}`,
+        objectId: guestId,
+        exchangeIdentity: null,
+        membershipSupport: 'graphBridgeable',
+        companyName: 'Example Corp',
+      });
+      expect(recipientDirectory.getCachedRecipientByStableKey(`graph:objectId:${guestId}`)).toEqual(result.items[1]);
+      expect(recipientDirectory.getCachedRecipientByStableKey(contact.stableKey)).toEqual(contact);
+      expect(recipientDirectory.getCachedRecipientByStableKey(exchangeGuest.stableKey)).toBeNull();
+    });
+
+    it.each([undefined, null, 'different-directory-id'])('keeps guest rows separate when the explicit directory ID is %s', async (directoryId) => {
+      mockExchangeItems([{ ...exchangeGuest, externalDirectoryObjectId: directoryId }]);
+      const result = await search();
+
+      expect(result.items.map((item) => item.recipientType)).toEqual(['guestMailUser', 'guestUser']);
+    });
+
+    it('does not merge a mail contact even if its ID matches a Graph guest', async () => {
+      mockExchangeItems([{ ...contact, objectId: guestId, externalDirectoryObjectId: guestId }]);
+      const result = await search();
+
+      expect(result.items.map((item) => item.recipientType)).toEqual(['mailContact', 'guestUser']);
+    });
+
+    it('keeps both guest rows when tenant alignment is unverified', async () => {
+      mockExchangeItems([exchangeGuest]);
+      vi.mocked(getGraphConnectionStatus).mockResolvedValue({ ...graphStatus, exchangeAlignment: 'unknown' });
+      const result = await search();
+
+      expect(result.items.map((item) => item.recipientType)).toEqual(['guestMailUser', 'guestUser']);
+    });
+
+    it('retains the Exchange guest when Graph is disconnected', async () => {
+      vi.mocked(getGraphConnectionStatus).mockResolvedValue({ ...graphStatus, state: 'disconnected' });
+      const result = await search();
+
+      expect(result.items).toEqual([contact, exchangeGuest]);
+      expect(result.sourceStatus.graph).toBe('unavailable');
+      expect(searchGuestUsers).not.toHaveBeenCalled();
+    });
+
+    it('retains the Exchange guest when Graph search fails', async () => {
+      vi.mocked(searchGuestUsers).mockRejectedValue(new Error('Graph request failed.'));
+      const result = await search();
+
+      expect(result.items).toEqual([contact, exchangeGuest]);
+      expect(result.sourceStatus.graph).toBe('unavailable');
+    });
+
+    it('retains the Exchange guest when Graph does not return its counterpart', async () => {
+      vi.mocked(searchGuestUsers).mockResolvedValue({ query: 'Brian', appliedLimit: 2, items: [] });
+      const result = await search();
+
+      expect(result.items).toEqual([contact, exchangeGuest]);
+    });
   });
 
   it('defers Graph guests when tenant alignment mismatches Exchange', async () => {
