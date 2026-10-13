@@ -21,10 +21,20 @@ export async function addGroupMembers(
   );
 
   const readyMembers: GroupMemberWriteRef[] = [];
+  const resolvedMemberKeys = new Set<string>();
   const invalidItems: GroupsAddMembersResult['items'] = [];
 
   resolutionResults.forEach(({ requested, resolution }) => {
     if (resolution.kind === 'exchangeDirect') {
+      // Keep conflicting directory IDs separate even if a compatibility write identity overlaps.
+      const memberKey = JSON.stringify([
+        resolution.member.exchangeIdentity.trim().toLowerCase(),
+        resolution.member.objectId?.trim().toLowerCase() ?? null,
+      ]);
+      if (resolvedMemberKeys.has(memberKey)) {
+        return;
+      }
+      resolvedMemberKeys.add(memberKey);
       readyMembers.push(resolution.member);
       return;
     }
@@ -46,7 +56,7 @@ export async function addGroupMembers(
     verify: payload.verify,
   } satisfies ResolvedGroupsAddMembersPayload);
 
-  return mergeAddMembersResults(payload, exchangeResult, invalidItems);
+  return mergeAddMembersResults(exchangeResult, invalidItems);
 }
 
 function toFallbackWriteRef(member: GroupMemberSelectionRef): GroupMemberWriteRef {
@@ -89,14 +99,13 @@ function buildNoOpAddMembersResult(
 }
 
 function mergeAddMembersResults(
-  payload: GroupsAddMembersPayload,
   exchangeResult: GroupsAddMembersResult,
   invalidItems: GroupsAddMembersResult['items'],
 ): GroupsAddMembersResult {
   return {
     group: exchangeResult.group,
     summary: {
-      requested: payload.members.length,
+      requested: exchangeResult.summary.requested + invalidItems.length,
       added: exchangeResult.summary.added,
       alreadyMember: exchangeResult.summary.alreadyMember,
       invalid: exchangeResult.summary.invalid + invalidItems.length,
